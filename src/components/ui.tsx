@@ -3,12 +3,14 @@ import type { ReactNode } from "react";
 export function Badge({
   children,
   tone = "default",
+  compact = false,
 }: {
   children: ReactNode;
   tone?: "default" | "verified" | "paid" | "warn";
+  compact?: boolean;
 }) {
   return (
-    <span className={`badge ${tone === "default" ? "" : tone}`.trim()}>
+    <span className={`badge ${tone === "default" ? "" : tone} ${compact ? "compact" : ""}`.trim()}>
       <span className="dot" aria-hidden="true" />
       {children}
     </span>

@@ -1,11 +1,11 @@
 import { advisor, attestations, household } from "../data/mock";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
 
-export function Trust() {
+export function Verification() {
   return (
     <div className="stack">
       <SectionHead
-        kicker="Trust & verification"
+        kicker="Verification"
         title="Who attests to this identity"
         lede="Banks and managers pay against a profile only when the household, the advisor, and at least one custodian are illustrated as verified. Every badge below is a static fixture."
       />

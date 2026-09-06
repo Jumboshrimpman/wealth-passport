@@ -1,24 +1,18 @@
-import { Link } from "react-router-dom";
-import { defaultConsents, institutions } from "../data/mock";
-import { Badge, Disclaimer, SectionHead } from "../components/ui";
-
-const placementCopy = {
-  bps: "The institution paid in basis points for this inbox slot.",
-  strategy: "The institution paid to place a named strategy against this profile.",
-  special: "The institution paid for a special-offer slot (fee waiver / concession).",
-} as const;
+import { OfferCard } from "../components/OfferCard";
+import { Disclaimer, SectionHead } from "../components/ui";
+import { useConsent } from "../context/ConsentContext";
+import { rankedInstitutions } from "../data/mock";
 
 export function Offers() {
-  const visible = institutions.filter((firm) =>
-    defaultConsents.some((consent) => consent.institutionId === firm.id && consent.shared),
-  );
+  const consent = useConsent();
+  const ranked = rankedInstitutions();
 
   return (
     <div className="stack">
       <SectionHead
-        kicker="Client view · paid inbox"
+        kicker="Client view · ranked inbox"
         title="Personalized offers"
-        lede="Each card is a paid placement. The household did not request a quote, and no optimizer selected a winner. Institutions bought the right to appear against a consented profile."
+        lede="Each card is a paid placement ranked to this passport — allocation, domicile, and verified collateral. The household did not request a quote, and no optimizer selected a winner."
       />
 
       <Disclaimer>
@@ -27,39 +21,26 @@ export function Offers() {
         data layer. No live manager feed is connected.
       </Disclaimer>
 
-      <div className="stack">
-        {visible.map((firm) => {
-          const offer = firm.offer;
-          return (
-            <article className="panel" key={offer.id}>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <p className="kicker" style={{ margin: 0 }}>
-                  {firm.kindLabel}
-                </p>
-                <div className="row">
-                  <Badge tone="paid">{offer.placementLabel}</Badge>
-                  <Badge>Institution paid</Badge>
-                </div>
-              </div>
-              <h2>{offer.title}</h2>
-              <p className="muted">{firm.name}</p>
-              <p>{offer.summary}</p>
-              <p>
-                <strong>Paid placement.</strong> {offer.paidPlacement} {placementCopy[offer.placementKind]}
-              </p>
-              <p className="tiny muted">
-                Terms (illustrative): {offer.terms} Expires {offer.expires}. Audience: {offer.audience}.
-              </p>
-            </article>
-          );
-        })}
-      </div>
+      {consent.shared ? (
+        <div className="stack">
+          {ranked.map((firm) => (
+            <OfferCard key={firm.id} firm={firm} />
+          ))}
+        </div>
+      ) : (
+        <section className="panel">
+          <p className="kicker">Consent is off</p>
+          <h1>No offers.</h1>
+          <p className="lede">
+            Passport share consent is off. No paying institution may send an offer. Turn the
+            consent on from the Client Passport if you want this inbox populated.
+          </p>
+        </section>
+      )}
 
       <p className="tiny muted">
-        Institutions compose these cards on the{" "}
-        <Link to="/institution">institutional offer console</Link>. Consent that hides a firm is
-        edited on the <Link to="/passport">passport</Link>. Harbor Street Securities has no card
-        because consent was withdrawn.
+        Institutions compose these cards in Institution mode. Client mode cannot open that
+        console. Harbor Street and any other non-paying desk are not in this ranked list.
       </p>
     </div>
   );
