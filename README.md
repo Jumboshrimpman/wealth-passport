@@ -54,7 +54,7 @@ Requires Node 20+.
 | Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Client + institution sides and aggregate mock metrics |
 | Unknown path | any other URL | […/not-a-view](https://jumboshrimpman.github.io/wealth-passport/not-a-view) | Loud “not part of the walkthrough” — no silent fallback |
 
-`/` and the Pages root redirect to `/passport`. Deep links work because the Pages build copies `index.html` to `404.html`.
+`/` and the Pages root redirect to `/passport`. Deep links work because the deploy workflow copies `index.html` to `404.html`.
 
 ### What is deliberately fake
 
