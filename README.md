@@ -30,19 +30,33 @@ First-time enable (repo admin, once): **Settings → Pages → Build and deploym
 
 ### Clerk access (required)
 
-The walkthrough is blocked until the visitor signs in with **Clerk** (`@clerk/clerk-react`). There is no local password fallback.
+The walkthrough is blocked until the visitor signs in with **Clerk** (`@clerk/clerk-react`). A Hobby org application is enough. There is no local password fallback.
 
-- Env var: `VITE_CLERK_PUBLISHABLE_KEY`
-- GitHub Actions secret: `VITE_CLERK_PUBLISHABLE_KEY` (passed into the Pages / CI build step)
-- Build **fails loudly** if the secret / env var is missing
-- Local: copy `.env.example` to `.env.local` and set the publishable key
+This is a **static GitHub Pages** site. Only the **publishable** key is used (`VITE_CLERK_PUBLISHABLE_KEY`). Never put `CLERK_SECRET_KEY` in Vite, Actions client env, or the repo.
 
-In the Clerk dashboard, allow these origins / redirect URLs:
+If the publishable key is missing:
 
-- `http://localhost:5173`
-- `http://localhost:5173/wealth-passport`
-- `https://jumboshrimpman.github.io`
-- `https://jumboshrimpman.github.io/wealth-passport`
+- `npm run build` / GitHub Actions **fails loudly** (no silent open)
+- The running app renders a setup panel and does **not** show the mock
+
+#### Create the Clerk application
+
+1. In [Clerk Dashboard](https://dashboard.clerk.com), create an application in the Hobby org.
+2. Open **API Keys** and copy the **Publishable key** only (`pk_…`).
+3. **Local:** copy `.env.example` to `.env.local` and set `VITE_CLERK_PUBLISHABLE_KEY`.
+4. **GitHub Pages / CI:** repo **Settings → Secrets and variables → Actions → New repository secret** named `VITE_CLERK_PUBLISHABLE_KEY`. The Deploy GitHub Pages and CI workflows pass that secret into `npm run build`. After the secret is set, redeploy (push to `main` or run the workflow).
+5. Clerk Dashboard → **Domains / Allowed origins**:
+   - `https://jumboshrimpman.github.io`
+   - `http://localhost:5173`
+6. Clerk Dashboard → **Paths / Allowed redirect URLs** (after sign-in, after sign-up, sign-out). Include the Pages base and `/passport`:
+   - `https://jumboshrimpman.github.io/wealth-passport`
+   - `https://jumboshrimpman.github.io/wealth-passport/`
+   - `https://jumboshrimpman.github.io/wealth-passport/passport`
+   - `http://localhost:5173/wealth-passport`
+   - `http://localhost:5173/wealth-passport/`
+   - `http://localhost:5173/wealth-passport/passport`
+
+The app signs in with Clerk hash routing, then returns to Vite `base` (`/wealth-passport/`), which opens the current mode home (Client → `/passport`).
 
 ### Run locally
 

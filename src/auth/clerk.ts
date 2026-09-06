@@ -1,11 +1,27 @@
-export function getClerkPublishableKey(): string {
+export const CLERK_PAGES_ORIGIN = "https://jumboshrimpman.github.io";
+export const CLERK_PAGES_BASE = "https://jumboshrimpman.github.io/wealth-passport";
+export const CLERK_LOCAL_ORIGIN = "http://localhost:5173";
+export const CLERK_LOCAL_BASE = "http://localhost:5173/wealth-passport";
+
+/** Clerk Dashboard → Configure → Domains / Allowed origins */
+export const CLERK_ALLOWED_ORIGINS = [CLERK_PAGES_ORIGIN, CLERK_LOCAL_ORIGIN] as const;
+
+/**
+ * Clerk Dashboard → Configure → Paths / Allowed redirect URLs
+ * (after sign-in, after sign-up, and sign-out).
+ */
+export const CLERK_REDIRECT_URLS = [
+  CLERK_PAGES_BASE,
+  `${CLERK_PAGES_BASE}/`,
+  `${CLERK_PAGES_BASE}/passport`,
+  CLERK_LOCAL_BASE,
+  `${CLERK_LOCAL_BASE}/`,
+  `${CLERK_LOCAL_BASE}/passport`,
+] as const;
+
+export function getClerkPublishableKey(): string | undefined {
   const key = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-  if (!key) {
-    throw new Error(
-      "CLERK BOOT FAILURE: VITE_CLERK_PUBLISHABLE_KEY is missing. The GitHub Actions secret must be passed into the Pages build. There is no password-gate fallback.",
-    );
-  }
-  return key;
+  return key && key.trim() ? key.trim() : undefined;
 }
 
 export const clerkAppearance = {

@@ -400,6 +400,23 @@ nav.primary a[aria-current="page"] {
   width: min(560px, 100%);
 }
 
+.gate-card-wide {
+  width: min(720px, 100%);
+}
+
+.setup-list {
+  margin: 1rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.setup-list li {
+  margin: 0.45rem 0;
+}
+
+.setup-list code {
+  font-size: 0.86em;
+}
+
 .gate-submit {
   border: 1px solid var(--sage-700);
   background: var(--sage-700);

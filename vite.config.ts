@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => {
   const clerkKey = loadEnv(mode, ".", "VITE_").VITE_CLERK_PUBLISHABLE_KEY;
   if (!clerkKey) {
     throw new Error(
-      "BUILD FAILURE: VITE_CLERK_PUBLISHABLE_KEY is missing. Pass the GitHub Actions secret into the build step (or set it in .env.local for local work). There is no password-gate fallback.",
+      "BUILD FAILURE: VITE_CLERK_PUBLISHABLE_KEY is missing. Create a Clerk Hobby app, put the publishable key in GitHub Actions secrets (and .env.local). Never add CLERK_SECRET_KEY to this static Pages client. There is no password-gate fallback.",
     );
   }
 
