@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
-import { clerkAppearance, getClerkPublishableKey } from "./auth/clerk";
+import { clerkAppearance } from "./auth/clerk";
 import { ClerkMissingKey } from "./components/ClerkMissingKey";
 import "./index.css";
 
@@ -13,7 +13,7 @@ if (!root) {
 }
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
-const publishableKey = getClerkPublishableKey();
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
 const afterAuthUrl = import.meta.env.BASE_URL;
 
 createRoot(root).render(

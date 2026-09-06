@@ -44,11 +44,20 @@ If the publishable key is missing:
 1. In [Clerk Dashboard](https://dashboard.clerk.com), create an application in the Hobby org.
 2. Open **API Keys** and copy the **Publishable key** only (`pk_…`).
 3. **Local:** copy `.env.example` to `.env.local` and set `VITE_CLERK_PUBLISHABLE_KEY`.
-4. **GitHub Pages / CI:** repo **Settings → Secrets and variables → Actions → New repository secret** named `VITE_CLERK_PUBLISHABLE_KEY`. The Deploy GitHub Pages and CI workflows pass that secret into `npm run build`. After the secret is set, redeploy (push to `main` or run the workflow).
-5. Clerk Dashboard → **Domains / Allowed origins**:
+4. **GitHub Actions secret (required for CI and Pages):** repo **Settings → Secrets and variables → Actions → New repository secret**
+   - Name: `VITE_CLERK_PUBLISHABLE_KEY`
+   - Value: the same Clerk **publishable** key
+   - Cursor / chat “secure input” does **not** set this secret. Until it exists, `npm run build` in Actions fails loudly on purpose (the unlocked mock is not shipped).
+   - The Deploy GitHub Pages workflow passes it as:
+     ```yaml
+     env:
+       VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+     ```
+     Then redeploy (merge to `main` or **Actions → Deploy GitHub Pages → Run workflow**).
+5. Clerk Dashboard → **Allowed origins**
    - `https://jumboshrimpman.github.io`
    - `http://localhost:5173`
-6. Clerk Dashboard → **Paths / Allowed redirect URLs** (after sign-in, after sign-up, sign-out). Include the Pages base and `/passport`:
+6. Clerk Dashboard → **Redirect URLs** (after sign-in / sign-up / sign-out) for `/wealth-passport` and local Vite:
    - `https://jumboshrimpman.github.io/wealth-passport`
    - `https://jumboshrimpman.github.io/wealth-passport/`
    - `https://jumboshrimpman.github.io/wealth-passport/passport`

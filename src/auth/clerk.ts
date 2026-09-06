@@ -19,11 +19,6 @@ export const CLERK_REDIRECT_URLS = [
   `${CLERK_LOCAL_BASE}/passport`,
 ] as const;
 
-export function getClerkPublishableKey(): string | undefined {
-  const key = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-  return key && key.trim() ? key.trim() : undefined;
-}
-
 export const clerkAppearance = {
   variables: {
     colorPrimary: "#6b7f5a",
