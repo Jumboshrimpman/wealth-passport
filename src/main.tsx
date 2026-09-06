@@ -9,9 +9,11 @@ if (!root) {
   throw new Error("MOCK BOOT FAILURE: #root is missing from index.html.");
 }
 
+const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
+
 createRoot(root).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <App />
     </BrowserRouter>
   </StrictMode>,

@@ -22,6 +22,8 @@ Cursor / Cloud Agents should follow [AGENTS.md](AGENTS.md). That file repeats th
 
 `Wealth Passport` is a **frontend-only MOCK** for investor walkthroughs. It is honest UI with static fixtures in `src/data/mock.ts`. There are no APIs, auth, KYC, payments, custody links, or Morningstar / Informa integrations.
 
+**Public demo (GitHub Pages):** [https://jumboshrimpman.github.io/wealth-passport/](https://jumboshrimpman.github.io/wealth-passport/) — published from `main` on each push.
+
 Tagline: *Standardized and comprehensive investment potential across firms.*
 
 ### Run locally
@@ -31,7 +33,7 @@ npm install
 npm run dev
 ```
 
-Then open the Vite URL (default [http://localhost:5173](http://localhost:5173)). A persistent **MOCK DEMO** banner stays on every screen.
+Then open [http://localhost:5173/wealth-passport/](http://localhost:5173/wealth-passport/) (Vite `base` is `/wealth-passport/` so the local path matches GitHub Pages). A persistent **MOCK DEMO** banner stays on every screen.
 
 ```bash
 npm run build    # production bundle
@@ -42,17 +44,17 @@ Requires Node 20+.
 
 ### Walkthrough routes
 
-| View | Route | What it shows |
-| --- | --- | --- |
-| Client Passport | `/passport` | Holistic profile, allocations, liquidity, risk, consent toggles |
-| Trust / verification | `/trust` | Verified Merrill Lynch custodian; advisor Linda McDonald, BrokerCheck `111111` |
-| Client offers inbox | `/offers` | Paid placements (bps / strategy / special offer) |
-| Institutional console | `/institution` | Targeting, offer terms, paid placement channel (local state only) |
-| Ops reuse | `/ops` | Rollover packet with passport-filled fields |
-| Admin | `/admin` | Client + institution sides and aggregate mock metrics |
-| Unknown path | any other URL | Loud “not part of the walkthrough” — no silent fallback |
+| View | Route | Public URL | What it shows |
+| --- | --- | --- | --- |
+| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Holistic profile, allocations, liquidity, risk, consent toggles |
+| Trust / verification | `/trust` | […/trust](https://jumboshrimpman.github.io/wealth-passport/trust) | Verified Merrill Lynch custodian; advisor Linda McDonald, BrokerCheck `111111` |
+| Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Paid placements (bps / strategy / special offer) |
+| Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Targeting, offer terms, paid placement channel (local state only) |
+| Ops reuse | `/ops` | […/ops](https://jumboshrimpman.github.io/wealth-passport/ops) | Rollover packet with passport-filled fields |
+| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Client + institution sides and aggregate mock metrics |
+| Unknown path | any other URL | […/not-a-view](https://jumboshrimpman.github.io/wealth-passport/not-a-view) | Loud “not part of the walkthrough” — no silent fallback |
 
-`/` redirects to `/passport`.
+`/` and the Pages root redirect to `/passport`. Deep links work because the Pages build copies `index.html` to `404.html`.
 
 ### What is deliberately fake
 
