@@ -4,19 +4,22 @@ export const CLERK_PAGES_HOME = "https://jumboshrimpman.github.io/wealth-passpor
 export const CLERK_PAGES_BASE = "https://jumboshrimpman.github.io/wealth-passport";
 export const CLERK_PAGES_PASSPORT = "https://jumboshrimpman.github.io/wealth-passport/passport";
 
-/** After sign-in / sign-up / sign-out — absolute Pages URLs, not localhost. */
+/** After sign-in / sign-out — absolute Pages URLs, not localhost. No public sign-up. */
 export const CLERK_AFTER_AUTH_URL = CLERK_PAGES_HOME;
 export const CLERK_AFTER_SIGN_OUT_URL = CLERK_PAGES_HOME;
 
 /** Clerk Dashboard → Allowed origins (Pages origin, no path). */
 export const CLERK_ALLOWED_ORIGINS = [CLERK_PAGES_ORIGIN] as const;
 
-/** Clerk Dashboard → Redirect URLs for /wealth-passport on Pages. */
+/** Clerk Dashboard → Redirect URLs for /wealth-passport on Pages (sign-in / sign-out only). */
 export const CLERK_REDIRECT_URLS = [
   CLERK_PAGES_BASE,
   CLERK_PAGES_HOME,
   CLERK_PAGES_PASSPORT,
 ] as const;
+
+/** Hide the SignIn “Don’t have an account? Sign up” footer. Dashboard Invite-only is the lock. */
+const hideSignUpFooter = { display: "none" } as const;
 
 export const clerkAppearance = {
   variables: {
@@ -28,5 +31,26 @@ export const clerkAppearance = {
     colorInputText: "#221c14",
     borderRadius: "14px",
     fontFamily: '"Source Sans 3", "Segoe UI", sans-serif',
+  },
+  elements: {
+    footerAction: hideSignUpFooter,
+    footerActionText: hideSignUpFooter,
+    footerActionLink: hideSignUpFooter,
+    footerAction__signIn: hideSignUpFooter,
+    footerAction__signUp: hideSignUpFooter,
+  },
+} as const;
+
+/** Sign-in only. Empty action link so the component has no sign-up CTA copy. */
+export const clerkLocalization = {
+  signIn: {
+    start: {
+      actionText: "Access is provisioned by an admin. There is no public sign-up.",
+      actionLink: "",
+    },
+  },
+  unstable__errors: {
+    form_identifier_not_found:
+      "Couldn't find your account. Ask an admin to create your user in Clerk — this site is invite-only.",
   },
 } as const;

@@ -8,6 +8,7 @@ import {
   CLERK_AFTER_SIGN_OUT_URL,
   CLERK_PAGES_HOME,
   clerkAppearance,
+  clerkLocalization,
 } from "./auth/clerk";
 import { ClerkMissingKey } from "./components/ClerkMissingKey";
 import "./index.css";
@@ -27,10 +28,9 @@ createRoot(root).render(
         publishableKey={publishableKey}
         afterSignOutUrl={CLERK_AFTER_SIGN_OUT_URL}
         signInFallbackRedirectUrl={CLERK_AFTER_AUTH_URL}
-        signUpFallbackRedirectUrl={CLERK_AFTER_AUTH_URL}
         signInUrl={CLERK_PAGES_HOME}
-        signUpUrl={CLERK_PAGES_HOME}
         appearance={clerkAppearance}
+        localization={clerkLocalization}
       >
         <BrowserRouter basename={basename}>
           <App />

@@ -29,6 +29,11 @@ export function ClerkMissingKey() {
           <ol className="setup-list">
             <li>Create a Clerk Hobby application.</li>
             <li>
+              Disable public sign-up: Clerk Dashboard → <strong>Configure → Access mode</strong> →{" "}
+              <strong>Invite-only</strong> (older UI: Restrictions → Sign-up mode → Restricted).
+              Create walkthrough users under <strong>Users</strong> (or Invitations).
+            </li>
+            <li>
               Copy the <strong>publishable</strong> key only. Never add <code>CLERK_SECRET_KEY</code>{" "}
               to this Pages client.
             </li>

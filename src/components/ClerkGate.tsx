@@ -19,17 +19,23 @@ export function ClerkGate({ children }: { children: ReactNode }) {
   if (!isSignedIn) {
     return (
       <GateShell>
-        <p className="kicker">Clerk sign-in · required</p>
+        <p className="kicker">Clerk sign-in · provisioned access</p>
         <div className="wordmark">{PRODUCT_NAME}</div>
         <p className="lede">{TAGLINE}</p>
         <p className="muted">
-          The walkthrough is blocked until you sign in with Clerk. Holdings stay mock fixtures.
-          There is no local password fallback.
+          Access is <strong>provisioned by an admin</strong> — invite-only. There is no public
+          sign-up. Sign in with the Clerk account an admin created for you. If sign-in fails with
+          “couldn’t find your account”, ask an admin to create your user in Clerk Dashboard →
+          Users (or send an invitation). Holdings stay mock fixtures. There is no local password
+          fallback.
         </p>
         <SignIn
           routing="hash"
           forceRedirectUrl={CLERK_AFTER_AUTH_URL}
           fallbackRedirectUrl={CLERK_AFTER_AUTH_URL}
+          withSignUp={false}
+          transferable={false}
+          signUpUrl=""
           appearance={clerkAppearance}
           fallback={
             <aside className="gate-error" role="alert">
