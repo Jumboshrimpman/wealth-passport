@@ -20,7 +20,7 @@ Cursor / Cloud Agents should follow [AGENTS.md](AGENTS.md). That file repeats th
 
 ## Investor mock (this branch)
 
-**WealthPass** is a **frontend-only MOCK** for investor walkthroughs. It is honest UI with static fixtures in `src/data/mock.ts`. There are no APIs, Clerk, KYC, payments, custody links, or Morningstar / Informa integrations.
+**WealthPass** is a **frontend-only MOCK** for investor walkthroughs. Holdings, institutions, and offers are static fixtures in `src/data/mock.ts` and `src/data/holdings.ts`. There are no custody APIs, KYC, payments, or Morningstar / Informa integrations.
 
 Tagline: *Standardized and comprehensive investment potential across firms.*
 
@@ -28,27 +28,50 @@ Tagline: *Standardized and comprehensive investment potential across firms.*
 
 First-time enable (repo admin, once): **Settings → Pages → Build and deployment → Source → GitHub Actions**, then re-run the **Deploy GitHub Pages** workflow. The Actions `GITHUB_TOKEN` cannot create the Pages site by itself. Fallback: **Source → Deploy from a branch → `gh-pages` / root** (that branch already has a production build).
 
-### Demo password (MOCK auth)
+### Clerk access (required)
 
-The site is blocked until the password is entered. Unlock state is stored in `sessionStorage` and `localStorage` (GitHub Pages–friendly). Wrong passwords fail loudly. There is no Clerk or server check.
+The walkthrough is blocked until the visitor signs in with **Clerk** (`@clerk/clerk-react`). There is no local password fallback.
 
-**Password:** `wealth-demo`
+- Env var: `VITE_CLERK_PUBLISHABLE_KEY`
+- GitHub Actions secret: `VITE_CLERK_PUBLISHABLE_KEY` (passed into the Pages / CI build step)
+- Build **fails loudly** if the secret / env var is missing
+- Local: copy `.env.example` to `.env.local` and set the publishable key
+
+In the Clerk dashboard, allow these origins / redirect URLs:
+
+- `http://localhost:5173`
+- `http://localhost:5173/wealth-passport`
+- `https://jumboshrimpman.github.io`
+- `https://jumboshrimpman.github.io/wealth-passport`
 
 ### Run locally
 
 ```bash
 npm install
+# create .env.local with VITE_CLERK_PUBLISHABLE_KEY
 npm run dev
 ```
 
 Then open [http://localhost:5173/wealth-passport/](http://localhost:5173/wealth-passport/) (Vite `base` is `/wealth-passport/` so the local path matches GitHub Pages). A persistent **MOCK DEMO · WealthPass** banner stays on every screen.
 
 ```bash
-npm run build    # production bundle
+npm run build    # production bundle — requires VITE_CLERK_PUBLISHABLE_KEY
 npm run preview  # serve the built bundle
 ```
 
 Requires Node 20+.
+
+### Household figures (MOCK)
+
+This walkthrough household is scaled to **~$300M AUM**:
+
+| Figure | Illustrated value | Meaning |
+| --- | --- | --- |
+| Account value | $186.4M | Sum of listed custodied accounts |
+| Total investable assets | $228M | Listed accounts + $41.6M held-away |
+| Household value / AUM | $300M | Investable + Greenwich residence + other personal assets |
+
+The allocation bar is expandable: **asset class → sleeve/account → individual securities** (weights and values). All holdings are fixtures.
 
 ### Three modes
 
@@ -66,7 +89,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 
 | View | Route | Public URL | Mode | What it shows |
 | --- | --- | --- | --- | --- |
-| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | Three distinct figures (account / household / investable), one broad consent, ranked offers |
+| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | $300M household figures, expandable securities, one broad consent, ranked offers |
 | Verification | `/verification` | […/verification](https://jumboshrimpman.github.io/wealth-passport/verification) | Client, Admin | Verified Merrill Lynch custodian; advisor Linda McDonald, BrokerCheck `111111` |
 | Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; strategy / bps / fee discount primary |
 | Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) |
@@ -79,11 +102,11 @@ Deep links work because the deploy workflow copies `index.html` to `404.html`.
 
 ### What is deliberately fake
 
-- Household, accounts, offers, and admin metrics are TypeScript constants.
-- Consent, mode, and password-unlock flags live in React state plus `sessionStorage` / `localStorage`.
+- Household, accounts, holdings, offers, and admin metrics are TypeScript constants.
+- Consent and mode flags live in React state plus `sessionStorage` / `localStorage`.
 - Vendor names (Morningstar, Informa) appear as **illustrated first-party data sources**, not live feeds.
 - Footer mentions future quant matching / instant quotes. Those screens are **not built**.
 
 ### Stack
 
-Vite + React 19 + TypeScript + React Router. Custom CSS variables (camel brown / sage green). No backend.
+Vite + React 19 + TypeScript + React Router + `@clerk/clerk-react`. Custom CSS variables (camel brown / sage green). No backend.

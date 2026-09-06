@@ -1,4 +1,6 @@
+import { UserButton } from "@clerk/clerk-react";
 import { NavLink, Outlet } from "react-router-dom";
+import { clerkAppearance } from "../auth/clerk";
 import { useMode } from "../context/ModeContext";
 import { DEMO_NOTICE, MODE_NAV, PRODUCT_NAME, TAGLINE, type AppMode } from "../data/mock";
 
@@ -52,6 +54,7 @@ export function Layout() {
                 </NavLink>
               ))}
             </nav>
+            <UserButton appearance={clerkAppearance} />
           </div>
         </div>
       </header>
@@ -77,8 +80,8 @@ export function Layout() {
           </p>
           <p className="tiny">
             Offers are illustrative and are not advice, a solicitation, or a commitment to lend
-            or allocate. No live APIs, custody links, KYC, payments, BrokerCheck lookups, Clerk,
-            or Morningstar / Informa connections exist in this application.
+            or allocate. Access is Clerk-gated. Holdings, KYC badges, payments, BrokerCheck
+            lookups, and Morningstar / Informa names are fixtures — not live connections.
           </p>
         </div>
       </footer>

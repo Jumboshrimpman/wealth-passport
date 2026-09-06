@@ -29,7 +29,17 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Require Clerk publishable key
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "${VITE_CLERK_PUBLISHABLE_KEY}" ]; then
+            echo "::error::BUILD FAILURE: GitHub Actions secret VITE_CLERK_PUBLISHABLE_KEY is missing or empty. WealthPass will not fall back to a password gate."
+            exit 1
+          fi
       - name: Build
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
         run: npm run build
       - name: SPA fallback for GitHub Pages
         run: |

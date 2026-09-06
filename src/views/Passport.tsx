@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { AllocationDrilldown } from "../components/AllocationDrilldown";
 import { OfferCard } from "../components/OfferCard";
 import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
 import { useConsent } from "../context/ConsentContext";
@@ -38,7 +39,7 @@ export function Passport() {
         <Stat
           label="Household value"
           value={formatUsd(household.householdValue, true)}
-          note={`${formatUsd(household.householdValue)} — accounts + ${formatUsd(household.realEstate, true)} Greenwich residence + ${formatUsd(household.otherHousehold, true)} other personal assets.`}
+          note={`${formatUsd(household.householdValue)} AUM — investable + ${formatUsd(household.realEstate, true)} Greenwich residence + ${formatUsd(household.otherHousehold, true)} other personal assets.`}
         />
         <Stat
           label="Total investable assets"
@@ -77,6 +78,11 @@ export function Passport() {
             </div>
           ))}
         </div>
+        <p className="muted tiny" style={{ marginTop: "1rem" }}>
+          Open an asset class, then a sleeve/account, to see individual securities with weights and
+          values. All rows are MOCK fixtures.
+        </p>
+        <AllocationDrilldown />
         <Disclaimer>{household.sourceNote}</Disclaimer>
       </section>
 

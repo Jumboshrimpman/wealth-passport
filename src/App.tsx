@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { ClerkGate } from "./components/ClerkGate";
 import { Layout } from "./components/Layout";
 import { ModeRoute } from "./components/ModeRoute";
-import { PasswordGate } from "./components/PasswordGate";
 import { ConsentProvider } from "./context/ConsentContext";
 import { ModeProvider, useMode } from "./context/ModeContext";
 import { MODE_HOMES } from "./data/mock";
@@ -14,7 +14,7 @@ import { Verification } from "./views/Verification";
 
 export default function App() {
   return (
-    <PasswordGate>
+    <ClerkGate>
       <ConsentProvider>
         <ModeProvider>
           <Routes>
@@ -74,7 +74,7 @@ export default function App() {
           </Routes>
         </ModeProvider>
       </ConsentProvider>
-    </PasswordGate>
+    </ClerkGate>
   );
 }
 

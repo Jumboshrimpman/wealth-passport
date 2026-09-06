@@ -31,8 +31,8 @@ export function Admin() {
       <Disclaimer>
         Aggregate figures are constants for investor conversation. They are not computed from a
         warehouse. Illustrated vendor layer: Morningstar and Informa first — not live manager
-        feeds. Quant matching and instant quotes are future copy only. Password gate is
-        sessionStorage / localStorage, not Clerk.
+        feeds. Quant matching and instant quotes are future copy only. Access is Clerk-gated;
+        household figures and holdings remain fixtures.
       </Disclaimer>
 
       <div className="split">
