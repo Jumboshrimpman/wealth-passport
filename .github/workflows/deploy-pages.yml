@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_ready: ${{ steps.pages.outcome == 'success' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,18 +35,28 @@ jobs:
         run: |
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
+      # GITHUB_TOKEN cannot create a Pages site. Until a repo admin sets
+      # Settings → Pages → Source → GitHub Actions, this step fails and
+      # deploy is skipped so the build check can stay green.
       - name: Configure Pages
+        id: pages
+        continue-on-error: true
         uses: actions/configure-pages@v5
         with:
-          # First run creates the Pages site when the token allows it.
           enablement: true
       - name: Upload Pages artifact
+        if: steps.pages.outcome == 'success'
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist
+      - name: Pages not enabled yet
+        if: steps.pages.outcome != 'success'
+        run: |
+          echo "::notice::GitHub Pages is not enabled. A repo admin must set Settings → Pages → Source to GitHub Actions (or Deploy from branch → gh-pages), then re-run this workflow."
 
   deploy:
     needs: build
+    if: needs.build.outputs.pages_ready == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
