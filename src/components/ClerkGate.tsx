@@ -1,6 +1,6 @@
 import { SignIn, useAuth } from "@clerk/clerk-react";
 import type { ReactNode } from "react";
-import { clerkAppearance } from "../auth/clerk";
+import { CLERK_AFTER_AUTH_URL, CLERK_PAGES_ORIGIN, clerkAppearance } from "../auth/clerk";
 import { DEMO_NOTICE, PRODUCT_NAME, TAGLINE } from "../data/mock";
 
 export function ClerkGate({ children }: { children: ReactNode }) {
@@ -28,14 +28,13 @@ export function ClerkGate({ children }: { children: ReactNode }) {
         </p>
         <SignIn
           routing="hash"
-          forceRedirectUrl={import.meta.env.BASE_URL}
-          fallbackRedirectUrl={import.meta.env.BASE_URL}
+          forceRedirectUrl={CLERK_AFTER_AUTH_URL}
+          fallbackRedirectUrl={CLERK_AFTER_AUTH_URL}
           appearance={clerkAppearance}
           fallback={
             <aside className="gate-error" role="alert">
-              CLERK FAILURE: the Sign-in component did not load. Check VITE_CLERK_PUBLISHABLE_KEY
-              and Clerk allowed origins for this GitHub Pages host (
-              https://jumboshrimpman.github.io and http://localhost:5173).
+              CLERK FAILURE: the Sign-in component did not load. Check the Actions secret
+              VITE_CLERK_PUBLISHABLE_KEY and Clerk allowed origin {CLERK_PAGES_ORIGIN}.
             </aside>
           }
         />

@@ -1,22 +1,21 @@
+/** Live GitHub Pages origin and app base. Delivery is Pages-only. */
 export const CLERK_PAGES_ORIGIN = "https://jumboshrimpman.github.io";
+export const CLERK_PAGES_HOME = "https://jumboshrimpman.github.io/wealth-passport/";
 export const CLERK_PAGES_BASE = "https://jumboshrimpman.github.io/wealth-passport";
-export const CLERK_LOCAL_ORIGIN = "http://localhost:5173";
-export const CLERK_LOCAL_BASE = "http://localhost:5173/wealth-passport";
+export const CLERK_PAGES_PASSPORT = "https://jumboshrimpman.github.io/wealth-passport/passport";
 
-/** Clerk Dashboard → Configure → Domains / Allowed origins */
-export const CLERK_ALLOWED_ORIGINS = [CLERK_PAGES_ORIGIN, CLERK_LOCAL_ORIGIN] as const;
+/** After sign-in / sign-up / sign-out — absolute Pages URLs, not localhost. */
+export const CLERK_AFTER_AUTH_URL = CLERK_PAGES_HOME;
+export const CLERK_AFTER_SIGN_OUT_URL = CLERK_PAGES_HOME;
 
-/**
- * Clerk Dashboard → Configure → Paths / Allowed redirect URLs
- * (after sign-in, after sign-up, and sign-out).
- */
+/** Clerk Dashboard → Allowed origins (Pages origin, no path). */
+export const CLERK_ALLOWED_ORIGINS = [CLERK_PAGES_ORIGIN] as const;
+
+/** Clerk Dashboard → Redirect URLs for /wealth-passport on Pages. */
 export const CLERK_REDIRECT_URLS = [
   CLERK_PAGES_BASE,
-  `${CLERK_PAGES_BASE}/`,
-  `${CLERK_PAGES_BASE}/passport`,
-  CLERK_LOCAL_BASE,
-  `${CLERK_LOCAL_BASE}/`,
-  `${CLERK_LOCAL_BASE}/passport`,
+  CLERK_PAGES_HOME,
+  CLERK_PAGES_PASSPORT,
 ] as const;
 
 export const clerkAppearance = {

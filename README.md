@@ -24,65 +24,40 @@ Cursor / Cloud Agents should follow [AGENTS.md](AGENTS.md). That file repeats th
 
 Tagline: *Standardized and comprehensive investment potential across firms.*
 
-**Public demo (GitHub Pages):** [https://jumboshrimpman.github.io/wealth-passport/](https://jumboshrimpman.github.io/wealth-passport/) — published from `main` on each push. Vite `base` stays `/wealth-passport/` so that URL keeps working.
+**Live site (GitHub Pages only):** [https://jumboshrimpman.github.io/wealth-passport/](https://jumboshrimpman.github.io/wealth-passport/) — published from `main`. Vite `base` is `/wealth-passport/`. Sama delivers here; local Vite is not required.
 
-First-time enable (repo admin, once): **Settings → Pages → Build and deployment → Source → GitHub Actions**, then re-run the **Deploy GitHub Pages** workflow. The Actions `GITHUB_TOKEN` cannot create the Pages site by itself. Fallback: **Source → Deploy from a branch → `gh-pages` / root** (that branch already has a production build).
+First-time Pages enable (repo admin, once): **Settings → Pages → Build and deployment → Source → GitHub Actions**, then re-run **Deploy GitHub Pages**.
 
-### Clerk access (required)
+### Clerk on GitHub Pages (required)
 
-The walkthrough is blocked until the visitor signs in with **Clerk** (`@clerk/clerk-react`). A Hobby org application is enough. There is no local password fallback.
+The live walkthrough is blocked until the visitor signs in with **Clerk**. Hobby org is enough. There is no password fallback.
 
-This is a **static GitHub Pages** site. Only the **publishable** key is used (`VITE_CLERK_PUBLISHABLE_KEY`). Never put `CLERK_SECRET_KEY` in Vite, Actions client env, or the repo.
+This is a **static Pages** bundle. Only the **publishable** key is baked in at build (`VITE_CLERK_PUBLISHABLE_KEY`). Never put `CLERK_SECRET_KEY` in Vite or the repo.
 
-If the publishable key is missing:
+If the publishable key is missing, Actions **fails the build** (the unlocked mock is not shipped).
 
-- `npm run build` / GitHub Actions **fails loudly** (no silent open)
-- The running app renders a setup panel and does **not** show the mock
+#### Clerk Dashboard (Pages first)
 
-#### Create the Clerk application
-
-1. In [Clerk Dashboard](https://dashboard.clerk.com), create an application in the Hobby org.
-2. Open **API Keys** and copy the **Publishable key** only (`pk_…`).
-3. **Local:** copy `.env.example` to `.env.local` and set `VITE_CLERK_PUBLISHABLE_KEY`.
-4. **GitHub Actions secret (required for CI and Pages):** repo **Settings → Secrets and variables → Actions → New repository secret**
-   - Name: `VITE_CLERK_PUBLISHABLE_KEY`
-   - Value: the same Clerk **publishable** key
-   - Cursor / chat “secure input” does **not** set this secret. Until it exists, `npm run build` in Actions fails loudly on purpose (the unlocked mock is not shipped).
-   - The Deploy GitHub Pages workflow passes it as:
-     ```yaml
-     env:
-       VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
-     ```
-     Then redeploy (merge to `main` or **Actions → Deploy GitHub Pages → Run workflow**).
-5. Clerk Dashboard → **Allowed origins**
+1. Create a Clerk application in the Hobby org.
+2. Copy the **Publishable key** only (`pk_…`).
+3. Repo **Settings → Secrets and variables → Actions →** `VITE_CLERK_PUBLISHABLE_KEY`. Cursor secure input does **not** set this. The Deploy GitHub Pages workflow passes:
+   ```yaml
+   env:
+     VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+   ```
+4. **Allowed origin** (origin only, no path):
    - `https://jumboshrimpman.github.io`
-   - `http://localhost:5173`
-6. Clerk Dashboard → **Redirect URLs** (after sign-in / sign-up / sign-out) for `/wealth-passport` and local Vite:
+5. **Redirect URLs** (after sign-in, sign-up, and sign-out) for `/wealth-passport`:
    - `https://jumboshrimpman.github.io/wealth-passport`
    - `https://jumboshrimpman.github.io/wealth-passport/`
    - `https://jumboshrimpman.github.io/wealth-passport/passport`
-   - `http://localhost:5173/wealth-passport`
-   - `http://localhost:5173/wealth-passport/`
-   - `http://localhost:5173/wealth-passport/passport`
+6. Merge this branch into `main` so Pages rebuilds.
 
-The app signs in with Clerk hash routing, then returns to Vite `base` (`/wealth-passport/`), which opens the current mode home (Client → `/passport`).
+The app uses Clerk hash routing on the Pages URL, then returns to `https://jumboshrimpman.github.io/wealth-passport/` (Client mode opens `/passport`).
 
-### Run locally
+#### Optional: local Vite
 
-```bash
-npm install
-# create .env.local with VITE_CLERK_PUBLISHABLE_KEY
-npm run dev
-```
-
-Then open [http://localhost:5173/wealth-passport/](http://localhost:5173/wealth-passport/) (Vite `base` is `/wealth-passport/` so the local path matches GitHub Pages). A persistent **MOCK DEMO · WealthPass** banner stays on every screen.
-
-```bash
-npm run build    # production bundle — requires VITE_CLERK_PUBLISHABLE_KEY
-npm run preview  # serve the built bundle
-```
-
-Requires Node 20+.
+Not used for delivery. If needed: `.env.local` with `VITE_CLERK_PUBLISHABLE_KEY`, `npm run dev`, open `http://localhost:5173/wealth-passport/`, and add that origin in Clerk only if you actually run it.
 
 ### Household figures (MOCK)
 

@@ -1,7 +1,6 @@
 import {
   CLERK_ALLOWED_ORIGINS,
-  CLERK_LOCAL_BASE,
-  CLERK_PAGES_BASE,
+  CLERK_PAGES_HOME,
   CLERK_REDIRECT_URLS,
 } from "../auth/clerk";
 import { DEMO_NOTICE, PRODUCT_NAME } from "../data/mock";
@@ -17,44 +16,35 @@ export function ClerkMissingKey() {
       </div>
       <main className="gate-main">
         <section className="panel gate-card gate-card-wide">
-          <p className="kicker">Clerk setup · required</p>
+          <p className="kicker">Clerk setup · GitHub Pages</p>
           <h1>VITE_CLERK_PUBLISHABLE_KEY is missing.</h1>
           <p className="lede">
-            WealthPass will not open. This is a static GitHub Pages mock. Only the Clerk
-            publishable key belongs in the client bundle. There is no password fallback and no
-            invented key.
+            WealthPass will not open on {CLERK_PAGES_HOME}. This static Pages mock needs the Clerk
+            publishable key at build time. There is no password fallback and no invented key.
           </p>
           <aside className="gate-error" role="alert">
-            CLERK BOOT FAILURE: the publishable key env var is empty. Add it, then rebuild /
-            redeploy. Do not commit secrets.
+            CLERK BOOT FAILURE: add repo Actions secret VITE_CLERK_PUBLISHABLE_KEY, then merge to
+            main so Pages rebuilds. Do not commit secrets.
           </aside>
           <ol className="setup-list">
-            <li>
-              Create a Clerk application in the Hobby org (Dashboard → Create application).
-            </li>
+            <li>Create a Clerk Hobby application.</li>
             <li>
               Copy the <strong>publishable</strong> key only. Never add <code>CLERK_SECRET_KEY</code>{" "}
-              to Vite or this repo.
+              to this Pages client.
             </li>
             <li>
-              Local: <code>.env.local</code> with{" "}
-              <code>VITE_CLERK_PUBLISHABLE_KEY=pk_…</code> (see <code>.env.example</code>).
+              GitHub → Settings → Secrets and variables → Actions →{" "}
+              <code>VITE_CLERK_PUBLISHABLE_KEY</code>. The Pages workflow passes that secret into{" "}
+              <code>npm run build</code>.
             </li>
             <li>
-              GitHub: repo Settings → Secrets and variables → Actions →{" "}
-              <code>VITE_CLERK_PUBLISHABLE_KEY</code>. The Pages / CI workflows pass that secret
-              into <code>npm run build</code>.
-            </li>
-            <li>
-              Clerk Dashboard allowed origins:{" "}
+              Clerk allowed origin (Pages):{" "}
               {CLERK_ALLOWED_ORIGINS.map((url) => (
                 <code key={url}>{url}</code>
               ))}
-              .
             </li>
             <li>
-              After sign-in / redirect URLs must include {CLERK_PAGES_BASE} and {CLERK_LOCAL_BASE}{" "}
-              (and <code>/passport</code>):
+              Clerk redirect URLs for <code>/wealth-passport</code>:
               <ul>
                 {CLERK_REDIRECT_URLS.map((url) => (
                   <li key={url}>
@@ -63,7 +53,9 @@ export function ClerkMissingKey() {
                 ))}
               </ul>
             </li>
-            <li>Redeploy from <code>main</code> after the Actions secret is set.</li>
+            <li>
+              Merge to <code>main</code> so https://jumboshrimpman.github.io/wealth-passport/ rebuilds.
+            </li>
           </ol>
         </section>
       </main>
