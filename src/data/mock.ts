@@ -1,8 +1,14 @@
+export const PRODUCT_NAME = "WealthPass";
+
+export const DEMO_PASSWORD = "wealth-demo";
+
 export const DEMO_NOTICE =
-  "MOCK DEMO — Illustrative household, institutions, and offers. No live APIs, custody, KYC, payments, or manager feeds.";
+  "MOCK DEMO — WealthPass walkthrough. Illustrative household, institutions, and offers. No live APIs, custody, KYC, payments, Clerk, or manager feeds.";
 
 export const TAGLINE =
   "Standardized and comprehensive investment potential across firms.";
+
+export type AppMode = "client" | "institution" | "admin";
 
 export type VerificationKind = "custodian" | "advisor" | "document";
 
@@ -26,11 +32,10 @@ export interface Allocation {
   tone: "camel" | "sage" | "ink" | "clay" | "stone";
 }
 
-export interface Consent {
-  institutionId: string;
+export interface PassportConsent {
   shared: boolean;
-  scopes: string[];
   lastChanged: string;
+  scopes: string[];
 }
 
 export interface Advisor {
@@ -47,6 +52,11 @@ export interface Offer {
   id: string;
   institutionId: string;
   title: string;
+  strategy: string;
+  bps: number;
+  feeDiscountPct: number;
+  rank: number;
+  fitReason: string;
   summary: string;
   placementKind: PlacementKind;
   placementLabel: string;
@@ -79,7 +89,7 @@ export const household = {
   entity: "Whitmore Family Revocable Trust",
   investable: 18_640_000,
   realEstate: 4_200_000,
-  netWorth: 22_840_000,
+  householdValue: 22_840_000,
   liquidity: 1_820_000,
   risk: {
     label: "Moderate growth",
@@ -150,6 +160,8 @@ export const accounts: Account[] = [
   },
 ];
 
+export const accountValue = accounts.reduce((sum, account) => sum + account.balance, 0);
+
 export const allocations: Allocation[] = [
   { label: "Public equity", pct: 42, tone: "camel" },
   { label: "Fixed income", pct: 22, tone: "sage" },
@@ -176,12 +188,18 @@ export const institutions: Institution[] = [
       id: "offer-sbl",
       institutionId: "first-atlantic",
       title: "Securities-based credit line",
+      strategy: "Securities-based credit line",
+      bps: 185,
+      feeDiscountPct: 10,
+      rank: 2,
+      fitReason:
+        "Ranked #2 for this book: $8.42M verified Merrill taxable collateral can support a line without selling the 42% equity sleeve.",
       summary:
-        "Up to 55% advance on the verified Merrill taxable book, SOFR + 185 bps, interest-only for 24 months.",
+        "Up to 55% advance on the verified Merrill taxable book, interest-only for 24 months. Spread is illustrated, not a live quote.",
       placementKind: "bps",
-      placementLabel: "Paid placement · 12 bps",
+      placementLabel: "Paid placement",
       paidPlacement:
-        "Institution paid 12 bps (annualized on committed line) to appear in this household’s inbox.",
+        "Institution paid 12 bps (annualized on committed line) to appear against this consented passport.",
       terms: "SOFR + 1.85%. No prepayment penalty. Recourse limited to pledged securities.",
       expires: "2026-10-31",
       audience: "Households with ≥ $8M verified brokerage collateral",
@@ -204,12 +222,18 @@ export const institutions: Institution[] = [
       id: "offer-muni",
       institutionId: "meridian",
       title: "Tax-aware municipal SMA",
+      strategy: "Tax-aware municipal SMA",
+      bps: 38,
+      feeDiscountPct: 10,
+      rank: 1,
+      fitReason:
+        "Ranked #1 for this book: Greenwich, CT domicile plus a 22% taxable fixed-income sleeve is a tighter municipal-SMA fit than credit or secondaries.",
       summary:
-        "Separately managed national + CT preference book, 38 bps strategy fee, illustrated duration 6.4 years.",
+        "Separately managed national + CT preference book. Illustrated duration 6.4 years. Fee is a fixture, not a live SMA schedule.",
       placementKind: "strategy",
-      placementLabel: "Paid placement · strategy",
+      placementLabel: "Paid placement",
       paidPlacement:
-        "Institution paid for strategy placement against households with a taxable fixed-income sleeve.",
+        "Institution paid for strategy placement against passports with a taxable fixed-income sleeve.",
       terms: "38 bps all-in SMA. No wrap. Quarterly tax-loss harvest illustrated, not live.",
       expires: "2026-11-15",
       audience: "Taxable accounts ≥ $2M in high-tax domiciles",
@@ -232,12 +256,18 @@ export const institutions: Institution[] = [
       id: "offer-secondaries",
       institutionId: "oakridge",
       title: "2026 secondaries sleeve",
+      strategy: "2026 secondaries sleeve",
+      bps: 150,
+      feeDiscountPct: 10,
+      rank: 3,
+      fitReason:
+        "Ranked #3 for this book: an 18% private-markets sleeve is already on the passport, so a secondaries feeder is a satellite, not the core.",
       summary:
-        "Closed-end secondaries sleeve, 1.5% management and 15% carry, with a first-$500k management-fee waiver.",
+        "Closed-end secondaries sleeve with illustrated 15% carry. Capital calls staged over 18 months. Not a solicitation.",
       placementKind: "special",
-      placementLabel: "Paid placement · special offer",
+      placementLabel: "Paid placement",
       paidPlacement:
-        "Institution paid for a special-offer slot: fee waiver on the first $500k committed.",
+        "Institution paid for a special-offer slot against passports that already show a private-markets sleeve.",
       terms: "Illustrative 1.5 / 15. Capital calls staged over 18 months. Not a solicitation.",
       expires: "2026-12-01",
       audience: "Households with an existing private-markets sleeve ≥ 10%",
@@ -245,31 +275,15 @@ export const institutions: Institution[] = [
   },
 ];
 
-export const defaultConsents: Consent[] = [
-  {
-    institutionId: "first-atlantic",
-    shared: true,
-    scopes: ["Net worth band", "Verified Merrill balances", "Liquidity"],
-    lastChanged: "2026-08-12",
-  },
-  {
-    institutionId: "meridian",
-    shared: true,
-    scopes: ["Taxable allocation", "Domicile", "Risk label"],
-    lastChanged: "2026-07-29",
-  },
-  {
-    institutionId: "oakridge",
-    shared: true,
-    scopes: ["Private markets sleeve", "Accreditation (illustrated)", "Advisor attestation"],
-    lastChanged: "2026-06-18",
-  },
-];
-
-export const revokedFirm = {
-  id: "harbor-street",
-  name: "Harbor Street Securities",
-  note: "Consent withdrawn. Profile is not shared. No paid placement may target this household.",
+export const defaultPassportConsent: PassportConsent = {
+  shared: true,
+  lastChanged: "2026-08-12",
+  scopes: [
+    "Holdings and sleeves",
+    "Risk posture and liquidity",
+    "Verification badges",
+    "Domicile",
+  ],
 };
 
 export const attestations = [
@@ -304,9 +318,9 @@ export const opsPacket = {
   total: 18,
   fields: [
     { label: "Household legal name", value: "Elena Whitmore & Marcus Whitmore", source: "Passport", reused: true },
-    { label: "Trust / entity", value: "Whitmore Family Revocable Trust", source: "Passport", reused: true },
+    { label: "Legal entity", value: "Whitmore Family Revocable Trust", source: "Passport", reused: true },
     { label: "Domicile", value: "Greenwich, CT", source: "Passport", reused: true },
-    { label: "Advisor of record", value: "Linda McDonald · BrokerCheck 111111", source: "Trust", reused: true },
+    { label: "Advisor of record", value: "Linda McDonald · BrokerCheck 111111", source: "Verification", reused: true },
     { label: "Delivering account", value: "Schwab IRA · •••• 9021", source: "Passport", reused: true },
     { label: "Receiving account", value: "First Atlantic QRP · pending", source: "Ops clerk", reused: false },
     { label: "Cost basis method", value: "Specific ID (illustrated)", source: "Passport", reused: true },
@@ -315,7 +329,7 @@ export const opsPacket = {
     { label: "ACH instructions", value: "First Atlantic operating · •••• 2209", source: "Reusable docs", reused: true },
     { label: "Risk questionnaire", value: "Moderate growth · 2026-04 refresh", source: "Passport", reused: true },
     { label: "Accredited investor letter", value: "Illustrated QP letter · 2026-01", source: "Reusable docs", reused: true },
-    { label: "Consent to First Atlantic", value: "Active · lending + rollover ops", source: "Consent", reused: true },
+    { label: "Passport share consent", value: "On · any paying institution may offer", source: "Consent", reused: true },
     { label: "Morningstar-style holdings extract", value: "Taxable + IRA sleeves (fixture)", source: "Illustrated feed", reused: true },
     { label: "Informa-style product mapping", value: "Muni SMA + SBL eligibility (fixture)", source: "Illustrated feed", reused: true },
     { label: "Medallion / wet signature", value: "Required at funding", source: "Still needed", reused: false },
@@ -326,11 +340,14 @@ export const opsPacket = {
 
 export const adminMetrics = [
   { label: "Illustrated passports", value: "128", note: "Fixture count" },
-  { label: "Institutions on the mock board", value: "14", note: "3 shown in this walkthrough" },
+  { label: "Paying institutions on the board", value: "14", note: "3 shown in this walkthrough" },
   { label: "Illustrative AUM on file", value: "$2.4B", note: "Not audited" },
-  { label: "Paid placements (open)", value: "41", note: "bps / strategy / special" },
+  { label: "Paid placements (open)", value: "41", note: "Ranked strategy / bps slots" },
   { label: "Ops fields reused (this packet)", value: "14 / 18", note: "Whitmore rollover" },
-  { label: "Consent grants (this household)", value: "3", note: "1 firm revoked" },
+  { label: "Mock mode coverage", value: "3", note: "Client · Institution · Admin" },
+  { label: "Inbox rank depth", value: "3", note: "Portfolio-fit order, not an optimizer" },
+  { label: "Password gate", value: "MOCK", note: "sessionStorage / localStorage only" },
+  { label: "Clerk / IdP", value: "Not wired", note: "Would fail closed if required" },
 ];
 
 export function formatUsd(n: number, compact = false): string {
@@ -347,4 +364,50 @@ export function formatUsd(n: number, compact = false): string {
 
 export function institutionById(id: string): Institution | undefined {
   return institutions.find((item) => item.id === id);
+}
+
+export function offerHeadline(offer: Offer): string {
+  return `${offer.strategy} for ${offer.bps} bps (discounted ${offer.feeDiscountPct}% max fee)`;
+}
+
+export function rankedInstitutions(): Institution[] {
+  return [...institutions].sort((a, b) => a.offer.rank - b.offer.rank);
+}
+
+export const MODE_HOMES: Record<AppMode, string> = {
+  client: "/passport",
+  institution: "/institution",
+  admin: "/admin",
+};
+
+export const MODE_NAV: Record<AppMode, { to: string; label: string }[]> = {
+  client: [
+    { to: "/passport", label: "Client Passport" },
+    { to: "/verification", label: "Verification" },
+    { to: "/offers", label: "Offers" },
+    { to: "/ops", label: "Ops reuse" },
+  ],
+  institution: [{ to: "/institution", label: "Offer console" }],
+  admin: [
+    { to: "/admin", label: "Admin" },
+    { to: "/passport", label: "Client Passport" },
+    { to: "/verification", label: "Verification" },
+    { to: "/offers", label: "Offers" },
+    { to: "/institution", label: "Offer console" },
+    { to: "/ops", label: "Ops reuse" },
+  ],
+};
+
+export function modesAllowedForPath(pathname: string): AppMode[] {
+  if (pathname === "/institution") return ["institution", "admin"];
+  if (pathname === "/admin") return ["admin"];
+  if (
+    pathname === "/passport" ||
+    pathname === "/verification" ||
+    pathname === "/offers" ||
+    pathname === "/ops"
+  ) {
+    return ["client", "admin"];
+  }
+  return ["client", "institution", "admin"];
 }

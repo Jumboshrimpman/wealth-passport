@@ -1,21 +1,24 @@
 import { Link } from "react-router-dom";
 import {
   adminMetrics,
-  defaultConsents,
   formatUsd,
   household,
-  institutions,
-  opsPacket,
+  offerHeadline,
+  rankedInstitutions,
 } from "../data/mock";
 import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
+import { useConsent } from "../context/ConsentContext";
 
 export function Admin() {
+  const consent = useConsent();
+  const ranked = rankedInstitutions();
+
   return (
     <div className="stack">
       <SectionHead
-        kicker="Admin · both sides"
+        kicker="Admin · both sides + extra mock metrics"
         title="Walkthrough control room"
-        lede="Admin sees the client identity and the institutional board at once, plus aggregate mock metrics. Nothing here is a live control plane."
+        lede="Admin sees the client identity and the institutional board at once, plus aggregate mock metrics. Client and Institution modes stay separate; this mode is the only place that stacks both."
       />
 
       <div className="grid grid-3">
@@ -27,7 +30,8 @@ export function Admin() {
       <Disclaimer>
         Aggregate figures are constants for investor conversation. They are not computed from a
         warehouse. Illustrated vendor layer: Morningstar and Informa first — not live manager
-        feeds. Quant matching and instant quotes are future copy only.
+        feeds. Quant matching and instant quotes are future copy only. Password gate is
+        sessionStorage / localStorage, not Clerk.
       </Disclaimer>
 
       <div className="split">
@@ -42,27 +46,20 @@ export function Admin() {
             </Link>
           </div>
           <p>
-            {household.principals} · {formatUsd(household.netWorth)} illustrated net worth ·{" "}
-            {household.risk.label}.
+            {household.principals} · {formatUsd(household.householdValue)} household value ·{" "}
+            {formatUsd(household.investable)} investable · {household.risk.label}.
           </p>
-          <div className="stack">
-            {defaultConsents.map((consent) => {
-              const firm = institutions.find((item) => item.id === consent.institutionId);
-              return (
-                <div className="row" key={consent.institutionId} style={{ justifyContent: "space-between" }}>
-                  <span>{firm?.name}</span>
-                  <Badge tone={consent.shared ? "verified" : "warn"}>
-                    {consent.shared ? "Shared" : "Hidden"}
-                  </Badge>
-                </div>
-              );
-            })}
+          <div className="row">
+            <Badge tone={consent.shared ? "verified" : "warn"}>
+              {consent.shared
+                ? "Passport share on — any paying institution may offer"
+                : "Passport share off — no offers"}
+            </Badge>
           </div>
           <p className="tiny muted">
-            Ops packet {opsPacket.reused}/{opsPacket.total} fields reused.{" "}
             <Link to="/ops">Open ops reuse</Link>
             {" · "}
-            <Link to="/trust">Open trust</Link>
+            <Link to="/verification">Open verification</Link>
             {" · "}
             <Link to="/offers">Open inbox</Link>
           </p>
@@ -72,7 +69,7 @@ export function Admin() {
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div>
               <p className="kicker">Institution side</p>
-              <h2>Paid placement board</h2>
+              <h2>Ranked paid placements</h2>
             </div>
             <Link to="/institution" className="badge">
               Open console
@@ -81,22 +78,27 @@ export function Admin() {
           <table className="table">
             <thead>
               <tr>
+                <th>Rank</th>
                 <th>Firm</th>
-                <th>Channel</th>
-                <th>Offer</th>
+                <th>Terms</th>
               </tr>
             </thead>
             <tbody>
-              {institutions.map((firm) => (
+              {ranked.map((firm) => (
                 <tr key={firm.id}>
+                  <td>{firm.offer.rank}</td>
                   <td>
                     <strong>{firm.name}</strong>
                     <div className="tiny muted">{firm.kindLabel}</div>
                   </td>
                   <td>
-                    <Badge tone="paid">{firm.offer.placementLabel}</Badge>
+                    {offerHeadline(firm.offer)}
+                    <div>
+                      <Badge tone="paid" compact>
+                        {firm.offer.placementLabel}
+                      </Badge>
+                    </div>
                   </td>
-                  <td>{firm.offer.title}</td>
                 </tr>
               ))}
             </tbody>

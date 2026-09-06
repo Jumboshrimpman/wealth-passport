@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { formatUsd, institutions, type Institution as InstitutionRecord } from "../data/mock";
+import { formatUsd, institutions, offerHeadline, type Institution as InstitutionRecord } from "../data/mock";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
 
 export function Institution() {
@@ -21,7 +21,7 @@ export function Institution() {
   return (
     <div className="stack">
       <SectionHead
-        kicker="Institution view · paid placement"
+        kicker="Institution view · offer console only"
         title="Offer console"
         lede="A bank, an asset manager, and a private-markets provider each buy a channel into consented passports. Targeting and terms stay in local component state — there is no bidding engine."
       />
@@ -47,6 +47,7 @@ export function Institution() {
       <Disclaimer>
         Local mock controls only. Changing sliders does not call an API, reserve inventory, or
         charge bps. If a placement system is not wired, this console must stay labeled MOCK.
+        Client screens are a different mode — they are not in this nav.
       </Disclaimer>
 
       <div className="split">
@@ -112,13 +113,39 @@ export function Institution() {
               />
             </label>
             <label className="field-label">
-              <span>Offer headline</span>
+              <span>Strategy name</span>
               <input
-                value={draft.offer.title}
+                value={draft.offer.strategy}
                 onChange={(event) =>
                   setDraft({
                     ...draft,
-                    offer: { ...draft.offer, title: event.target.value },
+                    offer: { ...draft.offer, strategy: event.target.value, title: event.target.value },
+                  })
+                }
+              />
+            </label>
+            <label className="field-label">
+              <span>Fee (bps)</span>
+              <input
+                type="number"
+                value={draft.offer.bps}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    offer: { ...draft.offer, bps: Number(event.target.value) },
+                  })
+                }
+              />
+            </label>
+            <label className="field-label">
+              <span>Max-fee discount (%)</span>
+              <input
+                type="number"
+                value={draft.offer.feeDiscountPct}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    offer: { ...draft.offer, feeDiscountPct: Number(event.target.value) },
                   })
                 }
               />
@@ -142,22 +169,28 @@ export function Institution() {
         <aside className="stack">
           <section className="panel">
             <p className="kicker">Paid placement channel</p>
-            <h3>{preview.placementLabel}</h3>
+            <Badge tone="paid" compact>
+              {preview.placementLabel}
+            </Badge>
+            <h3 className="offer-terms" style={{ fontSize: "1.55rem", marginTop: "0.55rem" }}>
+              {offerHeadline(preview)}
+            </h3>
             <p>{preview.paidPlacement}</p>
             <p className="tiny muted">
-              Audience: {preview.audience}. Consent required:{" "}
+              Audience: {preview.audience}. Broad passport consent required:{" "}
               {draft.targeting.consentRequired ? "yes" : "no"}. Floor{" "}
               {formatUsd(draft.targeting.minInvestable, true)} investable /{" "}
               {formatUsd(draft.targeting.liquidityMin, true)} liquidity.
             </p>
-            <Badge tone="paid">Client inbox inventory · mock</Badge>
           </section>
           <section className="panel">
             <p className="kicker">Client card preview</p>
-            <h3>{preview.title}</h3>
-            <p>{preview.summary}</p>
+            <p className="tiny muted">Rank {preview.rank} · tailored to this passport</p>
+            <h3 className="offer-terms" style={{ fontSize: "1.55rem" }}>
+              {offerHeadline(preview)}
+            </h3>
+            <p className="offer-fit">{preview.fitReason}</p>
             <p className="tiny">{preview.terms}</p>
-            <Badge tone="paid">Institution paid for this slot</Badge>
           </section>
         </aside>
       </div>

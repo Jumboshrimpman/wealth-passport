@@ -1,25 +1,26 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
+import { OfferCard } from "../components/OfferCard";
+import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
+import { useConsent } from "../context/ConsentContext";
 import {
+  accountValue,
   accounts,
   allocations,
-  defaultConsents,
   formatUsd,
   household,
-  institutionById,
-  revokedFirm,
+  rankedInstitutions,
 } from "../data/mock";
-import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
 
 export function Passport() {
-  const [consents, setConsents] = useState(defaultConsents);
+  const consent = useConsent();
+  const ranked = rankedInstitutions();
 
   return (
     <div className="stack">
       <SectionHead
         kicker="Client view · holistic profile"
-        title={`${household.name}`}
-        lede={`${household.principals} · ${household.entity}. A single financial identity assembled from multi-custodian accounts, a private-markets sleeve, and consented disclosure to firms that pay to present a fit.`}
+        title={household.name}
+        lede={`${household.principals} · ${household.entity}. A single financial identity assembled from multi-custodian accounts, a private-markets sleeve, and one broad consent so paying institutions can send offers.`}
       />
 
       <div className="row">
@@ -29,7 +30,24 @@ export function Passport() {
       </div>
 
       <div className="grid grid-3">
-        <Stat label="Illustrated net worth" value={formatUsd(household.netWorth, true)} note={`${formatUsd(household.investable, true)} investable · ${formatUsd(household.realEstate, true)} real estate`} />
+        <Stat
+          label="Account value"
+          value={formatUsd(accountValue, true)}
+          note="Sum of accounts on this passport"
+        />
+        <Stat
+          label="Household value"
+          value={formatUsd(household.householdValue, true)}
+          note={`${formatUsd(household.realEstate, true)} personal real estate included`}
+        />
+        <Stat
+          label="Total investable assets"
+          value={formatUsd(household.investable, true)}
+          note="Excludes personal real estate"
+        />
+      </div>
+
+      <div className="grid grid-2">
         <Stat label="Liquidity reserve" value={formatUsd(household.liquidity, true)} note="Cash, T-bills, short municipals" />
         <Stat label="Risk posture" value={household.risk.label} note={household.risk.horizon} />
       </div>
@@ -98,65 +116,68 @@ export function Passport() {
           </tbody>
         </table>
         <p className="tiny muted">
-          Verification detail lives on the <Link to="/trust">Trust</Link> view. Balances are constants in{" "}
-          <code>src/data/mock.ts</code> — nothing was loaded from a custodian.
+          Verification detail lives on the <Link to="/verification">Verification</Link> view.
+          Balances are constants in <code>src/data/mock.ts</code> — nothing was loaded from a
+          custodian.
         </p>
       </section>
 
       <section className="panel">
-        <p className="kicker">Consent controls</p>
-        <h2>Which firms may see this profile</h2>
+        <p className="kicker">Consent</p>
+        <h2>Share this passport with paying institutions</h2>
         <p className="muted">
-          Toggles update local React state only. They are not written to a server, consent ledger, or
-          institution API.
+          One broad consent. If it is on, any paying institution may send an offer. If it is off,
+          no offers appear. The toggle updates local React state and browser storage only — not a
+          consent ledger or institution API.
         </p>
-        <div className="stack">
-          {consents.map((consent) => {
-            const firm = institutionById(consent.institutionId);
-            if (!firm) return null;
-            return (
-              <div className="card" key={consent.institutionId}>
-                <button
-                  type="button"
-                  className="toggle"
-                  onClick={() =>
-                    setConsents((current) =>
-                      current.map((row) =>
-                        row.institutionId === consent.institutionId
-                          ? { ...row, shared: !row.shared }
-                          : row,
-                      ),
-                    )
-                  }
-                  aria-pressed={consent.shared}
-                >
-                  <div>
-                    <h3>{firm.name}</h3>
-                    <p className="tiny muted" style={{ margin: 0 }}>
-                      {firm.kindLabel} · last changed {consent.lastChanged} (fixture)
-                    </p>
-                    <p className="tiny" style={{ margin: "0.35rem 0 0" }}>
-                      {consent.scopes.join(" · ")}
-                    </p>
-                  </div>
-                  <span className={`switch ${consent.shared ? "on" : ""}`} aria-hidden="true">
-                    <i />
-                  </span>
-                </button>
-                <div className="row" style={{ marginTop: "0.7rem" }}>
-                  <Badge tone={consent.shared ? "verified" : "warn"}>
-                    {consent.shared ? "Shared for paid placement" : "Hidden from this firm"}
-                  </Badge>
-                </div>
-              </div>
-            );
-          })}
-          <div className="card">
-            <h3>{revokedFirm.name}</h3>
-            <p className="tiny muted">{revokedFirm.note}</p>
-            <Badge tone="warn">Consent withdrawn</Badge>
+        <div className="card">
+          <button
+            type="button"
+            className="toggle"
+            onClick={consent.toggle}
+            aria-pressed={consent.shared}
+          >
+            <div>
+              <h3>Allow paying institutions to send offers</h3>
+              <p className="tiny muted" style={{ margin: 0 }}>
+                Last changed {consent.lastChanged} (fixture)
+              </p>
+              <p className="tiny" style={{ margin: "0.35rem 0 0" }}>
+                {consent.scopes.join(" · ")}
+              </p>
+            </div>
+            <span className={`switch ${consent.shared ? "on" : ""}`} aria-hidden="true">
+              <i />
+            </span>
+          </button>
+          <div className="row" style={{ marginTop: "0.7rem" }}>
+            <Badge tone={consent.shared ? "verified" : "warn"}>
+              {consent.shared
+                ? "On — any paying institution may offer"
+                : "Off — no institution may offer"}
+            </Badge>
           </div>
         </div>
+      </section>
+
+      <section className="stack">
+        <SectionHead
+          kicker="Last section · client inbox"
+          title="Offers from banks and asset managers"
+          lede="Ranked to this passport’s allocation, domicile, and verified collateral. Terms are the primary line. Paid placement is a small label only."
+        />
+        {consent.shared ? (
+          ranked.map((firm) => <OfferCard key={firm.id} firm={firm} compact />)
+        ) : (
+          <section className="panel">
+            <p className="kicker">Consent is off</p>
+            <h2>No offers.</h2>
+            <p className="lede">
+              Passport share consent is off, so no paying institution may send an offer. This is
+              not an empty API response — the mock inbox is closed on purpose.
+            </p>
+          </section>
+        )}
       </section>
     </div>
   );
