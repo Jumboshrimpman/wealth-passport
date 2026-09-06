@@ -59,6 +59,8 @@ export function Admin() {
             </Badge>
           </div>
           <p className="tiny muted">
+            <Link to="/chat">Open chat</Link>
+            {" · "}
             <Link to="/ops">Open ops reuse</Link>
             {" · "}
             <Link to="/verification">Open verification</Link>

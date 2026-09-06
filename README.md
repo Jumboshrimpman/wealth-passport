@@ -30,7 +30,9 @@ First-time Pages enable (repo admin, once): **Settings → Pages → Build and d
 
 ### Clerk on GitHub Pages (required)
 
-The live walkthrough is blocked until the visitor signs in with **Clerk**. Hobby org is enough. There is no password fallback.
+The live walkthrough is **provisioned access only** — invite-only, no public sign-up. Delivery is **GitHub Pages only**. Hobby org is enough. There is no password fallback.
+
+The site shows **Sign-in** for existing Clerk users. There is no Sign-up UI. If a visitor sees “couldn’t find your account”, an admin must create that user in Clerk (or send an invitation).
 
 This is a **static Pages** bundle. Only the **publishable** key is baked in at build (`VITE_CLERK_PUBLISHABLE_KEY`). Never put `CLERK_SECRET_KEY` in Vite or the repo.
 
@@ -39,21 +41,27 @@ If the publishable key is missing, Actions **fails the build** (the unlocked moc
 #### Clerk Dashboard (Pages first)
 
 1. Create a Clerk application in the Hobby org.
-2. Copy the **Publishable key** only (`pk_…`).
-3. Repo **Settings → Secrets and variables → Actions →** `VITE_CLERK_PUBLISHABLE_KEY`. Cursor secure input does **not** set this. The Deploy GitHub Pages workflow passes:
+2. **Disable public sign-ups (required, org-wide for this Clerk app).** The UI lock on the site is not enough — turn sign-up off in the Dashboard:
+   - **Configure → Access mode → Invite-only**, then Save.  
+     (API value `restricted`. Older Dashboard: **Configure → Restrictions → Sign-up mode → Restricted**, or disable sign-up.)
+   - Invite-only means only users you create or invite can authenticate. Open / public sign-up must stay off.
+3. **Create users** (admins only): Clerk Dashboard → **Users → Create user**, or send **Invitations**. Visitors cannot self-register on GitHub Pages.
+4. Copy the **Publishable key** only (`pk_…`).
+5. Repo **Settings → Secrets and variables → Actions →** `VITE_CLERK_PUBLISHABLE_KEY`. Cursor secure input does **not** set this. The Deploy GitHub Pages workflow passes:
    ```yaml
    env:
      VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
    ```
-4. **Allowed origin** (origin only, no path):
+6. **Allowed origin** (origin only, no path):
    - `https://jumboshrimpman.github.io`
-5. **Redirect URLs** (after sign-in, sign-up, and sign-out) for `/wealth-passport`:
+7. **Redirect URLs** (after sign-in and sign-out) for `/wealth-passport`:
    - `https://jumboshrimpman.github.io/wealth-passport`
    - `https://jumboshrimpman.github.io/wealth-passport/`
+   - `https://jumboshrimpman.github.io/wealth-passport/chat`
    - `https://jumboshrimpman.github.io/wealth-passport/passport`
-6. Merge this branch into `main` so Pages rebuilds.
+8. Merge this branch into `main` so Pages rebuilds.
 
-The app uses Clerk hash routing on the Pages URL, then returns to `https://jumboshrimpman.github.io/wealth-passport/` (Client mode opens `/passport`).
+The app uses Clerk hash routing on the Pages URL, then returns to `https://jumboshrimpman.github.io/wealth-passport/` (Client mode opens `/chat`). Sign-in only — `signUpUrl` is not set on `ClerkProvider`.
 
 #### Optional: local Vite
 
@@ -77,7 +85,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 
 | Mode | What you can open |
 | --- | --- |
-| Client | Passport, Verification, Offers, Ops reuse |
+| Client | Chat (home), Passport, Verification, Offers, Ops |
 | Institution | Offer console only |
 | Admin | Overview of both sides plus extra mock metrics (no Client/Institution tabs) |
 
@@ -87,9 +95,10 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 
 | View | Route | Public URL | Mode | What it shows |
 | --- | --- | --- | --- | --- |
-| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | $300M household figures, expandable securities, one broad consent, ranked offers |
+| Client chat (home) | `/chat` | […/chat](https://jumboshrimpman.github.io/wealth-passport/chat) | Client, Admin | MOCK assistant: `Hi Elena, your net worth is $300M. Ask me anything`. Suggestion chips only — each chip has a canned fixture reply. No text box, no model |
+| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | Holistic profile: $300M household figures, expandable securities, one broad consent, ranked offers with Accept / Decline |
 | Verification | `/verification` | […/verification](https://jumboshrimpman.github.io/wealth-passport/verification) | Client, Admin | Verified Merrill Lynch custodian; advisor Linda McDonald, BrokerCheck `111111` |
-| Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; strategy / bps / fee discount primary |
+| Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; Accept / Decline persist in browser storage; blocked if consent is off |
 | Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) |
 | Ops reuse | `/ops` | […/ops](https://jumboshrimpman.github.io/wealth-passport/ops) | Client, Admin | Rollover packet with passport-filled fields |
 | Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Both sides plus extra mock metrics |
@@ -101,7 +110,8 @@ Deep links work because the deploy workflow copies `index.html` to `404.html`.
 ### What is deliberately fake
 
 - Household, accounts, holdings, offers, and admin metrics are TypeScript constants.
-- Consent and mode flags live in React state plus `sessionStorage` / `localStorage`.
+- Consent, mode, and offer Accept / Decline live in React state plus `sessionStorage` / `localStorage`.
+- The client chat is suggestion chips plus canned fixture replies only. There is no text box and no model API. “Ask” means tap a chip.
 - Vendor names (Morningstar, Informa) appear as **illustrated first-party data sources**, not live feeds.
 - Footer mentions future quant matching / instant quotes. Those screens are **not built**.
 

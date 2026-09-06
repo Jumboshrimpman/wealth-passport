@@ -179,8 +179,8 @@ export function Passport() {
             <p className="kicker">Consent is off</p>
             <h2>No offers.</h2>
             <p className="lede">
-              Passport share consent is off, so no paying institution may send an offer. This is
-              not an empty API response — the mock inbox is closed on purpose.
+              Passport share consent is off, so no paying institution may send an offer. Accept is
+              blocked. This is not an empty API response — the mock inbox is closed on purpose.
             </p>
           </section>
         )}

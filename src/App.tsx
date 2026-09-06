@@ -4,8 +4,10 @@ import { Layout } from "./components/Layout";
 import { ModeRoute } from "./components/ModeRoute";
 import { ConsentProvider } from "./context/ConsentContext";
 import { ModeProvider, useMode } from "./context/ModeContext";
+import { OfferDecisionProvider } from "./context/OfferDecisionContext";
 import { MODE_HOMES } from "./data/mock";
 import { Admin } from "./views/Admin";
+import { Chat } from "./views/Chat";
 import { Institution } from "./views/Institution";
 import { Offers } from "./views/Offers";
 import { Ops } from "./views/Ops";
@@ -16,63 +18,73 @@ export default function App() {
   return (
     <ClerkGate>
       <ConsentProvider>
-        <ModeProvider>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<HomeRedirect />} />
-              <Route
-                path="/passport"
-                element={
-                  <ModeRoute path="/passport">
-                    <Passport />
-                  </ModeRoute>
-                }
-              />
-              <Route path="/trust" element={<Navigate to="/verification" replace />} />
-              <Route
-                path="/verification"
-                element={
-                  <ModeRoute path="/verification">
-                    <Verification />
-                  </ModeRoute>
-                }
-              />
-              <Route
-                path="/offers"
-                element={
-                  <ModeRoute path="/offers">
-                    <Offers />
-                  </ModeRoute>
-                }
-              />
-              <Route
-                path="/institution"
-                element={
-                  <ModeRoute path="/institution">
-                    <Institution />
-                  </ModeRoute>
-                }
-              />
-              <Route
-                path="/ops"
-                element={
-                  <ModeRoute path="/ops">
-                    <Ops />
-                  </ModeRoute>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <ModeRoute path="/admin">
-                    <Admin />
-                  </ModeRoute>
-                }
-              />
-              <Route path="*" element={<UnknownRoute />} />
-            </Route>
-          </Routes>
-        </ModeProvider>
+        <OfferDecisionProvider>
+          <ModeProvider>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<HomeRedirect />} />
+                <Route
+                  path="/chat"
+                  element={
+                    <ModeRoute path="/chat">
+                      <Chat />
+                    </ModeRoute>
+                  }
+                />
+                <Route
+                  path="/passport"
+                  element={
+                    <ModeRoute path="/passport">
+                      <Passport />
+                    </ModeRoute>
+                  }
+                />
+                <Route path="/trust" element={<Navigate to="/verification" replace />} />
+                <Route
+                  path="/verification"
+                  element={
+                    <ModeRoute path="/verification">
+                      <Verification />
+                    </ModeRoute>
+                  }
+                />
+                <Route
+                  path="/offers"
+                  element={
+                    <ModeRoute path="/offers">
+                      <Offers />
+                    </ModeRoute>
+                  }
+                />
+                <Route
+                  path="/institution"
+                  element={
+                    <ModeRoute path="/institution">
+                      <Institution />
+                    </ModeRoute>
+                  }
+                />
+                <Route
+                  path="/ops"
+                  element={
+                    <ModeRoute path="/ops">
+                      <Ops />
+                    </ModeRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ModeRoute path="/admin">
+                      <Admin />
+                    </ModeRoute>
+                  }
+                />
+                <Route path="*" element={<UnknownRoute />} />
+              </Route>
+            </Routes>
+          </ModeProvider>
+        </OfferDecisionProvider>
       </ConsentProvider>
     </ClerkGate>
   );
