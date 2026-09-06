@@ -3,6 +3,7 @@ export const CLERK_PAGES_ORIGIN = "https://jumboshrimpman.github.io";
 export const CLERK_PAGES_HOME = "https://jumboshrimpman.github.io/wealth-passport/";
 export const CLERK_PAGES_BASE = "https://jumboshrimpman.github.io/wealth-passport";
 export const CLERK_PAGES_PASSPORT = "https://jumboshrimpman.github.io/wealth-passport/passport";
+export const CLERK_PAGES_CHAT = "https://jumboshrimpman.github.io/wealth-passport/chat";
 
 /** After sign-in / sign-out — absolute Pages URLs, not localhost. No public sign-up. */
 export const CLERK_AFTER_AUTH_URL = CLERK_PAGES_HOME;
@@ -15,6 +16,7 @@ export const CLERK_ALLOWED_ORIGINS = [CLERK_PAGES_ORIGIN] as const;
 export const CLERK_REDIRECT_URLS = [
   CLERK_PAGES_BASE,
   CLERK_PAGES_HOME,
+  CLERK_PAGES_CHAT,
   CLERK_PAGES_PASSPORT,
 ] as const;
 

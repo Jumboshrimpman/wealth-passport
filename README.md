@@ -57,10 +57,11 @@ If the publishable key is missing, Actions **fails the build** (the unlocked moc
 7. **Redirect URLs** (after sign-in and sign-out) for `/wealth-passport`:
    - `https://jumboshrimpman.github.io/wealth-passport`
    - `https://jumboshrimpman.github.io/wealth-passport/`
+   - `https://jumboshrimpman.github.io/wealth-passport/chat`
    - `https://jumboshrimpman.github.io/wealth-passport/passport`
 8. Merge this branch into `main` so Pages rebuilds.
 
-The app uses Clerk hash routing on the Pages URL, then returns to `https://jumboshrimpman.github.io/wealth-passport/` (Client mode opens `/passport`). Sign-in only — `signUpUrl` is not set on `ClerkProvider`.
+The app uses Clerk hash routing on the Pages URL, then returns to `https://jumboshrimpman.github.io/wealth-passport/` (Client mode opens `/chat`). Sign-in only — `signUpUrl` is not set on `ClerkProvider`.
 
 #### Optional: local Vite
 
@@ -84,7 +85,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 
 | Mode | What you can open |
 | --- | --- |
-| Client | Passport, Verification, Offers, Ops reuse |
+| Client | Chat (home), Passport, Verification, Offers, Ops |
 | Institution | Offer console only |
 | Admin | Overview of both sides plus extra mock metrics (no Client/Institution tabs) |
 
@@ -94,9 +95,10 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 
 | View | Route | Public URL | Mode | What it shows |
 | --- | --- | --- | --- | --- |
-| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | $300M household figures, expandable securities, one broad consent, ranked offers |
+| Client chat (home) | `/chat` | […/chat](https://jumboshrimpman.github.io/wealth-passport/chat) | Client, Admin | MOCK assistant: `Hi Elena, your net worth is $300M. Ask me anything`. Suggestion chips + scripted fixture replies. Unhandled questions fail loudly — no live model |
+| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | Holistic profile: $300M household figures, expandable securities, one broad consent, ranked offers with Accept / Decline |
 | Verification | `/verification` | […/verification](https://jumboshrimpman.github.io/wealth-passport/verification) | Client, Admin | Verified Merrill Lynch custodian; advisor Linda McDonald, BrokerCheck `111111` |
-| Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; strategy / bps / fee discount primary |
+| Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; Accept / Decline persist in browser storage; blocked if consent is off |
 | Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) |
 | Ops reuse | `/ops` | […/ops](https://jumboshrimpman.github.io/wealth-passport/ops) | Client, Admin | Rollover packet with passport-filled fields |
 | Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Both sides plus extra mock metrics |
@@ -108,7 +110,8 @@ Deep links work because the deploy workflow copies `index.html` to `404.html`.
 ### What is deliberately fake
 
 - Household, accounts, holdings, offers, and admin metrics are TypeScript constants.
-- Consent and mode flags live in React state plus `sessionStorage` / `localStorage`.
+- Consent, mode, and offer Accept / Decline live in React state plus `sessionStorage` / `localStorage`.
+- The client chat is a scripted MOCK assistant. There is no model API. Unhandled questions say so.
 - Vendor names (Morningstar, Informa) appear as **illustrated first-party data sources**, not live feeds.
 - Footer mentions future quant matching / instant quotes. Those screens are **not built**.
 

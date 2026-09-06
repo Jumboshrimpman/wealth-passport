@@ -84,6 +84,7 @@ export interface Institution {
 
 export const household = {
   name: "Whitmore Household",
+  clientFirstName: "Elena",
   principals: "Elena & Marcus Whitmore",
   domicile: "Greenwich, CT",
   entity: "Whitmore Family Revocable Trust",
@@ -403,17 +404,18 @@ export function rankedInstitutions(): Institution[] {
 }
 
 export const MODE_HOMES: Record<AppMode, string> = {
-  client: "/passport",
+  client: "/chat",
   institution: "/institution",
   admin: "/admin",
 };
 
 export const MODE_NAV: Record<AppMode, { to: string; label: string }[]> = {
   client: [
-    { to: "/passport", label: "Client Passport" },
+    { to: "/chat", label: "Chat" },
+    { to: "/passport", label: "Passport" },
     { to: "/verification", label: "Verification" },
     { to: "/offers", label: "Offers" },
-    { to: "/ops", label: "Ops reuse" },
+    { to: "/ops", label: "Ops" },
   ],
   institution: [{ to: "/institution", label: "Offer console" }],
   admin: [{ to: "/admin", label: "Overview" }],
@@ -423,6 +425,7 @@ export function modesAllowedForPath(pathname: string): AppMode[] {
   if (pathname === "/institution") return ["institution", "admin"];
   if (pathname === "/admin") return ["admin"];
   if (
+    pathname === "/chat" ||
     pathname === "/passport" ||
     pathname === "/verification" ||
     pathname === "/offers" ||

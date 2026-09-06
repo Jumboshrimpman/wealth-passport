@@ -32,8 +32,9 @@ export function Offers() {
           <p className="kicker">Consent is off</p>
           <h1>No offers.</h1>
           <p className="lede">
-            Passport share consent is off. No paying institution may send an offer. Turn the
-            consent on from the Client Passport if you want this inbox populated.
+            Passport share consent is off. No paying institution may send an offer. Accept is
+            blocked — this mock will not complete an accept without consent. Turn consent on from
+            Passport if you want this inbox populated.
           </p>
         </section>
       )}
