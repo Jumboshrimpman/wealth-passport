@@ -87,9 +87,15 @@ export const household = {
   principals: "Elena & Marcus Whitmore",
   domicile: "Greenwich, CT",
   entity: "Whitmore Family Revocable Trust",
-  investable: 18_640_000,
+  /** Listed custodied accounts on the passport table. */
+  accountValue: 18_640_000,
+  /** Assets that could be allocated — listed accounts plus additional investable not on the table. */
+  investable: 21_380_000,
+  additionalInvestable: 2_740_000,
   realEstate: 4_200_000,
-  householdValue: 22_840_000,
+  otherHousehold: 4_310_000,
+  /** Broader household net worth: accounts + residence + other personal assets. */
+  householdValue: 27_150_000,
   liquidity: 1_820_000,
   risk: {
     label: "Moderate growth",
@@ -161,6 +167,12 @@ export const accounts: Account[] = [
 ];
 
 export const accountValue = accounts.reduce((sum, account) => sum + account.balance, 0);
+
+if (accountValue !== household.accountValue) {
+  throw new Error(
+    `MOCK DATA FAILURE: accountValue sum ${accountValue} does not match household.accountValue ${household.accountValue}.`,
+  );
+}
 
 export const allocations: Allocation[] = [
   { label: "Public equity", pct: 42, tone: "camel" },
@@ -388,14 +400,7 @@ export const MODE_NAV: Record<AppMode, { to: string; label: string }[]> = {
     { to: "/ops", label: "Ops reuse" },
   ],
   institution: [{ to: "/institution", label: "Offer console" }],
-  admin: [
-    { to: "/admin", label: "Admin" },
-    { to: "/passport", label: "Client Passport" },
-    { to: "/verification", label: "Verification" },
-    { to: "/offers", label: "Offers" },
-    { to: "/institution", label: "Offer console" },
-    { to: "/ops", label: "Ops reuse" },
-  ],
+  admin: [{ to: "/admin", label: "Overview" }],
 };
 
 export function modesAllowedForPath(pathname: string): AppMode[] {

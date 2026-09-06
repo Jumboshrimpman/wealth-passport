@@ -33,17 +33,17 @@ export function Passport() {
         <Stat
           label="Account value"
           value={formatUsd(accountValue, true)}
-          note="Sum of accounts on this passport"
+          note={`${formatUsd(accountValue)} — sum of listed custodied accounts on this passport.`}
         />
         <Stat
           label="Household value"
           value={formatUsd(household.householdValue, true)}
-          note={`${formatUsd(household.realEstate, true)} personal real estate included`}
+          note={`${formatUsd(household.householdValue)} — accounts + ${formatUsd(household.realEstate, true)} Greenwich residence + ${formatUsd(household.otherHousehold, true)} other personal assets.`}
         />
         <Stat
           label="Total investable assets"
           value={formatUsd(household.investable, true)}
-          note="Excludes personal real estate"
+          note={`${formatUsd(household.investable)} — listed accounts plus ${formatUsd(household.additionalInvestable, true)} additional investable not on the table.`}
         />
       </div>
 

@@ -58,7 +58,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 | --- | --- |
 | Client | Passport, Verification, Offers, Ops reuse |
 | Institution | Offer console only |
-| Admin | Admin metrics plus both sides |
+| Admin | Overview of both sides plus extra mock metrics (no Client/Institution tabs) |
 
 `/` opens the home screen for the current mode.
 
@@ -66,7 +66,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 
 | View | Route | Public URL | Mode | What it shows |
 | --- | --- | --- | --- | --- |
-| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | Account / household / investable figures, one broad consent, ranked offers |
+| Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | Three distinct figures (account / household / investable), one broad consent, ranked offers |
 | Verification | `/verification` | […/verification](https://jumboshrimpman.github.io/wealth-passport/verification) | Client, Admin | Verified Merrill Lynch custodian; advisor Linda McDonald, BrokerCheck `111111` |
 | Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; strategy / bps / fee discount primary |
 | Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) |

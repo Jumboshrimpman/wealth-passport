@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import {
+  accountValue,
   adminMetrics,
   formatUsd,
   household,
@@ -46,8 +47,9 @@ export function Admin() {
             </Link>
           </div>
           <p>
-            {household.principals} · {formatUsd(household.householdValue)} household value ·{" "}
-            {formatUsd(household.investable)} investable · {household.risk.label}.
+            {household.principals} · Account {formatUsd(accountValue)} · Household{" "}
+            {formatUsd(household.householdValue)} · Investable {formatUsd(household.investable)} ·{" "}
+            {household.risk.label}.
           </p>
           <div className="row">
             <Badge tone={consent.shared ? "verified" : "warn"}>
