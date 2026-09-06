@@ -95,7 +95,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 
 | View | Route | Public URL | Mode | What it shows |
 | --- | --- | --- | --- | --- |
-| Client chat (home) | `/chat` | […/chat](https://jumboshrimpman.github.io/wealth-passport/chat) | Client, Admin | MOCK assistant: `Hi Elena, your net worth is $300M. Ask me anything`. Suggestion chips + scripted fixture replies. Unhandled questions fail loudly — no live model |
+| Client chat (home) | `/chat` | […/chat](https://jumboshrimpman.github.io/wealth-passport/chat) | Client, Admin | MOCK assistant: `Hi Elena, your net worth is $300M. Ask me anything`. Suggestion chips only — each chip has a canned fixture reply. No text box, no model |
 | Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | Holistic profile: $300M household figures, expandable securities, one broad consent, ranked offers with Accept / Decline |
 | Verification | `/verification` | […/verification](https://jumboshrimpman.github.io/wealth-passport/verification) | Client, Admin | Verified Merrill Lynch custodian; advisor Linda McDonald, BrokerCheck `111111` |
 | Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; Accept / Decline persist in browser storage; blocked if consent is off |
@@ -111,7 +111,7 @@ Deep links work because the deploy workflow copies `index.html` to `404.html`.
 
 - Household, accounts, holdings, offers, and admin metrics are TypeScript constants.
 - Consent, mode, and offer Accept / Decline live in React state plus `sessionStorage` / `localStorage`.
-- The client chat is a scripted MOCK assistant. There is no model API. Unhandled questions say so.
+- The client chat is suggestion chips plus canned fixture replies only. There is no text box and no model API. “Ask” means tap a chip.
 - Vendor names (Morningstar, Informa) appear as **illustrated first-party data sources**, not live feeds.
 - Footer mentions future quant matching / instant quotes. Those screens are **not built**.
 

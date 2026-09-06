@@ -483,25 +483,8 @@ nav.primary a[aria-current="page"] {
   border-color: var(--camel-400);
 }
 
-.chat-composer {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.75rem;
-  align-items: end;
-}
-
-.chat-composer .field-label {
+.chat-limit {
   margin: 0;
-}
-
-@media (max-width: 640px) {
-  .chat-composer {
-    grid-template-columns: 1fr;
-  }
-
-  .chat-composer .gate-submit {
-    width: 100%;
-  }
 }
 
 .gate {

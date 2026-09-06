@@ -1,6 +1,6 @@
 import {
   advisor,
-  allocations,
+  allocationTree,
   formatUsd,
   household,
   offerHeadline,
@@ -33,10 +33,20 @@ export interface ChatReply {
 
 export const MOCK_ASSISTANT_LABEL = "MOCK assistant";
 
+export const UNHANDLED_CHAT_REPLY = "This mock only answers the suggested questions.";
+
 export const chatSuggestions: ChatSuggestion[] = [
   {
     id: "strategies-offers",
     label: "Tell me about my recommended strategies and latest offers.",
+  },
+  {
+    id: "understand-offers",
+    label: "Help me understand my offers and recommended strategies.",
+  },
+  {
+    id: "portfolio",
+    label: "Break down my portfolio, allocation, and holdings.",
   },
   {
     id: "verification",
@@ -45,10 +55,6 @@ export const chatSuggestions: ChatSuggestion[] = [
   {
     id: "ops",
     label: "How much of the IRA rollover packet can you reuse?",
-  },
-  {
-    id: "allocation",
-    label: "Walk me through my allocation and household value.",
   },
 ];
 
@@ -80,7 +86,7 @@ function replyStrategies(consentOn: boolean, decisions: Record<string, OfferDeci
       intent: "strategies-offers",
       handled: true,
       text:
-        "MOCK FAILURE: passport share consent is off, so this mock has no ranked offers to describe. I will not invent an inbox. Turn consent on from Passport, then ask again — or open Offers.",
+        "MOCK FAILURE: passport share consent is off, so this mock has no ranked offers to describe. I will not invent an inbox. Turn consent on from Passport, then tap this suggestion again — or open Offers.",
     };
   }
 
@@ -93,6 +99,29 @@ function replyStrategies(consentOn: boolean, decisions: Record<string, OfferDeci
       `Recommended strategies and latest offers for the ${household.name} (fixtures, not a live model). Ranked to this $300M household — allocation, Greenwich domicile, and verified Merrill collateral.`,
       ...lines,
       "Accept or Decline on Offers (or the Passport offer section). Status is stored in this browser only.",
+    ].join("\n\n"),
+  };
+}
+
+function replyUnderstandOffers(consentOn: boolean, decisions: Record<string, OfferDecision>): ChatReply {
+  if (!consentOn) {
+    return {
+      intent: "understand-offers",
+      handled: true,
+      text:
+        "MOCK FAILURE: passport share consent is off, so there are no offers to understand. Accept and Decline are blocked. Turn consent on from Passport, then tap this suggestion again.",
+    };
+  }
+
+  const ranked = rankedInstitutions();
+  const lines = ranked.map((firm) => offerLine(firm.offer, decisions[firm.offer.id]));
+  return {
+    intent: "understand-offers",
+    handled: true,
+    text: [
+      `These are paid placements ranked to the Whitmore $300M passport — not an optimizer and not a live quote. Rank 1 is the municipal SMA; Rank 2 is securities-based credit; Rank 3 is a secondaries sleeve.`,
+      ...lines,
+      "On Offers or Passport, tap Accept or Decline. This mock stores that status in the browser. It will not accept without consent.",
     ].join("\n\n"),
   };
 }
@@ -125,141 +154,60 @@ function replyOps(): ChatReply {
   };
 }
 
-function replyAllocation(): ChatReply {
-  const sleeves = allocations.map((row) => `${row.label} ${row.pct}%`).join(" · ");
+function replyPortfolio(): ChatReply {
+  const classLines = allocationTree.map((node) => {
+    const pct = Math.round(node.pct * 10) / 10;
+    const sleeveBits = node.sleeves
+      .map((sleeve) => `${sleeve.accountName} (${sleeve.custodian}) ${formatUsd(sleeve.value, true)}`)
+      .join("; ");
+    const topNames = [...node.sleeves.flatMap((sleeve) => sleeve.holdings)]
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3)
+      .map((row) => `${row.ticker} ${formatUsd(row.value, true)}`)
+      .join(", ");
+    return `${node.label} ${pct}% · ${formatUsd(node.value, true)}. Sleeves: ${sleeveBits}. Largest names: ${topNames}.`;
+  });
+
   return {
-    intent: "allocation",
+    intent: "portfolio",
     handled: true,
     text: [
       `${household.name} net worth / household value is ${formatUsd(household.householdValue, true)} (${formatUsd(household.householdValue)}) — the labeled AUM for this walkthrough.`,
       `Account value ${formatUsd(household.accountValue, true)} · investable ${formatUsd(household.investable, true)} · Greenwich residence ${formatUsd(household.realEstate, true)} · other personal ${formatUsd(household.otherHousehold, true)} · liquidity ${formatUsd(household.liquidity, true)}.`,
       `Risk: ${household.risk.label}, ${household.risk.horizon}. ${household.risk.capacity}.`,
-      `Allocation bar: ${sleeves}. Open Passport to drill asset class → sleeve → securities.`,
+      ...classLines,
+      "Open Passport to drill asset class → sleeve/account → individual securities. Every row is a MOCK fixture.",
     ].join("\n\n"),
   };
-}
-
-function replyConsent(consentOn: boolean): ChatReply {
-  return {
-    intent: "consent",
-    handled: true,
-    text: consentOn
-      ? "Passport share consent is on. Any paying institution may send an offer. Accept still requires that consent stay on — this mock will not complete an accept if you turn it off."
-      : "MOCK FAILURE: passport share consent is off. No institution may offer, and Accept is blocked. Toggle it on from Passport. This is not an empty API — the inbox is closed on purpose.",
-  };
-}
-
-const INTENT_KEYWORDS: { intent: string; keywords: string[] }[] = [
-  {
-    intent: "strategies-offers",
-    keywords: [
-      "offer",
-      "offers",
-      "strategy",
-      "strategies",
-      "recommend",
-      "recommended",
-      "inbox",
-      "placement",
-      "muni",
-      "municipal",
-      "credit",
-      "lending",
-      "sbl",
-      "secondar",
-      "oakridge",
-      "meridian",
-      "atlantic",
-    ],
-  },
-  {
-    intent: "verification",
-    keywords: [
-      "verif",
-      "advisor",
-      "brokercheck",
-      "custodian",
-      "linda",
-      "mcdonald",
-      "merrill",
-      "badge",
-      "attest",
-    ],
-  },
-  {
-    intent: "ops",
-    keywords: ["ops", "rollover", "reuse", "packet", "ira", "enrollment", "acats"],
-  },
-  {
-    intent: "allocation",
-    keywords: [
-      "allocation",
-      "sleeve",
-      "holding",
-      "holdings",
-      "net worth",
-      "household",
-      "aum",
-      "investable",
-      "worth",
-      "portfolio",
-      "weight",
-    ],
-  },
-  {
-    intent: "consent",
-    keywords: ["consent", "share", "privacy", "opt in", "opt-in"],
-  },
-];
-
-function matchIntent(normalized: string): string | null {
-  const suggestion = chatSuggestions.find((item) => normalize(item.label) === normalized);
-  if (suggestion) return suggestion.id;
-
-  if (/^(hi|hello|hey)\b/.test(normalized)) return "greeting";
-
-  for (const row of INTENT_KEYWORDS) {
-    if (row.keywords.some((keyword) => normalized.includes(keyword))) {
-      return row.intent;
-    }
-  }
-
-  return null;
 }
 
 export function answerMockChat(
   input: string,
   ctx: { consentOn: boolean; decisions: Record<string, OfferDecision> },
 ): ChatReply {
-  const trimmed = input.trim();
-  if (!trimmed) {
+  const suggestion = chatSuggestions.find((item) => normalize(item.label) === normalize(input));
+  if (!suggestion) {
     return {
-      intent: "empty",
+      intent: "unhandled",
       handled: false,
-      text: "MOCK FAILURE: empty question. Type something, or use a suggestion chip. There is no live model to guess from silence.",
+      text: UNHANDLED_CHAT_REPLY,
     };
   }
 
-  const intent = matchIntent(normalize(trimmed));
+  if (suggestion.id === "strategies-offers") return replyStrategies(ctx.consentOn, ctx.decisions);
+  if (suggestion.id === "understand-offers") return replyUnderstandOffers(ctx.consentOn, ctx.decisions);
+  if (suggestion.id === "portfolio") return replyPortfolio();
+  if (suggestion.id === "verification") return replyVerification();
+  if (suggestion.id === "ops") return replyOps();
 
-  if (intent === "greeting") {
-    return {
-      intent,
-      handled: true,
-      text: `${greetingText()}\n\nI only answer scripted Whitmore-fixture questions (offers, verification, ops reuse, allocation, consent). I am a MOCK assistant — not a model.`,
-    };
+  throw new Error(`MOCK FAILURE: suggestion "${suggestion.id}" has no canned reply.`);
+}
+
+const REQUIRED_CHIP_IDS = ["strategies-offers", "understand-offers", "portfolio"] as const;
+for (const id of REQUIRED_CHIP_IDS) {
+  if (!chatSuggestions.some((item) => item.id === id)) {
+    throw new Error(`MOCK DATA FAILURE: required chat chip "${id}" is missing.`);
   }
-  if (intent === "strategies-offers") return replyStrategies(ctx.consentOn, ctx.decisions);
-  if (intent === "verification") return replyVerification();
-  if (intent === "ops") return replyOps();
-  if (intent === "allocation") return replyAllocation();
-  if (intent === "consent") return replyConsent(ctx.consentOn);
-
-  return {
-    intent: "unhandled",
-    handled: false,
-    text: `I don't have that in this mock.\n\nMOCK FAILURE: no scripted handler for “${trimmed}”. There is no live LLM. Ask one of the suggestion chips, or use keywords like offers, verification, allocation, rollover, or consent.`,
-  };
 }
 
 if (household.householdValue !== 300_000_000) {

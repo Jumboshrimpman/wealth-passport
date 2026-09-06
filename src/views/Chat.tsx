@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   answerMockChat,
   chatSuggestions,
   greetingMessage,
   MOCK_ASSISTANT_LABEL,
+  UNHANDLED_CHAT_REPLY,
   type ChatMessage,
 } from "../data/chat";
 import { useConsent } from "../context/ConsentContext";
@@ -21,9 +22,7 @@ function nextMessageId(): string {
 export function Chat() {
   const consent = useConsent();
   const { decisions } = useOfferDecisions();
-  const inputId = useId();
   const threadRef = useRef<HTMLDivElement>(null);
-  const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([greetingMessage()]);
 
   useEffect(() => {
@@ -32,14 +31,14 @@ export function Chat() {
     node.scrollTop = node.scrollHeight;
   }, [messages]);
 
-  function ask(text: string) {
+  function ask(label: string) {
     const user: ChatMessage = {
       id: nextMessageId(),
       role: "user",
-      text,
+      text: label,
       handled: true,
     };
-    const reply = answerMockChat(text, { consentOn: consent.shared, decisions });
+    const reply = answerMockChat(label, { consentOn: consent.shared, decisions });
     const assistant: ChatMessage = {
       id: nextMessageId(),
       role: "assistant",
@@ -49,34 +48,15 @@ export function Chat() {
     setMessages((current) => [...current, user, assistant]);
   }
 
-  function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    const text = draft.trim();
-    if (!text) {
-      const reply = answerMockChat("", { consentOn: consent.shared, decisions });
-      setMessages((current) => [
-        ...current,
-        {
-          id: nextMessageId(),
-          role: "assistant",
-          text: reply.text,
-          handled: false,
-        },
-      ]);
-      return;
-    }
-    setDraft("");
-    ask(text);
-  }
-
   return (
     <div className="chat-page">
       <header className="chat-intro">
         <p className="kicker">Client home · MOCK chat</p>
         <h1>Your WealthPass desk</h1>
         <p className="lede">
-          Scripted answers from Whitmore fixtures only. There is no live model call. The holistic
-          profile stays on <Link to="/passport">Passport</Link>.
+          Suggested questions only — each chip has a preloaded fixture reply. There is no text box
+          and no live model. “Ask me anything” means tap a suggestion. The holistic profile stays
+          on <Link to="/passport">Passport</Link>.
         </p>
       </header>
 
@@ -110,22 +90,7 @@ export function Chat() {
             </button>
           ))}
         </div>
-
-        <form className="chat-composer" onSubmit={onSubmit}>
-          <label className="field-label" htmlFor={inputId}>
-            <span>Ask the mock assistant</span>
-            <input
-              id={inputId}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Offers, verification, allocation, rollover…"
-              autoComplete="off"
-            />
-          </label>
-          <button type="submit" className="gate-submit">
-            Send
-          </button>
-        </form>
+        <p className="tiny muted chat-limit">{UNHANDLED_CHAT_REPLY}</p>
       </section>
     </div>
   );
