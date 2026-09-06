@@ -35,6 +35,9 @@ jobs:
           touch dist/.nojekyll
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # First run creates the Pages site when the token allows it.
+          enablement: true
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
