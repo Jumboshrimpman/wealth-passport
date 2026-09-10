@@ -1,10 +1,12 @@
 import { OfferCard } from "../components/OfferCard";
 import { Disclaimer, SectionHead } from "../components/ui";
+import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
 import { rankedInstitutions } from "../data/mock";
 
 export function Offers() {
   const consent = useConsent();
+  const { passport } = useClient();
   const ranked = rankedInstitutions();
 
   return (
@@ -12,7 +14,7 @@ export function Offers() {
       <SectionHead
         kicker="Client view · ranked inbox"
         title="Personalized offers"
-        lede="Each card is a paid placement ranked to this passport — allocation, domicile, and verified collateral. The household did not request a quote, and no optimizer selected a winner."
+        lede={`Each card is a paid placement shown against the ${passport.household.name} passport. The household did not request a quote, and no optimizer selected a winner. Institution matching is still fixture data.`}
       />
 
       <Disclaimer>
@@ -32,9 +34,9 @@ export function Offers() {
           <p className="kicker">Consent is off</p>
           <h1>No offers.</h1>
           <p className="lede">
-            Passport share consent is off. No paying institution may send an offer. Accept is
-            blocked — this mock will not complete an accept without consent. Turn consent on from
-            Passport if you want this inbox populated.
+              Passport share consent is off for {passport.household.clientFirstName}. No paying
+              institution may send an offer. Accept is blocked — this mock will not complete an
+              accept without consent. Turn consent on from Passport if you want this inbox populated.
           </p>
         </section>
       )}

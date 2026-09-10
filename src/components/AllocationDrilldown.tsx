@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { allocationTree, formatUsd } from "../data/mock";
+import type { AllocationNode } from "../../shared/types";
+import { formatUsd } from "../data/mock";
 import { formatPct } from "../data/holdings";
 import { Badge } from "./ui";
 
-export function AllocationDrilldown() {
+export function AllocationDrilldown({ tree }: { tree: AllocationNode[] }) {
   return (
     <div className="drill-list">
-      {allocationTree.map((assetClass) => (
+      {tree.map((assetClass) => (
         <ExpandRow
           key={assetClass.id}
           kicker="Asset class"

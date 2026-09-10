@@ -1,9 +1,7 @@
-import { buildAllocationTree, holdings } from "./holdings";
-
 export const PRODUCT_NAME = "WealthPass";
 
 export const DEMO_NOTICE =
-  "MOCK DEMO — WealthPass walkthrough. Holdings, institutions, and offers are fixtures. Access is Clerk-gated. No live custody, KYC, payments, or manager feeds.";
+  "MOCK DEMO — WealthPass walkthrough. Client passports load from a local SQLite API when you run the full stack. Institution offers remain fixtures. Access is Clerk-gated. No live custody, KYC, payments, or manager feeds.";
 
 export const TAGLINE =
   "Standardized and comprehensive investment potential across firms.";
@@ -15,38 +13,6 @@ export type VerificationKind = "custodian" | "advisor" | "document";
 export type PlacementKind = "bps" | "strategy" | "special";
 
 export type InstitutionKind = "bank" | "asset-manager" | "private-markets";
-
-export interface Account {
-  id: string;
-  name: string;
-  type: string;
-  custodian: string;
-  balance: number;
-  verifiedCustodian: boolean;
-  sleeve: "taxable" | "qualified" | "private" | "cash";
-}
-
-export interface Allocation {
-  label: string;
-  pct: number;
-  tone: "camel" | "sage" | "ink" | "clay" | "stone";
-}
-
-export interface PassportConsent {
-  shared: boolean;
-  lastChanged: string;
-  scopes: string[];
-}
-
-export interface Advisor {
-  name: string;
-  title: string;
-  firm: string;
-  brokerCheckId: string;
-  crdFirm: string;
-  verified: boolean;
-  since: string;
-}
 
 export interface Offer {
   id: string;
@@ -82,123 +48,6 @@ export interface Institution {
   offer: Offer;
 }
 
-export const household = {
-  name: "Whitmore Household",
-  clientFirstName: "Elena",
-  principals: "Elena & Marcus Whitmore",
-  domicile: "Greenwich, CT",
-  entity: "Whitmore Family Revocable Trust",
-  /** Listed custodied accounts on the passport table. */
-  accountValue: 186_400_000,
-  /** Assets that could be allocated — listed accounts plus additional investable not on the table. */
-  investable: 228_000_000,
-  additionalInvestable: 41_600_000,
-  realEstate: 48_000_000,
-  otherHousehold: 24_000_000,
-  /** Household AUM / net worth: investable + residence + other personal assets. */
-  householdValue: 300_000_000,
-  liquidity: 18_200_000,
-  risk: {
-    label: "Moderate growth",
-    horizon: "7-year planning window",
-    capacity: "Can absorb a 15–20% drawdown without forced sale",
-    privateMarketsSleeve: 0.127,
-  },
-  dataAsOf: "2026-09-04",
-  sourceNote:
-    "Holdings and style boxes illustrated as if first provided by Morningstar and Informa. Not live manager feeds.",
-};
-
-export const advisor: Advisor = {
-  name: "Linda McDonald",
-  title: "Managing Director, Private Client",
-  firm: "McDonald Advisory Group",
-  brokerCheckId: "111111",
-  crdFirm: "CRD 888888 (illustrative)",
-  verified: true,
-  since: "2019-03-12",
-};
-
-export const accounts: Account[] = [
-  {
-    id: "ml-pw",
-    name: "Private Wealth brokerage",
-    type: "Taxable joint",
-    custodian: "Merrill Lynch",
-    balance: 84_200_000,
-    verifiedCustodian: true,
-    sleeve: "taxable",
-  },
-  {
-    id: "fid-tax",
-    name: "Taxable brokerage",
-    type: "Individual",
-    custodian: "Fidelity",
-    balance: 31_400_000,
-    verifiedCustodian: false,
-    sleeve: "taxable",
-  },
-  {
-    id: "schwab-ira",
-    name: "Traditional IRA (rollover candidate)",
-    type: "IRA",
-    custodian: "Charles Schwab",
-    balance: 29_100_000,
-    verifiedCustodian: false,
-    sleeve: "qualified",
-  },
-  {
-    id: "oak-pe",
-    name: "PE feeder / secondaries sleeve",
-    type: "Private fund interest",
-    custodian: "Oakridge Partners (admin)",
-    balance: 21_800_000,
-    verifiedCustodian: false,
-    sleeve: "private",
-  },
-  {
-    id: "cash",
-    name: "Treasury & municipal reserve",
-    type: "Cash / short duration",
-    custodian: "First Atlantic Private Bank",
-    balance: 19_900_000,
-    verifiedCustodian: false,
-    sleeve: "cash",
-  },
-];
-
-export const accountValue = accounts.reduce((sum, account) => sum + account.balance, 0);
-
-if (accountValue !== household.accountValue) {
-  throw new Error(
-    `MOCK DATA FAILURE: accountValue sum ${accountValue} does not match household.accountValue ${household.accountValue}.`,
-  );
-}
-
-if (household.investable !== household.accountValue + household.additionalInvestable) {
-  throw new Error("MOCK DATA FAILURE: investable must equal listed accounts plus additional investable.");
-}
-
-if (household.householdValue !== household.investable + household.realEstate + household.otherHousehold) {
-  throw new Error("MOCK DATA FAILURE: household value must equal investable + real estate + other household assets.");
-}
-
-if (household.householdValue !== 300_000_000) {
-  throw new Error("MOCK DATA FAILURE: household AUM must be $300,000,000 for this walkthrough.");
-}
-
-export const allocationTree = buildAllocationTree(accounts, accountValue);
-
-export const allocations: Allocation[] = allocationTree.map((node) => ({
-  label: node.label,
-  pct: Math.round(node.pct * 10) / 10,
-  tone: node.tone,
-}));
-
-if (holdings.reduce((sum, row) => sum + row.value, 0) !== accountValue) {
-  throw new Error("MOCK DATA FAILURE: holdings do not sum to account value.");
-}
-
 export const institutions: Institution[] = [
   {
     id: "first-atlantic",
@@ -222,9 +71,9 @@ export const institutions: Institution[] = [
       feeDiscountPct: 10,
       rank: 2,
       fitReason:
-        "Ranked #2 for this book: $84.2M verified Merrill taxable collateral can support a line without selling the public-equity sleeve.",
+        "Ranked #2 for this book: verified taxable collateral can support a line without selling the public-equity sleeve.",
       summary:
-        "Up to 55% advance on the verified Merrill taxable book ($84.2M illustrated), interest-only for 24 months. Spread is illustrated, not a live quote.",
+        "Up to 55% advance on the verified taxable book, interest-only for 24 months. Spread is illustrated, not a live quote.",
       placementKind: "bps",
       placementLabel: "Paid placement",
       paidPlacement:
@@ -256,9 +105,9 @@ export const institutions: Institution[] = [
       feeDiscountPct: 10,
       rank: 1,
       fitReason:
-        "Ranked #1 for this book: Greenwich, CT domicile plus a large taxable fixed-income sleeve inside a $300M household is a tighter municipal-SMA fit than credit or secondaries.",
+        "Ranked #1 for this book: a high-tax domicile plus a taxable fixed-income sleeve is a tighter municipal-SMA fit than credit or secondaries.",
       summary:
-        "Separately managed national + CT preference book. Illustrated duration 6.4 years. Fee is a fixture, not a live SMA schedule.",
+        "Separately managed national + state-preference book. Illustrated duration 6.4 years. Fee is a fixture, not a live SMA schedule.",
       placementKind: "strategy",
       placementLabel: "Paid placement",
       paidPlacement:
@@ -290,13 +139,12 @@ export const institutions: Institution[] = [
       feeDiscountPct: 10,
       rank: 3,
       fitReason:
-        "Ranked #3 for this book: a private-markets sleeve is already on the $300M passport, so a secondaries feeder is a satellite, not the core.",
+        "Ranked #3 for this book: a secondaries feeder is a satellite allocation, not the core public book.",
       summary:
         "Closed-end secondaries sleeve with illustrated 15% carry. Capital calls staged over 18 months. Not a solicitation.",
       placementKind: "special",
       placementLabel: "Paid placement",
-      paidPlacement:
-        "Institution paid for a special-offer slot against passports that already show a private-markets sleeve.",
+      paidPlacement: "Institution paid for a special-offer slot against consented passports.",
       terms: "Illustrative 1.5 / 15. Capital calls staged over 18 months. Not a solicitation.",
       expires: "2026-12-01",
       audience: "Households with an existing private-markets sleeve ≥ 10%",
@@ -304,78 +152,15 @@ export const institutions: Institution[] = [
   },
 ];
 
-export const defaultPassportConsent: PassportConsent = {
-  shared: true,
-  lastChanged: "2026-08-12",
-  scopes: [
-    "Holdings and sleeves",
-    "Risk posture and liquidity",
-    "Verification badges",
-    "Domicile",
-  ],
-};
-
-export const attestations = [
-  {
-    date: "2026-09-01",
-    kind: "custodian" as VerificationKind,
-    title: "Merrill Lynch custodian match",
-    detail:
-      "Account ending 4481 illustrated as custodian-verified. Badge is static mock data — no DTCC or firm API was called.",
-  },
-  {
-    date: "2026-08-20",
-    kind: "advisor" as VerificationKind,
-    title: "Linda McDonald · BrokerCheck 111111",
-    detail:
-      "Advisor identity illustrated as FINRA BrokerCheck–style verification. ID 111111 is a placeholder, not a live CRD lookup.",
-  },
-  {
-    date: "2026-08-02",
-    kind: "document" as VerificationKind,
-    title: "Accredited / QP letter reused",
-    detail:
-      "Ops packet reuses the household’s illustrated investor letter. Document is a fixture, not a signed original.",
-  },
-];
-
-export const opsPacket = {
-  title: "IRA rollover enrollment packet",
-  from: "Charles Schwab Traditional IRA",
-  to: "First Atlantic Qualified Rollover IRA",
-  reused: 14,
-  total: 18,
-  fields: [
-    { label: "Household legal name", value: "Elena Whitmore & Marcus Whitmore", source: "Passport", reused: true },
-    { label: "Legal entity", value: "Whitmore Family Revocable Trust", source: "Passport", reused: true },
-    { label: "Domicile", value: "Greenwich, CT", source: "Passport", reused: true },
-    { label: "Advisor of record", value: "Linda McDonald · BrokerCheck 111111", source: "Verification", reused: true },
-    { label: "Delivering account", value: "Schwab IRA · •••• 9021", source: "Passport", reused: true },
-    { label: "Receiving account", value: "First Atlantic QRP · pending", source: "Ops clerk", reused: false },
-    { label: "Cost basis method", value: "Specific ID (illustrated)", source: "Passport", reused: true },
-    { label: "Beneficiaries", value: "Primary: spouse · Contingent: Whitmore 2008 GST", source: "Passport", reused: true },
-    { label: "W-9 / TIN attestation", value: "On file · last4 4418", source: "Reusable docs", reused: true },
-    { label: "ACH instructions", value: "First Atlantic operating · •••• 2209", source: "Reusable docs", reused: true },
-    { label: "Risk questionnaire", value: "Moderate growth · 2026-04 refresh", source: "Passport", reused: true },
-    { label: "Accredited investor letter", value: "Illustrated QP letter · 2026-01", source: "Reusable docs", reused: true },
-    { label: "Passport share consent", value: "On · any paying institution may offer", source: "Consent", reused: true },
-    { label: "Morningstar-style holdings extract", value: "Taxable + IRA sleeves (fixture)", source: "Illustrated feed", reused: true },
-    { label: "Informa-style product mapping", value: "Muni SMA + SBL eligibility (fixture)", source: "Illustrated feed", reused: true },
-    { label: "Medallion / wet signature", value: "Required at funding", source: "Still needed", reused: false },
-    { label: "Receiving plan acceptance", value: "Institution ops queue", source: "Still needed", reused: false },
-    { label: "State rollover notice", value: "CT notice to be generated", source: "Still needed", reused: false },
-  ],
-};
-
 export const adminMetrics = [
-  { label: "Illustrated passports", value: "128", note: "Fixture count" },
+  { label: "Client records in SQLite", value: "2", note: "Elena Whitmore · Priya Shah" },
   { label: "Paying institutions on the board", value: "14", note: "3 shown in this walkthrough" },
-  { label: "Illustrative AUM on file", value: "$2.4B", note: "Not audited" },
+  { label: "Illustrative AUM on file", value: "2 passports", note: "$300M Whitmore · $72M Shah" },
   { label: "Paid placements (open)", value: "41", note: "Ranked strategy / bps slots" },
-  { label: "Ops fields reused (this packet)", value: "14 / 18", note: "Whitmore rollover" },
+  { label: "Ops fields reused", value: "14 / 18", note: "Per selected client packet" },
   { label: "Mock mode coverage", value: "3", note: "Client · Institution · Admin" },
   { label: "Inbox rank depth", value: "3", note: "Portfolio-fit order, not an optimizer" },
-  { label: "Whitmore household AUM", value: "$300M", note: "Fixture · this passport" },
+  { label: "Client API", value: "SQLite", note: "GET /api/clients · PATCH consent" },
   { label: "Clerk gate", value: "Wired", note: "VITE_CLERK_PUBLISHABLE_KEY at build" },
 ];
 

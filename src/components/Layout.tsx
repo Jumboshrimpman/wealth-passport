@@ -1,6 +1,8 @@
 import { UserButton } from "@clerk/clerk-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { clerkAppearance } from "../auth/clerk";
+import { ClientSwitcher } from "./ClientSwitcher";
+import { useClient } from "../context/ClientContext";
 import { useMode } from "../context/ModeContext";
 import { DEMO_NOTICE, MODE_NAV, PRODUCT_NAME, TAGLINE, type AppMode } from "../data/mock";
 
@@ -12,6 +14,7 @@ const MODE_OPTIONS: { id: AppMode; label: string }[] = [
 
 export function Layout() {
   const { mode, setMode } = useMode();
+  const { source } = useClient();
   const links = MODE_NAV[mode];
 
   return (
@@ -22,7 +25,9 @@ export function Layout() {
       <div className="mock-banner" role="status">
         <div className="mock-banner-inner">
           <strong>Mock demo · {PRODUCT_NAME}</strong>
-          <span>{DEMO_NOTICE}</span>
+          <span>
+            {DEMO_NOTICE} Client store: {source === "api" ? "SQLite via /api" : "bundled seed (API unreachable)"}.
+          </span>
         </div>
       </div>
       <header className="site-header">
@@ -32,6 +37,7 @@ export function Layout() {
             <div className="tagline">{TAGLINE}</div>
           </div>
           <div className="header-tools">
+            {mode !== "institution" ? <ClientSwitcher /> : null}
             <div className="mode-toggle" role="radiogroup" aria-label="Demo mode">
               {MODE_OPTIONS.map((option) => (
                 <button

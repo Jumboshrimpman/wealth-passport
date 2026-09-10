@@ -9,6 +9,7 @@ import {
   type ChatMessage,
 } from "../data/chat";
 import { useConsent } from "../context/ConsentContext";
+import { useClient } from "../context/ClientContext";
 import { useOfferDecisions } from "../context/OfferDecisionContext";
 import { Badge } from "../components/ui";
 
@@ -21,9 +22,14 @@ function nextMessageId(): string {
 
 export function Chat() {
   const consent = useConsent();
+  const { passport } = useClient();
   const { decisions } = useOfferDecisions();
   const threadRef = useRef<HTMLDivElement>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([greetingMessage()]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [greetingMessage(passport)]);
+
+  useEffect(() => {
+    setMessages([greetingMessage(passport)]);
+  }, [passport.id]);
 
   useEffect(() => {
     const node = threadRef.current;
@@ -38,7 +44,7 @@ export function Chat() {
       text: label,
       handled: true,
     };
-    const reply = answerMockChat(label, { consentOn: consent.shared, decisions });
+    const reply = answerMockChat(label, { client: passport, consentOn: consent.shared, decisions });
     const assistant: ChatMessage = {
       id: nextMessageId(),
       role: "assistant",
@@ -54,9 +60,10 @@ export function Chat() {
         <p className="kicker">Client home · MOCK chat</p>
         <h1>Your WealthPass desk</h1>
         <p className="lede">
-          Suggested questions only — each chip has a preloaded fixture reply. There is no text box
-          and no live model. “Ask me anything” means tap a suggestion. The holistic profile stays
-          on <Link to="/passport">Passport</Link>.
+          Suggested questions only — each chip has a preloaded fixture reply for{" "}
+          {passport.household.clientFirstName}. There is no text box and no live model. Switch the
+          client record in the header to load Elena or Priya. The holistic profile stays on{" "}
+          <Link to="/passport">Passport</Link>.
         </p>
       </header>
 

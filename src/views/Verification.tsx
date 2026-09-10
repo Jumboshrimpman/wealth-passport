@@ -1,13 +1,16 @@
-import { advisor, attestations, household } from "../data/mock";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
+import { useClient } from "../context/ClientContext";
 
 export function Verification() {
+  const { passport } = useClient();
+  const { advisor, household, attestations, verifiedCustodian } = passport;
+
   return (
     <div className="stack">
       <SectionHead
         kicker="Verification"
         title="Who attests to this identity"
-        lede="Banks and managers pay against a profile only when the household, the advisor, and at least one custodian are illustrated as verified. Every badge below is a static fixture."
+        lede="Banks and managers pay against a profile only when the household, the advisor, and at least one custodian are illustrated as verified. Badges below are stored on this client record."
       />
 
       <div className="grid grid-2">
@@ -33,23 +36,19 @@ export function Verification() {
             </div>
           </dl>
           <Disclaimer>
-            Linda McDonald and BrokerCheck ID 111111 are demo placeholders. This screen does not
-            query FINRA BrokerCheck, IAPD, or any licensing registry.
+            {advisor.name} and BrokerCheck ID {advisor.brokerCheckId} are demo placeholders. This
+            screen does not query FINRA BrokerCheck, IAPD, or any licensing registry.
           </Disclaimer>
         </article>
 
         <article className="panel">
           <p className="kicker">Verified custodian</p>
           <div className="row">
-            <Badge tone="verified">Merrill Lynch</Badge>
-            <Badge>Account ending 4481</Badge>
+            <Badge tone="verified">{verifiedCustodian.badge}</Badge>
+            <Badge>{verifiedCustodian.accountMask}</Badge>
           </div>
-          <h2 style={{ marginTop: "0.7rem" }}>Private Wealth brokerage</h2>
-          <p>
-            The taxable joint account is illustrated as custodian-matched to Merrill Lynch. Other
-            sleeves (Fidelity, Schwab, Oakridge admin, First Atlantic cash) remain unverified in
-            this walkthrough so the badge is meaningful.
-          </p>
+          <h2 style={{ marginTop: "0.7rem" }}>{verifiedCustodian.title}</h2>
+          <p>{verifiedCustodian.body}</p>
           <Disclaimer>
             No custodian SSO, DTCC, or statement scrape is wired. If a real verification service
             were missing, this UI would keep the unverified label — it would not invent a pass.

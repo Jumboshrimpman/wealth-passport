@@ -196,6 +196,28 @@ p {
   color: var(--sage-900);
 }
 
+.client-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 13rem;
+}
+
+.client-switcher-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.client-switcher select {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--cream);
+  padding: 0.42rem 0.85rem;
+  max-width: 22rem;
+}
+
 .brand {
   display: flex;
   flex-direction: column;
