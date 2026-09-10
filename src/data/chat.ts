@@ -1,13 +1,5 @@
-import {
-  advisor,
-  allocationTree,
-  formatUsd,
-  household,
-  offerHeadline,
-  opsPacket,
-  rankedInstitutions,
-  type Offer,
-} from "./mock";
+import type { ClientPassport } from "../../shared/types";
+import { formatUsd, offerHeadline, rankedInstitutions, type Offer } from "./mock";
 
 export type OfferDecision = "accepted" | "declined";
 
@@ -54,19 +46,19 @@ export const chatSuggestions: ChatSuggestion[] = [
   },
   {
     id: "ops",
-    label: "How much of the IRA rollover packet can you reuse?",
+    label: "How much of the rollover packet can you reuse?",
   },
 ];
 
-export function greetingText(): string {
-  return `Hi ${household.clientFirstName}, your net worth is ${formatUsd(household.householdValue, true)}. Ask me anything`;
+export function greetingText(client: ClientPassport): string {
+  return `Hi ${client.household.clientFirstName}, your net worth is ${formatUsd(client.household.householdValue, true)}. Ask me anything`;
 }
 
-export function greetingMessage(): ChatMessage {
+export function greetingMessage(client: ClientPassport): ChatMessage {
   return {
     id: "greeting",
     role: "assistant",
-    text: greetingText(),
+    text: greetingText(client),
     handled: true,
   };
 }
@@ -80,7 +72,11 @@ function offerLine(offer: Offer, decision: OfferDecision | undefined): string {
   return `Rank ${offer.rank}: ${offerHeadline(offer)}${status}. ${offer.fitReason}`;
 }
 
-function replyStrategies(consentOn: boolean, decisions: Record<string, OfferDecision>): ChatReply {
+function replyStrategies(
+  client: ClientPassport,
+  consentOn: boolean,
+  decisions: Record<string, OfferDecision>,
+): ChatReply {
   if (!consentOn) {
     return {
       intent: "strategies-offers",
@@ -96,14 +92,18 @@ function replyStrategies(consentOn: boolean, decisions: Record<string, OfferDeci
     intent: "strategies-offers",
     handled: true,
     text: [
-      `Recommended strategies and latest offers for the ${household.name} (fixtures, not a live model). Ranked to this $300M household — allocation, Greenwich domicile, and verified Merrill collateral.`,
+      `Recommended strategies and latest offers for the ${client.household.name} (fixtures, not a live model). Ranked to this ${formatUsd(client.household.householdValue, true)} household — allocation, ${client.household.domicile}, and verified collateral.`,
       ...lines,
       "Accept or Decline on Offers (or the Passport offer section). Status is stored in this browser only.",
     ].join("\n\n"),
   };
 }
 
-function replyUnderstandOffers(consentOn: boolean, decisions: Record<string, OfferDecision>): ChatReply {
+function replyUnderstandOffers(
+  client: ClientPassport,
+  consentOn: boolean,
+  decisions: Record<string, OfferDecision>,
+): ChatReply {
   if (!consentOn) {
     return {
       intent: "understand-offers",
@@ -119,27 +119,31 @@ function replyUnderstandOffers(consentOn: boolean, decisions: Record<string, Off
     intent: "understand-offers",
     handled: true,
     text: [
-      `These are paid placements ranked to the Whitmore $300M passport — not an optimizer and not a live quote. Rank 1 is the municipal SMA; Rank 2 is securities-based credit; Rank 3 is a secondaries sleeve.`,
+      `These are paid placements ranked to the ${client.household.name} ${formatUsd(client.household.householdValue, true)} passport — not an optimizer and not a live quote.`,
       ...lines,
       "On Offers or Passport, tap Accept or Decline. This mock stores that status in the browser. It will not accept without consent.",
     ].join("\n\n"),
   };
 }
 
-function replyVerification(): ChatReply {
+function replyVerification(client: ClientPassport): ChatReply {
+  const verified = client.accounts.find((account) => account.verifiedCustodian);
   return {
     intent: "verification",
     handled: true,
     text: [
-      `Verification on this mock passport is fixture-only — no FINRA or custodian API.`,
-      `Advisor: ${advisor.name}, ${advisor.title} at ${advisor.firm}. BrokerCheck ${advisor.brokerCheckId} (placeholder). Illustrated since ${advisor.since}.`,
-      "Custodian: Merrill Lynch Private Wealth brokerage (account ending 4481) is the only verified sleeve. Fidelity, Schwab, Oakridge admin, and First Atlantic cash stay unverified so the badge means something.",
+      `Verification on this mock passport is stored on the ${client.household.name} client record — no FINRA or custodian API.`,
+      `Advisor: ${client.advisor.name}, ${client.advisor.title} at ${client.advisor.firm}. BrokerCheck ${client.advisor.brokerCheckId} (placeholder). Illustrated since ${client.advisor.since}.`,
+      verified
+        ? `Custodian: ${verified.custodian} ${verified.name} (${client.verifiedCustodian.accountMask}) is the verified sleeve.`
+        : "No custodian sleeve is marked verified on this record.",
       "Open Verification for the attestation trail.",
     ].join("\n\n"),
   };
 }
 
-function replyOps(): ChatReply {
+function replyOps(client: ClientPassport): ChatReply {
+  const { opsPacket } = client;
   const reused = opsPacket.fields.filter((field) => field.reused).length;
   const needed = opsPacket.fields.filter((field) => !field.reused).length;
   return {
@@ -147,14 +151,15 @@ function replyOps(): ChatReply {
     handled: true,
     text: [
       `${opsPacket.title}: ${opsPacket.from} → ${opsPacket.to}.`,
-      `${opsPacket.reused} of ${opsPacket.total} fields reuse the Whitmore passport (${reused} marked reused, ${needed} still collected).`,
-      "Still needed in this mock: medallion / wet signature, receiving-plan acceptance, and the CT rollover notice. No ACATS or transfer agent is connected.",
+      `${opsPacket.reused} of ${opsPacket.total} fields reuse the ${client.household.name} passport (${reused} marked reused, ${needed} still collected).`,
+      "Still needed in this mock include wet signature and receiving-plan acceptance. No ACATS or transfer agent is connected.",
       "Open Ops to see each reused field.",
     ].join("\n\n"),
   };
 }
 
-function replyPortfolio(): ChatReply {
+function replyPortfolio(client: ClientPassport): ChatReply {
+  const { household, allocationTree } = client;
   const classLines = allocationTree.map((node) => {
     const pct = Math.round(node.pct * 10) / 10;
     const sleeveBits = node.sleeves
@@ -172,18 +177,18 @@ function replyPortfolio(): ChatReply {
     intent: "portfolio",
     handled: true,
     text: [
-      `${household.name} net worth / household value is ${formatUsd(household.householdValue, true)} (${formatUsd(household.householdValue)}) — the labeled AUM for this walkthrough.`,
-      `Account value ${formatUsd(household.accountValue, true)} · investable ${formatUsd(household.investable, true)} · Greenwich residence ${formatUsd(household.realEstate, true)} · other personal ${formatUsd(household.otherHousehold, true)} · liquidity ${formatUsd(household.liquidity, true)}.`,
+      `${household.name} net worth / household value is ${formatUsd(household.householdValue, true)} (${formatUsd(household.householdValue)}).`,
+      `Account value ${formatUsd(household.accountValue, true)} · investable ${formatUsd(household.investable, true)} · residence ${formatUsd(household.realEstate, true)} · other personal ${formatUsd(household.otherHousehold, true)} · liquidity ${formatUsd(household.liquidity, true)}.`,
       `Risk: ${household.risk.label}, ${household.risk.horizon}. ${household.risk.capacity}.`,
       ...classLines,
-      "Open Passport to drill asset class → sleeve/account → individual securities. Every row is a MOCK fixture.",
+      "Open Passport to drill asset class → sleeve/account → individual securities. Rows are stored on this client record.",
     ].join("\n\n"),
   };
 }
 
 export function answerMockChat(
   input: string,
-  ctx: { consentOn: boolean; decisions: Record<string, OfferDecision> },
+  ctx: { client: ClientPassport; consentOn: boolean; decisions: Record<string, OfferDecision> },
 ): ChatReply {
   const suggestion = chatSuggestions.find((item) => normalize(item.label) === normalize(input));
   if (!suggestion) {
@@ -194,11 +199,11 @@ export function answerMockChat(
     };
   }
 
-  if (suggestion.id === "strategies-offers") return replyStrategies(ctx.consentOn, ctx.decisions);
-  if (suggestion.id === "understand-offers") return replyUnderstandOffers(ctx.consentOn, ctx.decisions);
-  if (suggestion.id === "portfolio") return replyPortfolio();
-  if (suggestion.id === "verification") return replyVerification();
-  if (suggestion.id === "ops") return replyOps();
+  if (suggestion.id === "strategies-offers") return replyStrategies(ctx.client, ctx.consentOn, ctx.decisions);
+  if (suggestion.id === "understand-offers") return replyUnderstandOffers(ctx.client, ctx.consentOn, ctx.decisions);
+  if (suggestion.id === "portfolio") return replyPortfolio(ctx.client);
+  if (suggestion.id === "verification") return replyVerification(ctx.client);
+  if (suggestion.id === "ops") return replyOps(ctx.client);
 
   throw new Error(`MOCK FAILURE: suggestion "${suggestion.id}" has no canned reply.`);
 }
@@ -208,12 +213,4 @@ for (const id of REQUIRED_CHIP_IDS) {
   if (!chatSuggestions.some((item) => item.id === id)) {
     throw new Error(`MOCK DATA FAILURE: required chat chip "${id}" is missing.`);
   }
-}
-
-if (household.householdValue !== 300_000_000) {
-  throw new Error("MOCK DATA FAILURE: chat greeting must use the $300M household value.");
-}
-
-if (!greetingText().includes(formatUsd(household.householdValue, true))) {
-  throw new Error("MOCK DATA FAILURE: greeting net worth does not match household value.");
 }

@@ -1,46 +1,82 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
-import { defaultPassportConsent } from "../data/mock";
-
-const CONSENT_KEY = "wealthpass-mock-consent";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { patchClientConsent } from "../api/clients";
+import { useClient } from "./ClientContext";
 
 type ConsentContextValue = {
   shared: boolean;
   lastChanged: string;
   scopes: string[];
+  persisted: boolean;
   toggle: () => void;
 };
 
 const ConsentContext = createContext<ConsentContextValue | null>(null);
 
-function readStoredConsent(): boolean {
+function consentStorageKey(clientId: string) {
+  return `wealthpass-consent-${clientId}`;
+}
+
+function readFallbackConsent(clientId: string, seedDefault: boolean): boolean {
   try {
-    const stored = sessionStorage.getItem(CONSENT_KEY) ?? localStorage.getItem(CONSENT_KEY);
+    const stored =
+      sessionStorage.getItem(consentStorageKey(clientId)) ?? localStorage.getItem(consentStorageKey(clientId));
     if (stored === "on") return true;
     if (stored === "off") return false;
   } catch {
-    // GitHub Pages / private mode: stay on the fixture default.
+    // Private mode: use the record default.
   }
-  return defaultPassportConsent.shared;
+  return seedDefault;
 }
 
-function persistConsent(shared: boolean) {
+function persistFallbackConsent(clientId: string, shared: boolean) {
   const value = shared ? "on" : "off";
   try {
-    sessionStorage.setItem(CONSENT_KEY, value);
-    localStorage.setItem(CONSENT_KEY, value);
+    sessionStorage.setItem(consentStorageKey(clientId), value);
+    localStorage.setItem(consentStorageKey(clientId), value);
   } catch {
-    // In-memory toggle still works if storage is blocked.
+    // In-memory toggle still works.
   }
 }
 
 export function ConsentProvider({ children }: { children: ReactNode }) {
-  const [shared, setShared] = useState(readStoredConsent);
+  const { passport, source } = useClient();
+  const [shared, setShared] = useState(() =>
+    source === "api" ? passport.consent.shared : readFallbackConsent(passport.id, passport.consent.shared),
+  );
+  const [lastChanged, setLastChanged] = useState(passport.consent.lastChanged);
+  const [persisted, setPersisted] = useState(source === "api");
+
+  useEffect(() => {
+    if (source === "api") {
+      setShared(passport.consent.shared);
+      setLastChanged(passport.consent.lastChanged);
+      setPersisted(true);
+      return;
+    }
+    setShared(readFallbackConsent(passport.id, passport.consent.shared));
+    setLastChanged(passport.consent.lastChanged);
+    setPersisted(false);
+  }, [passport.id, passport.consent.shared, passport.consent.lastChanged, source]);
 
   function toggle() {
-    setShared((current) => {
-      const next = !current;
-      persistConsent(next);
-      return next;
+    const next = !shared;
+    setShared(next);
+    const today = new Date().toISOString().slice(0, 10);
+    setLastChanged(today);
+    if (source !== "api") {
+      persistFallbackConsent(passport.id, next);
+      setPersisted(false);
+      return;
+    }
+    void patchClientConsent(passport.id, next).then((updated) => {
+      if (!updated) {
+        persistFallbackConsent(passport.id, next);
+        setPersisted(false);
+        return;
+      }
+      setShared(updated.consent.shared);
+      setLastChanged(updated.consent.lastChanged);
+      setPersisted(true);
     });
   }
 
@@ -48,8 +84,9 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
     <ConsentContext.Provider
       value={{
         shared,
-        lastChanged: defaultPassportConsent.lastChanged,
-        scopes: defaultPassportConsent.scopes,
+        lastChanged,
+        scopes: passport.consent.scopes,
+        persisted,
         toggle,
       }}
     >

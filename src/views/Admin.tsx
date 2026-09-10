@@ -1,18 +1,19 @@
 import { Link } from "react-router-dom";
 import {
-  accountValue,
   adminMetrics,
   formatUsd,
-  household,
   offerHeadline,
   rankedInstitutions,
 } from "../data/mock";
 import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
+import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
 
 export function Admin() {
   const consent = useConsent();
+  const { passport, clients, source } = useClient();
   const ranked = rankedInstitutions();
+  const household = passport.household;
 
   return (
     <div className="stack">
@@ -30,9 +31,8 @@ export function Admin() {
 
       <Disclaimer>
         Aggregate figures are constants for investor conversation. They are not computed from a
-        warehouse. Illustrated vendor layer: Morningstar and Informa first — not live manager
-        feeds. Quant matching and instant quotes are future copy only. Access is Clerk-gated;
-        household figures and holdings remain fixtures.
+        warehouse. Client household figures load from SQLite when the API is running ({source}).
+        Institution offers remain fixtures. Access is Clerk-gated.
       </Disclaimer>
 
       <div className="split">
@@ -47,9 +47,9 @@ export function Admin() {
             </Link>
           </div>
           <p>
-            {household.principals} · Account {formatUsd(accountValue)} · Household{" "}
+            {household.principals} · Account {formatUsd(household.accountValue)} · Household{" "}
             {formatUsd(household.householdValue)} · Investable {formatUsd(household.investable)} ·{" "}
-            {household.risk.label}.
+            {household.risk.label}. {clients.length} client records available.
           </p>
           <div className="row">
             <Badge tone={consent.shared ? "verified" : "warn"}>

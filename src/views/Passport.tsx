@@ -2,18 +2,14 @@ import { Link } from "react-router-dom";
 import { AllocationDrilldown } from "../components/AllocationDrilldown";
 import { OfferCard } from "../components/OfferCard";
 import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
+import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
-import {
-  accountValue,
-  accounts,
-  allocations,
-  formatUsd,
-  household,
-  rankedInstitutions,
-} from "../data/mock";
+import { formatUsd, rankedInstitutions } from "../data/mock";
 
 export function Passport() {
   const consent = useConsent();
+  const { passport, source } = useClient();
+  const { household, accounts, allocations, advisor } = passport;
   const ranked = rankedInstitutions();
 
   return (
@@ -21,25 +17,25 @@ export function Passport() {
       <SectionHead
         kicker="Client view · holistic profile"
         title={household.name}
-        lede={`${household.principals} · ${household.entity}. A single financial identity assembled from multi-custodian accounts, a private-markets sleeve, and one broad consent so paying institutions can send offers.`}
+        lede={`${household.principals} · ${household.entity}. A single financial identity assembled from multi-custodian accounts and one broad consent so paying institutions can send offers.`}
       />
 
       <div className="row">
-        <Badge tone="verified">Advisor Linda McDonald verified</Badge>
-        <Badge tone="verified">Merrill Lynch custodian verified</Badge>
-        <Badge>Illustrative Morningstar / Informa first</Badge>
+        <Badge tone="verified">Advisor {advisor.name} verified</Badge>
+        <Badge tone="verified">{passport.verifiedCustodian.badge} custodian verified</Badge>
+        <Badge>{source === "api" ? "Loaded from SQLite" : "Bundled seed fallback"}</Badge>
       </div>
 
       <div className="grid grid-3">
         <Stat
           label="Account value"
-          value={formatUsd(accountValue, true)}
-          note={`${formatUsd(accountValue)} — sum of listed custodied accounts on this passport.`}
+          value={formatUsd(household.accountValue, true)}
+          note={`${formatUsd(household.accountValue)} — sum of listed custodied accounts on this passport.`}
         />
         <Stat
           label="Household value"
           value={formatUsd(household.householdValue, true)}
-          note={`${formatUsd(household.householdValue)} AUM — investable + ${formatUsd(household.realEstate, true)} Greenwich residence + ${formatUsd(household.otherHousehold, true)} other personal assets.`}
+          note={`${formatUsd(household.householdValue)} AUM — investable + ${formatUsd(household.realEstate, true)} residence + ${formatUsd(household.otherHousehold, true)} other personal assets.`}
         />
         <Stat
           label="Total investable assets"
@@ -59,7 +55,7 @@ export function Passport() {
             <p className="kicker">Allocation</p>
             <h2>Where the household sits today</h2>
           </div>
-          <Badge>Static fixture · {household.dataAsOf}</Badge>
+          <Badge>As of {household.dataAsOf}</Badge>
         </div>
         <p className="muted tiny">{household.risk.capacity}</p>
         <div className="allocation" aria-hidden="true">
@@ -80,9 +76,9 @@ export function Passport() {
         </div>
         <p className="muted tiny" style={{ marginTop: "1rem" }}>
           Open an asset class, then a sleeve/account, to see individual securities with weights and
-          values. All rows are MOCK fixtures.
+          values. Switch the client record in the header to load Elena or Priya.
         </p>
-        <AllocationDrilldown />
+        <AllocationDrilldown tree={passport.allocationTree} />
         <Disclaimer>{household.sourceNote}</Disclaimer>
       </section>
 
@@ -123,8 +119,7 @@ export function Passport() {
         </table>
         <p className="tiny muted">
           Verification detail lives on the <Link to="/verification">Verification</Link> view.
-          Balances are constants in <code>src/data/mock.ts</code> — nothing was loaded from a
-          custodian.
+          Balances are stored on the client record (SQLite when the API is running).
         </p>
       </section>
 
@@ -132,9 +127,8 @@ export function Passport() {
         <p className="kicker">Consent</p>
         <h2>Share this passport with paying institutions</h2>
         <p className="muted">
-          One broad consent. If it is on, any paying institution may send an offer. If it is off,
-          no offers appear. The toggle updates local React state and browser storage only — not a
-          consent ledger or institution API.
+          One broad consent, stored per client. If it is on, any paying institution may send an
+          offer. If it is off, no offers appear. With the API running, the toggle writes to SQLite.
         </p>
         <div className="card">
           <button
@@ -146,7 +140,8 @@ export function Passport() {
             <div>
               <h3>Allow paying institutions to send offers</h3>
               <p className="tiny muted" style={{ margin: 0 }}>
-                Last changed {consent.lastChanged} (fixture)
+                Last changed {consent.lastChanged}
+                {consent.persisted ? " · saved to client database" : " · in-memory only"}
               </p>
               <p className="tiny" style={{ margin: "0.35rem 0 0" }}>
                 {consent.scopes.join(" · ")}
@@ -170,7 +165,7 @@ export function Passport() {
         <SectionHead
           kicker="Last section · client inbox"
           title="Offers from banks and asset managers"
-          lede="Ranked to this passport’s allocation, domicile, and verified collateral. Terms are the primary line. Paid placement is a small label only."
+          lede="Ranked paid placements. Terms are the primary line. Paid placement is a small label only. Institution matching is still fixture data."
         />
         {consent.shared ? (
           ranked.map((firm) => <OfferCard key={firm.id} firm={firm} compact />)
@@ -179,8 +174,8 @@ export function Passport() {
             <p className="kicker">Consent is off</p>
             <h2>No offers.</h2>
             <p className="lede">
-              Passport share consent is off, so no paying institution may send an offer. Accept is
-              blocked. This is not an empty API response — the mock inbox is closed on purpose.
+              Passport share consent is off for {household.clientFirstName}, so no paying institution
+              may send an offer. Accept is blocked.
             </p>
           </section>
         )}

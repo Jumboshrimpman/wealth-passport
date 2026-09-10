@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { ClerkGate } from "./components/ClerkGate";
 import { Layout } from "./components/Layout";
 import { ModeRoute } from "./components/ModeRoute";
+import { ClientProvider } from "./context/ClientContext";
 import { ConsentProvider } from "./context/ConsentContext";
 import { ModeProvider, useMode } from "./context/ModeContext";
 import { OfferDecisionProvider } from "./context/OfferDecisionContext";
@@ -17,9 +18,10 @@ import { Verification } from "./views/Verification";
 export default function App() {
   return (
     <ClerkGate>
-      <ConsentProvider>
-        <OfferDecisionProvider>
-          <ModeProvider>
+      <ClientProvider>
+        <ConsentProvider>
+          <OfferDecisionProvider>
+            <ModeProvider>
             <Routes>
               <Route element={<Layout />}>
                 <Route path="/" element={<HomeRedirect />} />
@@ -85,7 +87,8 @@ export default function App() {
             </Routes>
           </ModeProvider>
         </OfferDecisionProvider>
-      </ConsentProvider>
+        </ConsentProvider>
+      </ClientProvider>
     </ClerkGate>
   );
 }

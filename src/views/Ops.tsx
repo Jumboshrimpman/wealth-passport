@@ -1,7 +1,9 @@
-import { opsPacket } from "../data/mock";
 import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
+import { useClient } from "../context/ClientContext";
 
 export function Ops() {
+  const { passport } = useClient();
+  const opsPacket = passport.opsPacket;
   const reused = opsPacket.fields.filter((field) => field.reused);
   const needed = opsPacket.fields.filter((field) => !field.reused);
 
@@ -14,15 +16,19 @@ export function Ops() {
       />
 
       <div className="grid grid-3">
-        <Stat label="Fields reused" value={`${opsPacket.reused} / ${opsPacket.total}`} note="From the Whitmore passport" />
+        <Stat
+          label="Fields reused"
+          value={`${opsPacket.reused} / ${opsPacket.total}`}
+          note={`From the ${passport.household.name} passport`}
+        />
         <Stat label="Still required" value={`${needed.length}`} note="Signatures and receiving-plan acceptance" />
         <Stat label="Illustrated time saved" value="~40 min" note="Ops anecdote for the walkthrough, not measured" />
       </div>
 
       <Disclaimer>
-        This packet is a document demo. No transfer agent, ACATS, or plan recordkeeper is connected.
-        Morningstar-style holdings and Informa-style product mapping appear as reused extracts —
-        fixtures, not vendor sessions.
+        This packet is a document demo stored on the client record. No transfer agent, ACATS, or
+        plan recordkeeper is connected. Morningstar-style holdings and Informa-style product mapping
+        appear as reused extracts — fixtures, not vendor sessions.
       </Disclaimer>
 
       <div className="split">
