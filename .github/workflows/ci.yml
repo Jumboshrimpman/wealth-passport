@@ -17,8 +17,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
-      - name: Client API tests
-        run: npm run test:api
+      - name: Client API and admin dashboard tests
+        run: npm test
       - name: Require Clerk publishable key
         env:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}

@@ -1,38 +1,38 @@
 import { Link } from "react-router-dom";
-import {
-  adminMetrics,
-  formatUsd,
-  offerHeadline,
-  rankedInstitutions,
-} from "../data/mock";
-import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
+import { AdminDashboard } from "../components/admin/AdminDashboard";
+import { Badge, Disclaimer, SectionHead } from "../components/ui";
 import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
+import { useMode } from "../context/ModeContext";
+import { formatUsd, offerHeadline, rankedInstitutions } from "../data/mock";
 
 export function Admin() {
   const consent = useConsent();
-  const { passport, clients, source } = useClient();
+  const { mode } = useMode();
+  const { passport, clients, source, selectClient } = useClient();
   const ranked = rankedInstitutions();
   const household = passport.household;
 
   return (
     <div className="stack">
       <SectionHead
-        kicker="Admin · both sides + extra mock metrics"
-        title="Walkthrough control room"
-        lede="Admin sees the client identity and the institutional board at once, plus aggregate mock metrics. Client and Institution modes stay separate; this mode is the only place that stacks both."
+        kicker="Admin · customizable control room"
+        title="Walkthrough dashboard"
+        lede="Each former metric tile is now a widget: live client/ops slices where the API exists, illustrated board counts where it does not, plus charts you can reorder, resize, hide, and switch. Client and Institution modes stay separate; this mode is the only place that stacks both."
       />
 
-      <div className="grid grid-3">
-        {adminMetrics.map((metric) => (
-          <Stat key={metric.label} label={metric.label} value={metric.value} note={metric.note} />
-        ))}
-      </div>
+      <AdminDashboard
+        clients={clients}
+        passport={passport}
+        source={source}
+        mode={mode}
+        selectClient={selectClient}
+      />
 
       <Disclaimer>
-        Aggregate figures are constants for investor conversation. They are not computed from a
-        warehouse. Client household figures load from SQLite when the API is running ({source}).
-        Institution offers remain fixtures. Access is Clerk-gated.
+        Paying-institution headcount, open placements, and weekly sparkline are illustrated board
+        fixtures. Client AUM, record counts, ops reuse, API health, and Clerk wiring are read from
+        the current store and build. This is not a warehouse.
       </Disclaimer>
 
       <div className="split">

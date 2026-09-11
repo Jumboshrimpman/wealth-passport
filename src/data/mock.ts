@@ -152,18 +152,6 @@ export const institutions: Institution[] = [
   },
 ];
 
-export const adminMetrics = [
-  { label: "Client records in SQLite", value: "2", note: "Elena Whitmore · Priya Shah" },
-  { label: "Paying institutions on the board", value: "14", note: "3 shown in this walkthrough" },
-  { label: "Illustrative AUM on file", value: "2 passports", note: "$300M Whitmore · $72M Shah" },
-  { label: "Paid placements (open)", value: "41", note: "Ranked strategy / bps slots" },
-  { label: "Ops fields reused", value: "14 / 18", note: "Per selected client packet" },
-  { label: "Mock mode coverage", value: "3", note: "Client · Institution · Admin" },
-  { label: "Inbox rank depth", value: "3", note: "Portfolio-fit order, not an optimizer" },
-  { label: "Client API", value: "SQLite", note: "GET /api/clients · PATCH consent" },
-  { label: "Clerk gate", value: "Wired", note: "VITE_CLERK_PUBLISHABLE_KEY at build" },
-];
-
 export function formatUsd(n: number, compact = false): string {
   if (compact) {
     if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;

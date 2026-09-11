@@ -103,7 +103,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 | --- | --- |
 | Client | Chat (home), Passport, Verification, Offers, Ops |
 | Institution | Offer console only |
-| Admin | Overview of both sides plus extra mock metrics (no Client/Institution tabs) |
+| Admin | Overview with a customizable metric dashboard (charts + layout) |
 
 `/` opens the home screen for the current mode.
 
@@ -117,7 +117,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 | Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; Accept / Decline persist in browser storage; blocked if consent is off |
 | Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) |
 | Ops reuse | `/ops` | […/ops](https://jumboshrimpman.github.io/wealth-passport/ops) | Client, Admin | Rollover packet with passport-filled fields |
-| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Both sides plus extra mock metrics |
+| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Customizable dashboard for the nine walkthrough metrics (charts, reorder, hide, width) plus both sides |
 | Legacy Trust URL | `/trust` | […/trust](https://jumboshrimpman.github.io/wealth-passport/trust) | — | Redirects to `/verification` |
 | Unknown path | any other URL | […/not-a-view](https://jumboshrimpman.github.io/wealth-passport/not-a-view) | — | Loud “not part of the walkthrough” — no silent fallback |
 
