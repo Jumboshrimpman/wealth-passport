@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useConsent } from "./ConsentContext";
-import { institutions, type Offer } from "../data/mock";
+import { institutions, type Offer } from "../data/catalog";
 import type { OfferDecision } from "../data/chat";
 
-const DECISION_KEY = "wealthpass-mock-offer-decisions";
+const DECISION_KEY = "wealthpass-offer-decisions";
 
 const OFFER_IDS = new Set(institutions.map((firm) => firm.offer.id));
 
@@ -36,18 +36,18 @@ function readStoredDecisions(): DecisionMap {
   try {
     parsed = JSON.parse(stored);
   } catch {
-    throw new Error("MOCK FAILURE: offer decision storage is corrupt and cannot be read.");
+    throw new Error("Offer decision storage is corrupt and cannot be read.");
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("MOCK FAILURE: offer decision storage is not an object.");
+    throw new Error("Offer decision storage is not an object.");
   }
   const next: DecisionMap = {};
   for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
     if (!OFFER_IDS.has(id)) {
-      throw new Error(`MOCK FAILURE: offer decision storage has unknown offer id "${id}".`);
+      throw new Error(`Offer decision storage has unknown offer id "${id}".`);
     }
     if (!isDecision(value)) {
-      throw new Error(`MOCK FAILURE: offer decision storage has invalid status for "${id}".`);
+      throw new Error(`Offer decision storage has invalid status for "${id}".`);
     }
     next[id] = value;
   }
@@ -67,7 +67,7 @@ function persistDecisions(decisions: DecisionMap) {
 function assertKnownOffer(offerId: string): Offer {
   const firm = institutions.find((item) => item.offer.id === offerId);
   if (!firm) {
-    throw new Error(`MOCK FAILURE: unknown offer id "${offerId}".`);
+    throw new Error(`Unknown offer id "${offerId}".`);
   }
   return firm.offer;
 }
@@ -90,7 +90,7 @@ export function OfferDecisionProvider({ children }: { children: ReactNode }) {
       return {
         ok: false,
         error:
-          "MOCK FAILURE: you cannot accept an offer while passport share consent is off. This mock will not pretend the accept went through. Turn consent on from Passport, then try again.",
+          "You cannot accept an offer while passport share consent is off. Turn consent on from Passport, then try again.",
       };
     }
     write(offerId, "accepted");
@@ -103,7 +103,7 @@ export function OfferDecisionProvider({ children }: { children: ReactNode }) {
       return {
         ok: false,
         error:
-          "MOCK FAILURE: you cannot decline an offer while passport share consent is off. Offers are not actionable without consent. This mock will not record a decline.",
+          "You cannot decline an offer while passport share consent is off. Offers are not actionable without consent.",
       };
     }
     write(offerId, "declined");
@@ -127,7 +127,7 @@ export function OfferDecisionProvider({ children }: { children: ReactNode }) {
 export function useOfferDecisions() {
   const value = useContext(OfferDecisionContext);
   if (!value) {
-    throw new Error("MOCK FAILURE: useOfferDecisions must be used inside OfferDecisionProvider.");
+    throw new Error("useOfferDecisions must be used inside OfferDecisionProvider.");
   }
   return value;
 }

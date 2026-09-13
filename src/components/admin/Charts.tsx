@@ -4,6 +4,7 @@ export interface ChartSlice {
   label: string;
   value: number;
   tone: ChartTone;
+  tooltip?: string;
 }
 
 export function BarList({
@@ -22,14 +23,21 @@ export function BarList({
     <ul className="dash-bars">
       {rows.map((row) => {
         const interactive = Boolean(onSelect);
+        const tip = row.tooltip ?? `${row.label}: ${format ? format(row.value) : row.value}`;
         const inner = (
           <>
             <span className="dash-bar-meta">
               <span>{row.label}</span>
-              <strong>{format ? format(row.value) : row.value}</strong>
+              {(() => {
+                const shown = format ? format(row.value) : String(row.value);
+                return shown ? <strong>{shown}</strong> : null;
+              })()}
             </span>
-            <span className="dash-bar-track" aria-hidden="true">
+            <span className="dash-bar-track">
               <span className={`dash-bar-fill tone-${row.tone}`} style={{ width: `${(row.value / max) * 100}%` }} />
+            </span>
+            <span className="dash-tooltip" role="tooltip">
+              {tip}
             </span>
           </>
         );
@@ -39,12 +47,15 @@ export function BarList({
               <button
                 type="button"
                 className={`dash-bar-btn ${selected === row.label ? "selected" : ""}`}
+                title={tip}
                 onClick={() => onSelect?.(row.label)}
               >
                 {inner}
               </button>
             ) : (
-              inner
+              <div className="dash-bar-static" title={tip}>
+                {inner}
+              </div>
             )}
           </li>
         );
@@ -57,10 +68,23 @@ export function StackedBar({ rows, format }: { rows: ChartSlice[]; format?: (val
   const total = rows.reduce((sum, row) => sum + row.value, 0) || 1;
   return (
     <div className="dash-stack">
-      <div className="allocation" aria-hidden="true">
-        {rows.map((row) => (
-          <span key={row.label} className={`tone-${row.tone}`} style={{ width: `${(row.value / total) * 100}%` }} />
-        ))}
+      <div className="dash-stack-bar">
+        {rows.map((row) => {
+          const tip = row.tooltip ?? `${row.label}: ${format ? format(row.value) : row.value}`;
+          return (
+            <span
+              key={row.label}
+              className={`dash-seg tone-${row.tone}`}
+              style={{ width: `${(row.value / total) * 100}%` }}
+              title={tip}
+              tabIndex={0}
+            >
+              <span className="dash-tooltip" role="tooltip">
+                {tip}
+              </span>
+            </span>
+          );
+        })}
       </div>
       <div className="legend">
         {rows.map((row) => (
@@ -96,6 +120,7 @@ export function Donut({ rows, center, format }: { rows: ChartSlice[]; center: st
         <g transform="rotate(-90 60 60)">
           {rows.map((row) => {
             const length = (row.value / total) * circumference;
+            const tip = row.tooltip ?? `${row.label}: ${format ? format(row.value) : row.value}`;
             const circle = (
               <circle
                 key={row.label}
@@ -107,7 +132,9 @@ export function Donut({ rows, center, format }: { rows: ChartSlice[]; center: st
                 strokeWidth="14"
                 strokeDasharray={`${length} ${circumference - length}`}
                 strokeDashoffset={-offset}
-              />
+              >
+                <title>{tip}</title>
+              </circle>
             );
             offset += length;
             return circle;
@@ -119,7 +146,7 @@ export function Donut({ rows, center, format }: { rows: ChartSlice[]; center: st
       </svg>
       <ul className="dash-donut-legend">
         {rows.map((row) => (
-          <li key={row.label}>
+          <li key={row.label} title={row.tooltip}>
             <span>
               <i className={`swatch tone-${row.tone}`} />
               {row.label}
@@ -147,27 +174,5 @@ export function Sparkline({ values }: { values: number[] }) {
     <svg className="dash-spark" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
       <polyline fill="none" stroke="var(--sage-500)" strokeWidth="2.2" points={points} />
     </svg>
-  );
-}
-
-export function StatusPanel({
-  ok,
-  title,
-  detail,
-}: {
-  ok: boolean;
-  title: string;
-  detail: string;
-}) {
-  return (
-    <div className={`dash-status ${ok ? "ok" : "warn"}`}>
-      <div className={`dash-status-pip ${ok ? "ok" : "warn"}`} aria-hidden="true" />
-      <div>
-        <strong>{title}</strong>
-        <p className="tiny muted" style={{ margin: "0.2rem 0 0" }}>
-          {detail}
-        </p>
-      </div>
-    </div>
   );
 }

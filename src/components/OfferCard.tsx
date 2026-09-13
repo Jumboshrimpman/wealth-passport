@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useConsent } from "../context/ConsentContext";
 import { useOfferDecisions } from "../context/OfferDecisionContext";
-import { offerHeadline, type Institution } from "../data/mock";
+import { offerHeadline, type Institution } from "../data/catalog";
 import { Badge } from "./ui";
 
 export function OfferCard({
@@ -79,7 +79,7 @@ export function OfferCard({
       </div>
       {!consent.shared ? (
         <aside className="gate-error" role="alert">
-          MOCK FAILURE: consent is off. Accept and Decline are blocked until passport share is on.
+          Consent is off. Accept and Decline are blocked until passport share is on.
         </aside>
       ) : null}
       {actionError ? (

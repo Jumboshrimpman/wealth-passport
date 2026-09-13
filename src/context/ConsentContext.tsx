@@ -98,7 +98,7 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
 export function useConsent() {
   const value = useContext(ConsentContext);
   if (!value) {
-    throw new Error("MOCK FAILURE: useConsent must be used inside ConsentProvider.");
+    throw new Error("useConsent must be used inside ConsentProvider.");
   }
   return value;
 }

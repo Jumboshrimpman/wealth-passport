@@ -4,7 +4,7 @@ import { OfferCard } from "../components/OfferCard";
 import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
 import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
-import { formatUsd, rankedInstitutions } from "../data/mock";
+import { formatUsd, rankedInstitutions } from "../data/catalog";
 
 export function Passport() {
   const consent = useConsent();
@@ -108,7 +108,7 @@ export function Passport() {
                       <Badge tone="verified">Verified custodian</Badge>
                     </div>
                   ) : (
-                    <div className="tiny muted">Unverified in this mock</div>
+                    <div className="tiny muted">Unverified</div>
                   )}
                 </td>
                 <td>{account.type}</td>

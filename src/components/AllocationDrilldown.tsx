@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { AllocationNode } from "../../shared/types";
-import { formatUsd } from "../data/mock";
+import { formatUsd } from "../data/catalog";
 import { formatPct } from "../data/holdings";
 import { Badge } from "./ui";
 

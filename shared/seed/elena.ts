@@ -129,7 +129,7 @@ export const elenaClient: ClientRecord = {
       kind: "custodian",
       title: "Merrill Lynch custodian match",
       detail:
-        "Account ending 4481 illustrated as custodian-verified. Badge is mock data stored on the client record — no DTCC or firm API was called.",
+        "Account ending 4481 illustrated as custodian-verified. Badge is stored on the client record — no DTCC or firm API was called.",
     },
     {
       date: "2026-08-20",

@@ -1,5 +1,5 @@
 import { useClient } from "../context/ClientContext";
-import { formatUsd } from "../data/mock";
+import { formatUsd } from "../data/catalog";
 
 export function ClientSwitcher() {
   const { clients, passport, source, selectClient } = useClient();

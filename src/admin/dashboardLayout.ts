@@ -4,10 +4,7 @@ export const WIDGET_IDS = [
   "aum",
   "placements",
   "ops",
-  "modes",
-  "rank-depth",
-  "api",
-  "clerk",
+  "bank-ranking",
 ] as const;
 
 export type WidgetId = (typeof WIDGET_IDS)[number];
@@ -26,7 +23,7 @@ export const WIDGET_META: Record<
   { title: string; allowedViz: VizKind[]; defaultViz: VizKind; defaultSpan: 1 | 2 }
 > = {
   clients: {
-    title: "Client records in SQLite",
+    title: "Client records",
     allowedViz: ["bars", "donut"],
     defaultViz: "bars",
     defaultSpan: 1,
@@ -38,7 +35,7 @@ export const WIDGET_META: Record<
     defaultSpan: 1,
   },
   aum: {
-    title: "Illustrative AUM on file",
+    title: "Verified AUM",
     allowedViz: ["stack", "bars", "donut"],
     defaultViz: "stack",
     defaultSpan: 2,
@@ -55,28 +52,10 @@ export const WIDGET_META: Record<
     defaultViz: "donut",
     defaultSpan: 1,
   },
-  modes: {
-    title: "Mock mode coverage",
-    allowedViz: ["donut", "bars"],
-    defaultViz: "donut",
-    defaultSpan: 1,
-  },
-  "rank-depth": {
-    title: "Inbox rank depth",
+  "bank-ranking": {
+    title: "Bank ranking",
     allowedViz: ["bars", "donut"],
     defaultViz: "bars",
-    defaultSpan: 1,
-  },
-  api: {
-    title: "Client API",
-    allowedViz: ["status", "bars"],
-    defaultViz: "status",
-    defaultSpan: 1,
-  },
-  clerk: {
-    title: "Clerk gate",
-    allowedViz: ["status", "donut"],
-    defaultViz: "status",
     defaultSpan: 1,
   },
 };
@@ -90,7 +69,7 @@ export function defaultLayout(): WidgetLayout[] {
   }));
 }
 
-const STORAGE_KEY = "wealthpass-admin-dashboard-v1";
+const STORAGE_KEY = "wealthpass-admin-dashboard-v2";
 
 function isViz(value: unknown, id: WidgetId): value is VizKind {
   return typeof value === "string" && (WIDGET_META[id].allowedViz as string[]).includes(value);
@@ -138,7 +117,7 @@ export function readStoredLayout(): WidgetLayout[] {
 }
 
 export function persistLayout(layout: WidgetLayout[]) {
-  const payload = JSON.stringify({ version: 1, widgets: layout });
+  const payload = JSON.stringify({ version: 2, widgets: layout });
   try {
     localStorage.setItem(STORAGE_KEY, payload);
     sessionStorage.setItem(STORAGE_KEY, payload);

@@ -1,6 +1,6 @@
 import type { ClientRecord } from "../types";
 
-/** Priya Shah — second client record for the local SQLite mock. */
+/** Priya Shah — second client record in the local SQLite store. */
 export const priyaClient: ClientRecord = {
   id: "priya-shah",
   household: {
@@ -153,6 +153,6 @@ export const priyaClient: ClientRecord = {
     badge: "Goldman Sachs",
     accountMask: "Account ending 7720",
     title: "Goldman Private Wealth",
-    body: "The taxable joint account is illustrated as custodian-matched to Goldman Sachs. Schwab, Fidelity 401(k), and J.P. Morgan cash remain unverified in this mock so the badge is meaningful.",
+    body: "The taxable joint account is illustrated as custodian-matched to Goldman Sachs. Schwab, Fidelity 401(k), and J.P. Morgan cash remain unverified so the badge is meaningful.",
   },
 };

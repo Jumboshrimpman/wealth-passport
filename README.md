@@ -18,9 +18,9 @@ Cursor / Cloud Agents should follow [AGENTS.md](AGENTS.md). That file repeats th
 
 ---
 
-## Investor mock (this branch)
+## Product
 
-**WealthPass** is an investor walkthrough mock. **Client passports** (Elena Whitmore and Priya Shah) are stored in a local **SQLite** database and served by a small Express API. Institution offers, targeting, and paid placements remain frontend fixtures. There are no live custody APIs, KYC, payments, or Morningstar / Informa integrations.
+**WealthPass** presents consented client passports so institutions can pay to show a fit. **Client passports** (Elena Whitmore and Priya Shah) are stored in a local **SQLite** database and served by a small Express API. GitHub Pages is a static bundle and falls back to the same two client seeds if `/api` is unreachable.
 
 Tagline: *Standardized and comprehensive investment potential across firms.*
 
@@ -36,7 +36,7 @@ The site shows **Sign-in** for existing Clerk users. There is no Sign-up UI. If 
 
 This is a **static Pages** bundle. Only the **publishable** key is baked in at build (`VITE_CLERK_PUBLISHABLE_KEY`). Never put `CLERK_SECRET_KEY` in Vite or the repo.
 
-If the publishable key is missing, Actions **fails the build** (the unlocked mock is not shipped).
+If the publishable key is missing, Actions **fails the build**.
 
 #### Clerk Dashboard (Pages first)
 
@@ -84,7 +84,7 @@ npm run preview    # serve the built bundle
 
 Delete `data/wealthpass.sqlite` to re-seed both clients from `shared/seed/`.
 
-### Household figures (MOCK)
+### Household figures
 
 Two client records ship in the database:
 
@@ -111,26 +111,25 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 
 | View | Route | Public URL | Mode | What it shows |
 | --- | --- | --- | --- | --- |
-| Client chat (home) | `/chat` | […/chat](https://jumboshrimpman.github.io/wealth-passport/chat) | Client, Admin | MOCK assistant greets the selected client (Elena or Priya) with that household’s net worth. Suggestion chips only |
+| Client chat (home) | `/chat` | […/chat](https://jumboshrimpman.github.io/wealth-passport/chat) | Client, Admin | Assistant greets the selected client (Elena or Priya) with that household’s net worth. Suggestion chips only |
 | Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | Holistic profile loaded from SQLite (or seed fallback), expandable securities, per-client consent |
 | Verification | `/verification` | […/verification](https://jumboshrimpman.github.io/wealth-passport/verification) | Client, Admin | Advisor and custodian badges from the selected client record |
 | Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; Accept / Decline persist in browser storage; blocked if consent is off |
 | Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) |
 | Ops reuse | `/ops` | […/ops](https://jumboshrimpman.github.io/wealth-passport/ops) | Client, Admin | Rollover packet with passport-filled fields |
-| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Customizable dashboard for the nine walkthrough metrics (charts, reorder, hide, width) plus both sides |
+| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Customizable dashboard: client records, verified AUM, institutions, placements, ops reuse, bank ranking |
 | Legacy Trust URL | `/trust` | […/trust](https://jumboshrimpman.github.io/wealth-passport/trust) | — | Redirects to `/verification` |
 | Unknown path | any other URL | […/not-a-view](https://jumboshrimpman.github.io/wealth-passport/not-a-view) | — | Loud “not part of the walkthrough” — no silent fallback |
 
 Deep links work because the deploy workflow copies `index.html` to `404.html`.
 
-### What is deliberately fake
+### Data notes
 
-- Client households are mock records in SQLite (seeded from `shared/seed/`), not live custody.
-- Institution offers and admin board metrics remain TypeScript fixtures.
-- Offer Accept / Decline still live in browser storage. Consent is per client and persists in SQLite when the API is running.
-- The client chat is suggestion chips plus canned replies for the selected client. There is no text box and no model API.
-- Vendor names (Morningstar, Informa) appear as **illustrated first-party data sources**, not live feeds.
-- Footer mentions future quant matching / instant quotes. Those screens are **not built**. Institution matching is not wired to the new client store yet.
+- Client households are seeded records in SQLite (`shared/seed/`), not live custody feeds.
+- Institution offers and admin board counts are TypeScript fixtures until those APIs exist.
+- Offer Accept / Decline live in browser storage. Consent is per client and persists in SQLite when the API is running.
+- The client chat is suggestion chips plus canned replies for the selected client.
+- Vendor names (Morningstar, Informa) appear as first-party data sources, not live feeds.
 
 ### Stack
 

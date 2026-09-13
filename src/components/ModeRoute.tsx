@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { modesAllowedForPath, PRODUCT_NAME } from "../data/mock";
+import { modesAllowedForPath, PRODUCT_NAME } from "../data/catalog";
 import { useMode } from "../context/ModeContext";
 
 const MODE_LABEL: Record<string, string> = {
@@ -22,7 +22,7 @@ export function ModeRoute({
     const suggested = allowed[0];
     return (
       <section className="panel">
-        <p className="kicker">Mock routing · mode wall</p>
+        <p className="kicker">Routing · mode wall</p>
         <h1>This screen is not part of {MODE_LABEL[mode]} mode.</h1>
         <p className="lede">
           {PRODUCT_NAME} keeps Client, Institution, and Admin as separate walkthroughs. There is

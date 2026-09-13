@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { MODE_HOMES, type AppMode } from "../data/mock";
+import { MODE_HOMES, type AppMode } from "../data/catalog";
 
-const MODE_KEY = "wealthpass-mock-mode";
+const MODE_KEY = "wealthpass-mode";
 
 type ModeContextValue = {
   mode: AppMode;
@@ -50,7 +50,7 @@ export function ModeProvider({ children }: { children: ReactNode }) {
 export function useMode() {
   const value = useContext(ModeContext);
   if (!value) {
-    throw new Error("MOCK FAILURE: useMode must be used inside ModeProvider.");
+    throw new Error("useMode must be used inside ModeProvider.");
   }
   return value;
 }

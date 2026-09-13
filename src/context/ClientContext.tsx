@@ -82,7 +82,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 export function useClient() {
   const value = useContext(ClientContext);
   if (!value) {
-    throw new Error("MOCK FAILURE: useClient must be used inside ClientProvider.");
+    throw new Error("useClient must be used inside ClientProvider.");
   }
   return value;
 }
