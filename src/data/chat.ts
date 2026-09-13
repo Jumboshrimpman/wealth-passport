@@ -23,9 +23,9 @@ export interface ChatReply {
   intent: string;
 }
 
-export const MOCK_ASSISTANT_LABEL = "MOCK assistant";
+export const MOCK_ASSISTANT_LABEL = "Assistant";
 
-export const UNHANDLED_CHAT_REPLY = "This mock only answers the suggested questions.";
+export const UNHANDLED_CHAT_REPLY = "This assistant only answers the suggested questions.";
 
 export const chatSuggestions: ChatSuggestion[] = [
   {
@@ -68,7 +68,7 @@ function normalize(input: string): string {
 }
 
 function offerLine(offer: Offer, decision: OfferDecision | undefined): string {
-  const status = decision ? ` · ${decision === "accepted" ? "Accepted" : "Declined"}` : " · pending";
+  const status = decision ? ` · ${decision === "Accepted" ? "Accepted" : "Declined"}` : " · pending";
   return `Rank ${offer.rank}: ${offerHeadline(offer)}${status}. ${offer.fitReason}`;
 }
 
@@ -82,7 +82,7 @@ function replyStrategies(
       intent: "strategies-offers",
       handled: true,
       text:
-        "MOCK FAILURE: passport share consent is off, so this mock has no ranked offers to describe. I will not invent an inbox. Turn consent on from Passport, then tap this suggestion again — or open Offers.",
+        "Passport share consent is off, so no ranked offers to describe. I will not invent an inbox. Turn consent on from Passport, then tap this suggestion again — or open Offers.",
     };
   }
 
@@ -94,7 +94,7 @@ function replyStrategies(
     text: [
       `Recommended strategies and latest offers for the ${client.household.name} (fixtures, not a live model). Ranked to this ${formatUsd(client.household.householdValue, true)} household — allocation, ${client.household.domicile}, and verified collateral.`,
       ...lines,
-      "Accept or Decline on Offers (or the Passport offer section). Status is stored in this browser only.",
+      "Accept or Decline on Offers (or the Passport offer section).",
     ].join("\n\n"),
   };
 }
@@ -109,7 +109,7 @@ function replyUnderstandOffers(
       intent: "understand-offers",
       handled: true,
       text:
-        "MOCK FAILURE: passport share consent is off, so there are no offers to understand. Accept and Decline are blocked. Turn consent on from Passport, then tap this suggestion again.",
+        "Passport share consent is off, so there are no offers to understand. Accept and Decline are blocked. Turn consent on from Passport, then tap this suggestion again.",
     };
   }
 
@@ -121,7 +121,7 @@ function replyUnderstandOffers(
     text: [
       `These are paid placements ranked to the ${client.household.name} ${formatUsd(client.household.householdValue, true)} passport — not an optimizer and not a live quote.`,
       ...lines,
-      "On Offers or Passport, tap Accept or Decline. This mock stores that status in the browser. It will not accept without consent.",
+      "On Offers or Passport, tap Accept or Decline. It will not accept without consent.",
     ].join("\n\n"),
   };
 }
@@ -132,7 +132,7 @@ function replyVerification(client: ClientPassport): ChatReply {
     intent: "verification",
     handled: true,
     text: [
-      `Verification on this mock passport is stored on the ${client.household.name} client record — no FINRA or custodian API.`,
+      `Verification on this passport is stored on the ${client.household.name} client record — no FINRA or custodian API.`,
       `Advisor: ${client.advisor.name}, ${client.advisor.title} at ${client.advisor.firm}. BrokerCheck ${client.advisor.brokerCheckId} (placeholder). Illustrated since ${client.advisor.since}.`,
       verified
         ? `Custodian: ${verified.custodian} ${verified.name} (${client.verifiedCustodian.accountMask}) is the verified sleeve.`
@@ -152,7 +152,7 @@ function replyOps(client: ClientPassport): ChatReply {
     text: [
       `${opsPacket.title}: ${opsPacket.from} → ${opsPacket.to}.`,
       `${opsPacket.reused} of ${opsPacket.total} fields reuse the ${client.household.name} passport (${reused} marked reused, ${needed} still collected).`,
-      "Still needed in this mock include wet signature and receiving-plan acceptance. No ACATS or transfer agent is connected.",
+      "Still needed to include wet signature and receiving-plan acceptance. No ACATS or transfer agent is connected.",
       "Open Ops to see each reused field.",
     ].join("\n\n"),
   };
@@ -205,12 +205,12 @@ export function answerMockChat(
   if (suggestion.id === "verification") return replyVerification(ctx.client);
   if (suggestion.id === "ops") return replyOps(ctx.client);
 
-  throw new Error(`MOCK FAILURE: suggestion "${suggestion.id}" has no canned reply.`);
+  throw new Error(`FAILURE: suggestion "${suggestion.id}" has no canned reply.`);
 }
 
 const REQUIRED_CHIP_IDS = ["strategies-offers", "understand-offers", "portfolio"] as const;
 for (const id of REQUIRED_CHIP_IDS) {
   if (!chatSuggestions.some((item) => item.id === id)) {
-    throw new Error(`MOCK DATA FAILURE: required chat chip "${id}" is missing.`);
+    throw new Error(`DATA FAILURE: required chat chip "${id}" is missing.`);
   }
 }
