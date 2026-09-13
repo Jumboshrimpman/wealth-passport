@@ -1,8 +1,5 @@
 export const PRODUCT_NAME = "WealthPass";
 
-export const DEMO_NOTICE =
-  "MOCK DEMO — WealthPass walkthrough. Client passports load from a local SQLite API when you run the full stack. Institution offers remain fixtures. Access is Clerk-gated. No live custody, KYC, payments, or manager feeds.";
-
 export const TAGLINE =
   "Standardized and comprehensive investment potential across firms.";
 

@@ -112,33 +112,6 @@ p {
   top: 12px;
 }
 
-.mock-banner {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: var(--banner);
-  color: var(--banner-text);
-  border-bottom: 1px solid rgba(243, 230, 207, 0.16);
-}
-
-.mock-banner-inner {
-  max-width: var(--max);
-  margin: 0 auto;
-  padding: 0.65rem 1.25rem;
-  display: flex;
-  gap: 1rem;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: 0.86rem;
-}
-
-.mock-banner strong {
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 0.72rem;
-  color: var(--camel-200);
-}
-
 .site-header {
   border-bottom: 1px solid var(--line);
   background: rgba(251, 248, 242, 0.86);
@@ -895,6 +868,7 @@ textarea {
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
+  overflow: visible;
 }
 
 .dash-widget.span-2 {
@@ -956,14 +930,73 @@ textarea {
 .dash-bar-fill {
   display: block;
   height: 100%;
+  border-radius: 999px;
 }
 
-.dash-bar-btn {
+.dash-bar-static {
+  width: 100%;
+}
+
+.dash-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  z-index: 4;
+  min-width: 12rem;
+  max-width: 18rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: pre-line;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  box-shadow: var(--shadow);
+}
+
+.dash-bar-btn:hover .dash-tooltip,
+.dash-bar-btn:focus-visible .dash-tooltip,
+.dash-bar-static:hover .dash-tooltip,
+.dash-seg:hover .dash-tooltip,
+.dash-seg:focus-visible .dash-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dash-stack-bar {
+  display: flex;
+  height: 18px;
+  overflow: visible;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+
+.dash-seg {
+  position: relative;
+  display: block;
+  height: 100%;
+  cursor: default;
+}
+
+.dash-rank .kicker {
+  margin-bottom: 0.7rem;
+}
+
+.dash-bar-btn,
+.dash-bar-static {
+  position: relative;
   width: 100%;
   border: 0;
   background: transparent;
   padding: 0;
   text-align: left;
+}
+
+.dash-bar-btn {
   cursor: pointer;
 }
 
@@ -1046,10 +1079,5 @@ textarea {
 
   .dash-widget.span-2 {
     grid-column: span 1;
-  }
-
-  .mock-banner-inner {
-    flex-direction: column;
-    gap: 0.25rem;
   }
 }

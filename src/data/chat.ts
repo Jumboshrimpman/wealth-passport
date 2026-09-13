@@ -1,5 +1,5 @@
 import type { ClientPassport } from "../../shared/types";
-import { formatUsd, offerHeadline, rankedInstitutions, type Offer } from "./mock";
+import { formatUsd, offerHeadline, rankedInstitutions, type Offer } from "./catalog";
 
 export type OfferDecision = "accepted" | "declined";
 
@@ -23,7 +23,7 @@ export interface ChatReply {
   intent: string;
 }
 
-export const MOCK_ASSISTANT_LABEL = "Assistant";
+export const ASSISTANT_LABEL = "Assistant";
 
 export const UNHANDLED_CHAT_REPLY = "This assistant only answers the suggested questions.";
 
@@ -68,7 +68,7 @@ function normalize(input: string): string {
 }
 
 function offerLine(offer: Offer, decision: OfferDecision | undefined): string {
-  const status = decision ? ` · ${decision === "Accepted" ? "Accepted" : "Declined"}` : " · pending";
+  const status = decision ? ` · ${decision === "accepted" ? "Accepted" : "Declined"}` : " · pending";
   return `Rank ${offer.rank}: ${offerHeadline(offer)}${status}. ${offer.fitReason}`;
 }
 
@@ -187,7 +187,7 @@ function replyPortfolio(client: ClientPassport): ChatReply {
   };
 }
 
-export function answerMockChat(
+export function answerDeskChat(
   input: string,
   ctx: { client: ClientPassport; consentOn: boolean; decisions: Record<string, OfferDecision> },
 ): ChatReply {

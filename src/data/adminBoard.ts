@@ -1,5 +1,5 @@
-import type { InstitutionKind, PlacementKind } from "./mock";
-import { institutions } from "./mock";
+import type { InstitutionKind, PlacementKind } from "./catalog";
+import { institutions } from "./catalog";
 
 export const BOARD_COUNT = 14;
 export const WALKTHROUGH_SHOWN = 3;

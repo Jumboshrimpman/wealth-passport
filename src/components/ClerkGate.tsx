@@ -1,7 +1,7 @@
 import { SignIn, useAuth } from "@clerk/clerk-react";
 import type { ReactNode } from "react";
 import { CLERK_AFTER_AUTH_URL, CLERK_PAGES_ORIGIN, clerkAppearance } from "../auth/clerk";
-import { DEMO_NOTICE, PRODUCT_NAME, TAGLINE } from "../data/mock";
+import { PRODUCT_NAME, TAGLINE } from "../data/catalog";
 
 export function ClerkGate({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
@@ -26,8 +26,7 @@ export function ClerkGate({ children }: { children: ReactNode }) {
           Access is <strong>provisioned by an admin</strong> — invite-only. There is no public
           sign-up. Sign in with the Clerk account an admin created for you. If sign-in fails with
           “couldn’t find your account”, ask an admin to create your user in Clerk Dashboard →
-          Users (or send an invitation). Holdings stay mock fixtures. There is no local password
-          fallback.
+          Users (or send an invitation). There is no local password fallback.
         </p>
         <SignIn
           routing="hash"
@@ -54,12 +53,6 @@ export function ClerkGate({ children }: { children: ReactNode }) {
 function GateShell({ children }: { children: ReactNode }) {
   return (
     <div className="gate">
-      <div className="mock-banner" role="status">
-        <div className="mock-banner-inner">
-          <strong>Mock demo · {PRODUCT_NAME}</strong>
-          <span>{DEMO_NOTICE}</span>
-        </div>
-      </div>
       <main className="gate-main">
         <section className="panel gate-card">{children}</section>
       </main>

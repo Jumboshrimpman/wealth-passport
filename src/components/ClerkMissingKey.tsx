@@ -3,23 +3,16 @@ import {
   CLERK_PAGES_HOME,
   CLERK_REDIRECT_URLS,
 } from "../auth/clerk";
-import { DEMO_NOTICE, PRODUCT_NAME } from "../data/mock";
 
 export function ClerkMissingKey() {
   return (
     <div className="gate">
-      <div className="mock-banner" role="status">
-        <div className="mock-banner-inner">
-          <strong>Mock demo · {PRODUCT_NAME}</strong>
-          <span>{DEMO_NOTICE}</span>
-        </div>
-      </div>
       <main className="gate-main">
         <section className="panel gate-card gate-card-wide">
           <p className="kicker">Clerk setup · GitHub Pages</p>
           <h1>VITE_CLERK_PUBLISHABLE_KEY is missing.</h1>
           <p className="lede">
-            WealthPass will not open on {CLERK_PAGES_HOME}. This static Pages mock needs the Clerk
+            WealthPass will not open on {CLERK_PAGES_HOME}. The Pages build needs the Clerk
             publishable key at build time. There is no password fallback and no invented key.
           </p>
           <aside className="gate-error" role="alert">

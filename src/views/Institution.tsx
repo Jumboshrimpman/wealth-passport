@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { formatUsd, institutions, offerHeadline, type Institution as InstitutionRecord } from "../data/mock";
+import { formatUsd, institutions, offerHeadline, type Institution as InstitutionRecord } from "../data/catalog";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
 
 export function Institution() {
@@ -10,7 +10,7 @@ export function Institution() {
   function selectFirm(id: string) {
     const next = institutions.find((item) => item.id === id);
     if (!next) {
-      throw new Error(`MOCK FAILURE: unknown institution id "${id}".`);
+      throw new Error(`Unknown institution id "${id}".`);
     }
     setActiveId(id);
     setDraft(next);
@@ -45,8 +45,8 @@ export function Institution() {
       </div>
 
       <Disclaimer>
-        Local mock controls only. Changing sliders does not call an API, reserve inventory, or
-        charge bps. If a placement system is not wired, this console must stay labeled MOCK.
+        Targeting controls update this console only. Changing sliders does not reserve inventory or
+        charge bps until a placement system is connected.
         Client screens are a different mode — they are not in this nav.
       </Disclaimer>
 

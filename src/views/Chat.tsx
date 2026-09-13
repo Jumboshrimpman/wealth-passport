@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  answerMockChat,
+  answerDeskChat,
   chatSuggestions,
   greetingMessage,
-  MOCK_ASSISTANT_LABEL,
+  ASSISTANT_LABEL,
   UNHANDLED_CHAT_REPLY,
   type ChatMessage,
 } from "../data/chat";
@@ -44,7 +44,7 @@ export function Chat() {
       text: label,
       handled: true,
     };
-    const reply = answerMockChat(label, { client: passport, consentOn: consent.shared, decisions });
+    const reply = answerDeskChat(label, { client: passport, consentOn: consent.shared, decisions });
     const assistant: ChatMessage = {
       id: nextMessageId(),
       role: "assistant",
@@ -57,7 +57,7 @@ export function Chat() {
   return (
     <div className="chat-page">
       <header className="chat-intro">
-        <p className="kicker">Client home · MOCK chat</p>
+        <p className="kicker">Client home</p>
         <h1>Your WealthPass desk</h1>
         <p className="lede">
           Suggested questions only — each chip has a preloaded fixture reply for{" "}
@@ -67,7 +67,7 @@ export function Chat() {
         </p>
       </header>
 
-      <section className="panel chat-shell" aria-label="Mock client chat">
+      <section className="panel chat-shell" aria-label="Client chat">
         <div className="chat-thread" ref={threadRef} role="log" aria-live="polite">
           {messages.map((message) => (
             <article
@@ -77,7 +77,7 @@ export function Chat() {
               {message.role === "assistant" ? (
                 <p className="chat-meta">
                   <Badge tone={message.handled ? "verified" : "warn"} compact>
-                    {MOCK_ASSISTANT_LABEL}
+                    {ASSISTANT_LABEL}
                   </Badge>
                 </p>
               ) : (

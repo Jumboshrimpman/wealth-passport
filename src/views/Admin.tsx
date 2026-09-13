@@ -3,36 +3,27 @@ import { AdminDashboard } from "../components/admin/AdminDashboard";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
 import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
-import { useMode } from "../context/ModeContext";
-import { formatUsd, offerHeadline, rankedInstitutions } from "../data/mock";
+import { formatUsd, offerHeadline, rankedInstitutions } from "../data/catalog";
 
 export function Admin() {
   const consent = useConsent();
-  const { mode } = useMode();
-  const { passport, clients, source, selectClient } = useClient();
+  const { passport, clients, selectClient } = useClient();
   const ranked = rankedInstitutions();
   const household = passport.household;
 
   return (
     <div className="stack">
       <SectionHead
-        kicker="Admin · customizable control room"
-        title="Walkthrough dashboard"
-        lede="Each former metric tile is now a widget: live client/ops slices where the API exists, illustrated board counts where it does not, plus charts you can reorder, resize, hide, and switch. Client and Institution modes stay separate; this mode is the only place that stacks both."
+        kicker="Admin · control room"
+        title="Operations dashboard"
+        lede="Widgets for client records, verified AUM, institutions, placements, ops reuse, and bank ranking. Reorder, resize, and switch charts. Client and Institution modes stay separate; this mode is the only place that stacks both."
       />
 
-      <AdminDashboard
-        clients={clients}
-        passport={passport}
-        source={source}
-        mode={mode}
-        selectClient={selectClient}
-      />
+      <AdminDashboard clients={clients} passport={passport} selectClient={selectClient} />
 
       <Disclaimer>
-        Paying-institution headcount, open placements, and weekly sparkline are illustrated board
-        fixtures. Client AUM, record counts, ops reuse, API health, and Clerk wiring are read from
-        the current store and build. This is not a warehouse.
+        Verified AUM is household value stored on each client record. Hover a bar to confirm the
+        person and total household assets.
       </Disclaimer>
 
       <div className="split">

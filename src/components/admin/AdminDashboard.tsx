@@ -16,31 +16,23 @@ import {
   type VizKind,
   type WidgetLayout,
 } from "../../admin/dashboardLayout";
-import { formatUsd, rankedInstitutions, type AppMode } from "../../data/mock";
-import type { ClientDataSource } from "../../api/clients";
+import { formatUsd, rankedInstitutions } from "../../data/catalog";
 import type { ClientPassport, ClientSummary } from "../../../shared/types";
-import { Badge } from "../ui";
-import { BarList, Donut, Sparkline, StackedBar, StatusPanel, type ChartSlice } from "./Charts";
-
-const MODE_SLICES: { id: AppMode; label: string; tone: ChartSlice["tone"] }[] = [
-  { id: "client", label: "Client", tone: "camel" },
-  { id: "institution", label: "Institution", tone: "sage" },
-  { id: "admin", label: "Admin", tone: "ink" },
-];
+import { BarList, Donut, Sparkline, StackedBar, type ChartSlice } from "./Charts";
 
 const TONES: ChartSlice["tone"][] = ["camel", "sage", "ink", "clay", "stone"];
+
+function verifiedAumTooltip(name: string, principals: string, householdValue: number): string {
+  return `${name} · ${principals}\nVerified household assets ${formatUsd(householdValue)} (${formatUsd(householdValue, true)})`;
+}
 
 export function AdminDashboard({
   clients,
   passport,
-  source,
-  mode,
   selectClient,
 }: {
   clients: ClientSummary[];
   passport: ClientPassport;
-  source: ClientDataSource;
-  mode: AppMode;
   selectClient: (id: string) => void;
 }) {
   const [layout, setLayout] = useState<WidgetLayout[]>(readStoredLayout);
@@ -62,8 +54,7 @@ export function AdminDashboard({
             Customizable dashboard
           </p>
           <p className="tiny muted" style={{ margin: "0.2rem 0 0" }}>
-            Layout is saved in this browser. Live slices use the client API (or seed fallback); board
-            counts stay illustrated fixtures.
+            Reorder, resize, and switch charts. Layout is saved in this browser.
           </p>
         </div>
         <div className="row">
@@ -104,21 +95,8 @@ export function AdminDashboard({
       <div className="dash-grid">
         {visible.map((item) => (
           <article key={item.id} className={`dash-widget span-${item.span}`}>
-            {editing ? (
-              <WidgetChrome
-                layout={layout}
-                item={item}
-                onChange={update}
-              />
-            ) : null}
-            <WidgetBody
-              item={item}
-              clients={clients}
-              passport={passport}
-              source={source}
-              mode={mode}
-              selectClient={selectClient}
-            />
+            {editing ? <WidgetChrome layout={layout} item={item} onChange={update} /> : null}
+            <WidgetBody item={item} clients={clients} passport={passport} selectClient={selectClient} />
           </article>
         ))}
       </div>
@@ -201,15 +179,11 @@ function WidgetBody({
   item,
   clients,
   passport,
-  source,
-  mode,
   selectClient,
 }: {
   item: WidgetLayout;
   clients: ClientSummary[];
   passport: ClientPassport;
-  source: ClientDataSource;
-  mode: AppMode;
   selectClient: (id: string) => void;
 }) {
   const aumRows = useMemo<ChartSlice[]>(
@@ -218,6 +192,7 @@ function WidgetBody({
         label: `${client.clientFirstName} · ${client.name}`,
         value: client.householdValue,
         tone: TONES[index % TONES.length],
+        tooltip: verifiedAumTooltip(client.clientFirstName, client.principals, client.householdValue),
       })),
     [clients],
   );
@@ -228,8 +203,8 @@ function WidgetBody({
     tone: row.tone,
   }));
   const shownVsRest: ChartSlice[] = [
-    { label: "Shown in walkthrough", value: WALKTHROUGH_SHOWN, tone: "sage" },
-    { label: "On the board only", value: BOARD_COUNT - WALKTHROUGH_SHOWN, tone: "stone" },
+    { label: "On this console", value: WALKTHROUGH_SHOWN, tone: "sage" },
+    { label: "Remainder of the board", value: BOARD_COUNT - WALKTHROUGH_SHOWN, tone: "stone" },
   ];
   const placementRows: ChartSlice[] = placementMix.map((row) => ({
     label: row.label,
@@ -242,19 +217,13 @@ function WidgetBody({
     { label: "Reused from passport", value: reused, tone: "sage" },
     { label: "Still collected", value: needed, tone: "clay" },
   ];
-  const modeRows: ChartSlice[] = MODE_SLICES.map((slice) => ({
-    label: slice.label + (slice.id === mode ? " · current" : ""),
-    value: 1,
-    tone: slice.tone,
-  }));
   const ranked = rankedInstitutions();
   const rankRows: ChartSlice[] = ranked.map((firm, index) => ({
-    label: `Rank ${firm.offer.rank} · ${firm.name}`,
+    label: `${firm.offer.rank}. ${firm.name}`,
     value: ranked.length - index,
     tone: TONES[index % TONES.length],
+    tooltip: `${firm.offer.rank}. ${firm.name} · ${firm.offer.strategy}`,
   }));
-  const clerkOn = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim());
-  const apiOn = source === "api";
 
   switch (item.id) {
     case "clients":
@@ -276,7 +245,16 @@ function WidgetBody({
                 }}
               />
             ),
-            donut: <Donut rows={clients.map((_, i) => ({ label: clients[i].clientFirstName, value: 1, tone: TONES[i] }))} center={String(clients.length)} />,
+            donut: (
+              <Donut
+                rows={clients.map((client, i) => ({
+                  label: client.clientFirstName,
+                  value: 1,
+                  tone: TONES[i],
+                }))}
+                center={String(clients.length)}
+              />
+            ),
             stack: null,
             status: null,
           })}
@@ -287,7 +265,7 @@ function WidgetBody({
         <MetricShell
           kicker={WIDGET_META.institutions.title}
           value={String(BOARD_COUNT)}
-          note={`${WALKTHROUGH_SHOWN} shown in this walkthrough`}
+          note={`${WALKTHROUGH_SHOWN} shown on this console`}
         >
           {renderViz(item.viz, {
             donut: <Donut rows={shownVsRest} center={String(BOARD_COUNT)} />,
@@ -296,7 +274,7 @@ function WidgetBody({
             status: null,
           })}
           <p className="tiny muted" style={{ marginTop: "0.7rem" }}>
-            Walkthrough desks: {payingBoard.filter((desk) => desk.walkthrough).map((desk) => desk.name).join(" · ")}
+            Console desks: {payingBoard.filter((desk) => desk.walkthrough).map((desk) => desk.name).join(" · ")}
           </p>
         </MetricShell>
       );
@@ -305,7 +283,7 @@ function WidgetBody({
         <MetricShell
           kicker={WIDGET_META.aum.title}
           value={formatUsd(aumTotal, true)}
-          note={`${clients.length} passports · ${aumRows.map((row) => `${formatUsd(row.value, true)}`).join(" · ")}`}
+          note="Hover a bar to verify the person and household assets"
         >
           {renderViz(item.viz, {
             stack: <StackedBar rows={aumRows} format={(n) => formatUsd(n, true)} />,
@@ -320,7 +298,7 @@ function WidgetBody({
         <MetricShell
           kicker={WIDGET_META.placements.title}
           value={String(OPEN_PLACEMENTS)}
-          note="Ranked strategy / bps / special slots — fixture mix, not a live exchange"
+          note="Ranked strategy / bps / special slots"
         >
           <Sparkline values={placementWeekly} />
           {renderViz(item.viz, {
@@ -346,99 +324,17 @@ function WidgetBody({
           })}
         </MetricShell>
       );
-    case "modes":
+    case "bank-ranking":
       return (
-        <MetricShell kicker={WIDGET_META.modes.title} value="3" note="Client · Institution · Admin">
+        <div className="dash-rank">
+          <p className="kicker">{WIDGET_META["bank-ranking"].title}</p>
           {renderViz(item.viz, {
-            donut: <Donut rows={modeRows} center="3" />,
-            bars: <BarList rows={modeRows} />,
+            bars: <BarList rows={rankRows} format={() => ""} />,
+            donut: <Donut rows={rankRows.map((row) => ({ ...row, value: 1 }))} center="Rank" />,
             stack: null,
             status: null,
           })}
-        </MetricShell>
-      );
-    case "rank-depth":
-      return (
-        <MetricShell
-          kicker={WIDGET_META["rank-depth"].title}
-          value={String(ranked.length)}
-          note="Portfolio-fit order, not an optimizer"
-        >
-          {renderViz(item.viz, {
-            bars: <BarList rows={rankRows} format={(n) => String(n)} />,
-            donut: (
-              <Donut
-                rows={rankRows.map((row) => ({ ...row, value: 1 }))}
-                center={String(ranked.length)}
-              />
-            ),
-            stack: null,
-            status: null,
-          })}
-        </MetricShell>
-      );
-    case "api":
-      return (
-        <MetricShell
-          kicker={WIDGET_META.api.title}
-          value={apiOn ? "SQLite" : "Seed"}
-          note="GET /api/clients · PATCH consent"
-        >
-          {renderViz(item.viz, {
-            status: (
-              <StatusPanel
-                ok={apiOn}
-                title={apiOn ? "SQLite API reachable" : "Bundled seed fallback"}
-                detail={
-                  apiOn
-                    ? "Client records and consent persist in data/wealthpass.sqlite."
-                    : "GitHub Pages has no API. The same two seeds are bundled in the client."
-                }
-              />
-            ),
-            bars: (
-              <BarList
-                rows={[
-                  { label: "GET /api/clients", value: apiOn ? 1 : 0, tone: "sage" },
-                  { label: "PATCH consent", value: apiOn ? 1 : 0, tone: "camel" },
-                ]}
-                format={(n) => (n ? "up" : "down")}
-              />
-            ),
-            donut: null,
-            stack: null,
-          })}
-        </MetricShell>
-      );
-    case "clerk":
-      return (
-        <MetricShell
-          kicker={WIDGET_META.clerk.title}
-          value={clerkOn ? "Wired" : "Missing"}
-          note="VITE_CLERK_PUBLISHABLE_KEY at build"
-        >
-          {renderViz(item.viz, {
-            status: (
-              <StatusPanel
-                ok={clerkOn}
-                title={clerkOn ? "Publishable key present" : "Publishable key missing"}
-                detail="Access is provisioned in Clerk. This demo does not fall back to a password gate."
-              />
-            ),
-            donut: (
-              <Donut
-                rows={
-                  clerkOn
-                    ? [{ label: "Wired", value: 1, tone: "sage" }]
-                    : [{ label: "Missing", value: 1, tone: "clay" }]
-                }
-                center={clerkOn ? "On" : "Off"}
-              />
-            ),
-            bars: null,
-            stack: null,
-          })}
-        </MetricShell>
+        </div>
       );
     default:
       return null;
@@ -458,15 +354,12 @@ function MetricShell({
 }) {
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <p className="kicker">{kicker}</p>
-          <div className="dash-value">{value}</div>
-          <p className="tiny muted" style={{ margin: "0.35rem 0 0" }}>
-            {note}
-          </p>
-        </div>
-        <Badge compact>Live + fixture</Badge>
+      <div>
+        <p className="kicker">{kicker}</p>
+        <div className="dash-value">{value}</div>
+        <p className="tiny muted" style={{ margin: "0.35rem 0 0" }}>
+          {note}
+        </p>
       </div>
       <div className="dash-viz">{children}</div>
     </>
@@ -476,4 +369,3 @@ function MetricShell({
 function renderViz(viz: VizKind, parts: Record<VizKind, ReactNode>): ReactNode {
   return parts[viz] ?? parts.bars ?? parts.donut ?? parts.stack ?? parts.status;
 }
-

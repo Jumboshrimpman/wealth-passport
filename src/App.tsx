@@ -6,7 +6,7 @@ import { ClientProvider } from "./context/ClientContext";
 import { ConsentProvider } from "./context/ConsentContext";
 import { ModeProvider, useMode } from "./context/ModeContext";
 import { OfferDecisionProvider } from "./context/OfferDecisionContext";
-import { MODE_HOMES } from "./data/mock";
+import { MODE_HOMES } from "./data/catalog";
 import { Admin } from "./views/Admin";
 import { Chat } from "./views/Chat";
 import { Institution } from "./views/Institution";
@@ -101,7 +101,7 @@ function HomeRedirect() {
 function UnknownRoute() {
   return (
     <section className="panel">
-      <p className="kicker">Mock routing</p>
+      <p className="kicker">Routing</p>
       <h1>This view is not part of the walkthrough.</h1>
       <p className="lede">
         There is no silent fallback. Use the mode toggle and navigation to open a labeled demo

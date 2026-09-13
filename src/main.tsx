@@ -15,7 +15,7 @@ import "./index.css";
 
 const root = document.getElementById("root");
 if (!root) {
-  throw new Error("MOCK BOOT FAILURE: #root is missing from index.html.");
+  throw new Error("Boot failure: #root is missing from index.html.");
 }
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
