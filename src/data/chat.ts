@@ -172,7 +172,8 @@ function replyPortfolio(client: ClientPassport): ChatReply {
       .join(", ");
     return `${node.label} ${pct}% · ${formatUsd(node.value, true)}. Sleeves: ${sleeveBits}. Largest names: ${topNames}.`;
   });
-
+ 
+  
   return {
     intent: "portfolio",
     handled: true,
