@@ -134,7 +134,7 @@ test("consent flip changes offer eligibility", async () => {
 test("persists the admin dashboard layout server-side", async () => {
   await withApi(async (base) => {
     const initial = await fetch(`${base}/api/admin/layout`).then((res) => res.json());
-    assert.equal(initial.layout.length, 6);
+    assert.equal(initial.layout.length, 7);
     assert.ok(initial.layout.every((widget: { visible: boolean }) => widget.visible));
 
     const custom = [
@@ -151,7 +151,7 @@ test("persists the admin dashboard layout server-side", async () => {
     assert.equal(saved.layout[0].id, "bank-ranking");
     assert.equal(saved.layout[0].viz, "donut");
     assert.equal(saved.layout[1].visible, false);
-    assert.equal(saved.layout.length, 6);
+    assert.equal(saved.layout.length, 7);
 
     const reread = await fetch(`${base}/api/admin/layout`).then((res) => res.json());
     assert.deepEqual(reread.layout, saved.layout);
@@ -162,6 +162,93 @@ test("persists the admin dashboard layout server-side", async () => {
       body: JSON.stringify({ layout: [] }),
     });
     assert.equal(bad.status, 400);
+  });
+});
+
+test("books placement revenue when a client accepts an offer", async () => {
+  await withApi(async (base) => {
+    const accepted = await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "elena-whitmore", offerId: "offer-muni", status: "accepted" }),
+    });
+    assert.equal(accepted.status, 200);
+    const body = await accepted.json();
+    // 9 bps on $228M investable = $205,200 annualized.
+    assert.equal(body.placement.annualRevenue, 205_200);
+    assert.equal(body.placement.institutionId, "meridian");
+    assert.equal(body.placement.status, "accepted");
+    assert.equal(body.placements.length, 1);
+
+    const declined = await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "elena-whitmore", offerId: "offer-sbl", status: "declined" }),
+    });
+    assert.equal(declined.status, 200);
+
+    const forClient = await fetch(`${base}/api/clients/elena-whitmore/placements`).then((res) =>
+      res.json(),
+    );
+    assert.equal(forClient.placements.length, 2);
+
+    const all = await fetch(`${base}/api/placements`).then((res) => res.json());
+    assert.equal(all.placements.length, 2);
+
+    // Re-deciding the same offer updates the row instead of duplicating it.
+    const flip = await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "elena-whitmore", offerId: "offer-sbl", status: "accepted" }),
+    });
+    assert.equal(flip.status, 200);
+    const after = await fetch(`${base}/api/placements`).then((res) => res.json());
+    assert.equal(after.placements.length, 2);
+    const sbl = after.placements.find(
+      (row: { offerId: string }) => row.offerId === "offer-sbl",
+    );
+    assert.equal(sbl.status, "accepted");
+    // 12 bps on $228M investable = $273,600 annualized.
+    assert.equal(sbl.annualRevenue, 273_600);
+
+    const missingClient = await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "nope", offerId: "offer-muni", status: "accepted" }),
+    });
+    assert.equal(missingClient.status, 404);
+    const missingOffer = await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "elena-whitmore", offerId: "nope", status: "accepted" }),
+    });
+    assert.equal(missingOffer.status, 404);
+    const badStatus = await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "elena-whitmore", offerId: "offer-muni", status: "maybe" }),
+    });
+    assert.equal(badStatus.status, 400);
+  });
+});
+
+test("blocks placements while passport share consent is off", async () => {
+  await withApi(async (base) => {
+    await fetch(`${base}/api/clients/priya-shah/consent`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shared: false }),
+    });
+    const blocked = await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "priya-shah", offerId: "offer-muni", status: "accepted" }),
+    });
+    assert.equal(blocked.status, 403);
+    const forClient = await fetch(`${base}/api/clients/priya-shah/placements`).then((res) =>
+      res.json(),
+    );
+    assert.equal(forClient.placements.length, 0);
   });
 });
 

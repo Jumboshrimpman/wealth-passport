@@ -3,6 +3,7 @@ export const WIDGET_IDS = [
   "institutions",
   "aum",
   "placements",
+  "revenue",
   "ops",
   "bank-ranking",
 ] as const;
@@ -44,6 +45,12 @@ export const WIDGET_META: Record<
     title: "Paid placements (open)",
     allowedViz: ["stack", "bars", "donut"],
     defaultViz: "stack",
+    defaultSpan: 2,
+  },
+  revenue: {
+    title: "Placement revenue",
+    allowedViz: ["bars", "donut", "stack"],
+    defaultViz: "bars",
     defaultSpan: 2,
   },
   ops: {

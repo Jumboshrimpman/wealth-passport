@@ -34,6 +34,7 @@ export const INSTITUTION_SEEDS: Institution[] = [
         "Up to 55% advance on the verified taxable book, interest-only for 24 months. Indicative spread, subject to credit approval.",
       placementKind: "bps",
       placementLabel: "Paid placement",
+      placementFeeBps: 12,
       paidPlacement:
         "Institution paid 12 bps (annualized on committed line) to appear against this consented passport.",
       terms: "SOFR + 1.85%. No prepayment penalty. Recourse limited to pledged securities.",
@@ -69,8 +70,9 @@ export const INSTITUTION_SEEDS: Institution[] = [
         "Separately managed national + state-preference book. Target duration 6.4 years. Fee follows the standard SMA schedule.",
       placementKind: "strategy",
       placementLabel: "Paid placement",
+      placementFeeBps: 9,
       paidPlacement:
-        "Institution paid for strategy placement against passports with a taxable fixed-income sleeve.",
+        "Institution paid 9 bps (annualized on matched assets) for strategy placement against passports with a taxable fixed-income sleeve.",
       terms: "38 bps all-in SMA. No wrap. Quarterly tax-loss harvest.",
       expires: "2026-11-15",
       audience: "Taxable accounts ≥ $20M in high-tax domiciles",
@@ -104,7 +106,9 @@ export const INSTITUTION_SEEDS: Institution[] = [
         "Closed-end secondaries sleeve with 15% carry. Capital calls staged over 18 months. Not a solicitation.",
       placementKind: "special",
       placementLabel: "Paid placement",
-      paidPlacement: "Institution paid for a special-offer slot against consented passports.",
+      placementFeeBps: 15,
+      paidPlacement:
+        "Institution paid 15 bps (annualized on matched assets) for a special-offer slot against consented passports.",
       terms: "1.5 / 15. Capital calls staged over 18 months. Not a solicitation.",
       expires: "2026-12-01",
       audience: "Households with an existing private-markets sleeve ≥ 10%",

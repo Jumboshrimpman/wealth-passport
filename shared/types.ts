@@ -159,6 +159,8 @@ export interface Offer {
   summary: string;
   placementKind: PlacementKind;
   placementLabel: string;
+  /** Annualized bps the institution pays WealthPass on matched assets when a client accepts. */
+  placementFeeBps: number;
   paidPlacement: string;
   terms: string;
   expires: string;

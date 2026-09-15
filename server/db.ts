@@ -18,6 +18,7 @@ import type {
 } from "../shared/enrollment.ts";
 import { CLIENT_SEEDS } from "../shared/seed/index.ts";
 import { INSTITUTION_SEEDS } from "../shared/seed/institutions.ts";
+import type { Placement } from "../shared/placements.ts";
 import type {
   Account,
   Attestation,
@@ -115,6 +116,17 @@ export function openDatabase(path = defaultDatabasePath()): DatabaseSync {
       screening_json TEXT NOT NULL,
       risk_json TEXT NOT NULL,
       decision_json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS placements (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      offer_id TEXT NOT NULL,
+      institution_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      matched_assets INTEGER NOT NULL,
+      annual_revenue INTEGER NOT NULL,
+      decided_at TEXT NOT NULL,
+      snapshot_json TEXT NOT NULL
     );
   `);
   return db;
@@ -473,4 +485,50 @@ export function getEnrollment(db: DatabaseSync, id: string): Enrollment | undefi
     | EnrollmentRow
     | undefined;
   return row ? rowToEnrollment(row) : undefined;
+}
+
+interface PlacementRow {
+  snapshot_json: string;
+}
+
+function rowToPlacement(row: PlacementRow): Placement {
+  return JSON.parse(row.snapshot_json) as Placement;
+}
+
+export function upsertPlacement(db: DatabaseSync, placement: Placement): void {
+  db.prepare(
+    `INSERT INTO placements (
+      id, client_id, offer_id, institution_id, status, matched_assets, annual_revenue, decided_at, snapshot_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      status = excluded.status,
+      matched_assets = excluded.matched_assets,
+      annual_revenue = excluded.annual_revenue,
+      decided_at = excluded.decided_at,
+      snapshot_json = excluded.snapshot_json`,
+  ).run(
+    placement.id,
+    placement.clientId,
+    placement.offerId,
+    placement.institutionId,
+    placement.status,
+    placement.matchedAssets,
+    placement.annualRevenue,
+    placement.decidedAt,
+    JSON.stringify(placement),
+  );
+}
+
+export function listPlacements(db: DatabaseSync): Placement[] {
+  const rows = db
+    .prepare("SELECT snapshot_json FROM placements ORDER BY decided_at DESC")
+    .all() as PlacementRow[];
+  return rows.map(rowToPlacement);
+}
+
+export function listPlacementsForClient(db: DatabaseSync, clientId: string): Placement[] {
+  const rows = db
+    .prepare("SELECT snapshot_json FROM placements WHERE client_id = ? ORDER BY decided_at DESC")
+    .all(clientId) as PlacementRow[];
+  return rows.map(rowToPlacement);
 }

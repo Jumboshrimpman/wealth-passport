@@ -13,6 +13,7 @@ test("layout catalog uses production widget titles and omits retired tiles", () 
   assert.equal(WIDGET_META.clients.title, "Client records");
   assert.equal(WIDGET_META.aum.title, "Verified AUM");
   assert.equal(WIDGET_META["bank-ranking"].title, "Bank ranking");
+  assert.equal(WIDGET_META.revenue.title, "Placement revenue");
   assert.ok(!(WIDGET_IDS as readonly string[]).includes("clerk"));
   assert.ok(!(WIDGET_IDS as readonly string[]).includes("api"));
   assert.ok(!(WIDGET_IDS as readonly string[]).includes("modes"));

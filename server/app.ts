@@ -12,6 +12,7 @@ import {
   type EnrollmentPayload,
 } from "../shared/enrollment.ts";
 import { eligibleMatches, matchInstitutions } from "../shared/match.ts";
+import { buildPlacement, type PlacementStatus } from "../shared/placements.ts";
 import {
   getAdminLayout,
   getClientPassport,
@@ -21,8 +22,11 @@ import {
   listClientSummaries,
   listEnrollmentSummaries,
   listInstitutions,
+  listPlacements,
+  listPlacementsForClient,
   setAdminLayout,
   updateConsent,
+  upsertPlacement,
 } from "./db.ts";
 
 export function createApp(db: DatabaseSync) {
@@ -130,6 +134,47 @@ export function createApp(db: DatabaseSync) {
       return;
     }
     res.json({ enrollment });
+  });
+
+  app.get("/api/placements", (_req, res) => {
+    res.json({ placements: listPlacements(db) });
+  });
+
+  app.get("/api/clients/:id/placements", (req, res) => {
+    if (!getClientRecord(db, req.params.id)) {
+      res.status(404).json({ error: `No client record for "${req.params.id}".` });
+      return;
+    }
+    res.json({ placements: listPlacementsForClient(db, req.params.id) });
+  });
+
+  app.post("/api/placements", (req, res) => {
+    const { clientId, offerId, status } = req.body ?? {};
+    if (typeof clientId !== "string" || typeof offerId !== "string") {
+      res.status(400).json({ error: "Body must include string `clientId` and `offerId`." });
+      return;
+    }
+    if (status !== "accepted" && status !== "declined") {
+      res.status(400).json({ error: "`status` must be \"accepted\" or \"declined\"." });
+      return;
+    }
+    const record = getClientRecord(db, clientId);
+    if (!record) {
+      res.status(404).json({ error: `No client record for "${clientId}".` });
+      return;
+    }
+    const institution = listInstitutions(db).find((firm) => firm.offer.id === offerId);
+    if (!institution) {
+      res.status(404).json({ error: `No offer record for "${offerId}".` });
+      return;
+    }
+    if (!record.consent.shared) {
+      res.status(403).json({ error: "Passport share consent is off for this client." });
+      return;
+    }
+    const placement = buildPlacement(record, institution, status as PlacementStatus);
+    upsertPlacement(db, placement);
+    res.status(200).json({ placement, placements: listPlacementsForClient(db, clientId) });
   });
 
   return app;
