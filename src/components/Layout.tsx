@@ -50,6 +50,11 @@ export function Layout() {
                 </NavLink>
               ))}
             </nav>
+            {mode === "client" ? (
+              <NavLink to="/enroll" className="enroll-cta">
+                Enroll Now
+              </NavLink>
+            ) : null}
             <UserButton appearance={clerkAppearance} />
           </div>
         </div>

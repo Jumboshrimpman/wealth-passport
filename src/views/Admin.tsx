@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import type { EnrollmentSummary } from "../../shared/enrollment.ts";
+import { listEnrollments, type EnrollmentSource } from "../api/enroll";
 import { AdminDashboard } from "../components/admin/AdminDashboard";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
 import { useClient } from "../context/ClientContext";
@@ -11,6 +14,24 @@ export function Admin() {
   const { passport, clients, selectClient } = useClient();
   const { eligible } = useOffers();
   const household = passport.household;
+  const [enrollments, setEnrollments] = useState<EnrollmentSummary[]>([]);
+  const [enrollmentSource, setEnrollmentSource] = useState<EnrollmentSource>("local");
+
+  useEffect(() => {
+    let live = true;
+    listEnrollments()
+      .then((result) => {
+        if (!live) return;
+        setEnrollments(result.enrollments);
+        setEnrollmentSource(result.source);
+      })
+      .catch(() => {
+        if (live) setEnrollments([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   return (
     <div className="stack">
@@ -108,6 +129,65 @@ export function Admin() {
           )}
         </section>
       </div>
+
+      <section className="panel">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div>
+            <p className="kicker">Compliance</p>
+            <h2>Enrollment review queue</h2>
+          </div>
+          <Badge>{enrollmentSource === "api" ? "From client database" : "Browser storage"}</Badge>
+        </div>
+        {enrollments.length > 0 ? (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Status</th>
+                <th>Risk</th>
+                <th>Submitted</th>
+              </tr>
+            </thead>
+            <tbody>
+              {enrollments.map((enrollment) => (
+                <tr key={enrollment.id}>
+                  <td>
+                    <strong>{enrollment.fullName}</strong>
+                    <div className="tiny muted">{enrollment.email}</div>
+                  </td>
+                  <td>
+                    <Badge
+                      tone={enrollment.status === "approved" ? "verified" : "warn"}
+                      compact
+                    >
+                      {enrollment.status === "approved"
+                        ? "Approved"
+                        : enrollment.status === "edd"
+                          ? "EDD pending"
+                          : "Rejected"}
+                    </Badge>
+                  </td>
+                  <td>
+                    {enrollment.riskScore} / 100
+                    <div className="tiny muted">{enrollment.riskLevel} risk</div>
+                  </td>
+                  <td className="tiny muted">
+                    {new Date(enrollment.createdAt).toLocaleString("en-US", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted">
+            No enrollments yet. New files submitted through <Link to="/enroll">Enroll Now</Link>{" "}
+            appear here for compliance review.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
