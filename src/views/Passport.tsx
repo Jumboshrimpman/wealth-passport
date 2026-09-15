@@ -4,13 +4,14 @@ import { OfferCard } from "../components/OfferCard";
 import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
 import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
-import { formatUsd, rankedInstitutions } from "../data/catalog";
+import { useOffers } from "../context/OfferContext";
+import { formatUsd } from "../data/catalog";
 
 export function Passport() {
   const consent = useConsent();
   const { passport, source } = useClient();
+  const { eligible } = useOffers();
   const { household, accounts, allocations, advisor } = passport;
-  const ranked = rankedInstitutions();
 
   return (
     <div className="stack">
@@ -91,7 +92,7 @@ export function Passport() {
               <th>Account</th>
               <th>Custodian</th>
               <th>Type</th>
-              <th>Illustrated value</th>
+              <th>Value</th>
             </tr>
           </thead>
           <tbody>
@@ -165,10 +166,12 @@ export function Passport() {
         <SectionHead
           kicker="Last section · client inbox"
           title="Offers from banks and asset managers"
-          lede="Ranked paid placements. Terms are the primary line. Paid placement is a small label only. Institution matching is still fixture data."
+          lede="Ranked paid placements matched to this passport from the client store. Terms are the primary line. Paid placement is a small label only."
         />
         {consent.shared ? (
-          ranked.map((firm) => <OfferCard key={firm.id} firm={firm} compact />)
+          eligible.map((match) => (
+            <OfferCard key={match.institution.id} firm={match.institution} fitReason={match.fitReason} compact />
+          ))
         ) : (
           <section className="panel">
             <p className="kicker">Consent is off</p>

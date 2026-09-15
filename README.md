@@ -82,7 +82,7 @@ npm run build      # production bundle
 npm run preview    # serve the built bundle
 ```
 
-Delete `data/wealthpass.sqlite` to re-seed both clients from `shared/seed/`.
+Delete `data/wealthpass.sqlite` to re-seed both clients and the institution catalog from `shared/seed/`.
 
 ### Household figures
 
@@ -114,10 +114,10 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 | Client chat (home) | `/chat` | […/chat](https://jumboshrimpman.github.io/wealth-passport/chat) | Client, Admin | Assistant greets the selected client (Elena or Priya) with that household’s net worth. Suggestion chips only |
 | Client Passport | `/passport` | […/passport](https://jumboshrimpman.github.io/wealth-passport/passport) | Client, Admin | Holistic profile loaded from SQLite (or seed fallback), expandable securities, per-client consent |
 | Verification | `/verification` | […/verification](https://jumboshrimpman.github.io/wealth-passport/verification) | Client, Admin | Advisor and custodian badges from the selected client record |
-| Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Ranked paid placements; Accept / Decline persist in browser storage; blocked if consent is off |
-| Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) |
+| Client offers inbox | `/offers` | […/offers](https://jumboshrimpman.github.io/wealth-passport/offers) | Client, Admin | Paid placements matched to the selected client record; Accept / Decline persist in browser storage; blocked if consent is off |
+| Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) with a live match check against the selected client |
 | Ops reuse | `/ops` | […/ops](https://jumboshrimpman.github.io/wealth-passport/ops) | Client, Admin | Rollover packet with passport-filled fields |
-| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Customizable dashboard: client records, verified AUM, institutions, placements, ops reuse, bank ranking |
+| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Customizable dashboard: client records, verified AUM, institutions, placements, ops reuse, bank ranking; layout persists in the client database |
 | Legacy Trust URL | `/trust` | […/trust](https://jumboshrimpman.github.io/wealth-passport/trust) | — | Redirects to `/verification` |
 | Unknown path | any other URL | […/not-a-view](https://jumboshrimpman.github.io/wealth-passport/not-a-view) | — | Loud “not part of the walkthrough” — no silent fallback |
 
@@ -126,7 +126,8 @@ Deep links work because the deploy workflow copies `index.html` to `404.html`.
 ### Data notes
 
 - Client households are seeded records in SQLite (`shared/seed/`), not live custody feeds.
-- Institution offers and admin board counts are TypeScript fixtures until those APIs exist.
+- Paying institutions are seeded into the same SQLite store (`shared/seed/institutions.ts`) and served from `GET /api/institutions`. `GET /api/clients/:id/offers` matches each desk's targeting floors (investable, liquidity, private-markets sleeve, geography, consent) against the stored client record, so Elena's and Priya's inboxes differ. The static Pages build falls back to the same bundled seeds and runs the matcher locally.
+- The admin dashboard layout persists server-side (`GET` / `PUT /api/admin/layout`) with a browser-storage fallback when the API is unreachable. Admin board counts (14 desks, 41 open placements) are still static data.
 - Offer Accept / Decline live in browser storage. Consent is per client and persists in SQLite when the API is running.
 - The client chat is suggestion chips plus canned replies for the selected client.
 - Vendor names (Morningstar, Informa) appear as first-party data sources, not live feeds.

@@ -3,12 +3,13 @@ import { AdminDashboard } from "../components/admin/AdminDashboard";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
 import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
-import { formatUsd, offerHeadline, rankedInstitutions } from "../data/catalog";
+import { useOffers } from "../context/OfferContext";
+import { formatUsd, offerHeadline } from "../data/catalog";
 
 export function Admin() {
   const consent = useConsent();
   const { passport, clients, selectClient } = useClient();
-  const ranked = rankedInstitutions();
+  const { eligible } = useOffers();
   const household = passport.household;
 
   return (
@@ -70,34 +71,41 @@ export function Admin() {
               Open console
             </Link>
           </div>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Firm</th>
-                <th>Terms</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.map((firm) => (
-                <tr key={firm.id}>
-                  <td>{firm.offer.rank}</td>
-                  <td>
-                    <strong>{firm.name}</strong>
-                    <div className="tiny muted">{firm.kindLabel}</div>
-                  </td>
-                  <td>
-                    {offerHeadline(firm.offer)}
-                    <div>
-                      <Badge tone="paid" compact>
-                        {firm.offer.placementLabel}
-                      </Badge>
-                    </div>
-                  </td>
+          <p className="tiny muted" style={{ marginTop: 0 }}>
+            Matched against the {household.name} record in the client store.
+          </p>
+          {eligible.length > 0 ? (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Firm</th>
+                  <th>Terms</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {eligible.map((match) => (
+                  <tr key={match.institution.id}>
+                    <td>{match.institution.offer.rank}</td>
+                    <td>
+                      <strong>{match.institution.name}</strong>
+                      <div className="tiny muted">{match.institution.kindLabel}</div>
+                    </td>
+                    <td>
+                      {offerHeadline(match.institution.offer)}
+                      <div>
+                        <Badge tone="paid" compact>
+                          {match.institution.offer.placementLabel}
+                        </Badge>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="muted">No eligible placements for this client while consent is off.</p>
+          )}
         </section>
       </div>
     </div>

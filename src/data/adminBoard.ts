@@ -1,5 +1,5 @@
 import type { InstitutionKind, PlacementKind } from "./catalog";
-import { institutions } from "./catalog";
+import { INSTITUTION_SEEDS } from "../../shared/seed/institutions.ts";
 
 export const BOARD_COUNT = 14;
 export const WALKTHROUGH_SHOWN = 3;
@@ -28,7 +28,7 @@ const restOfBoard: BoardDesk[] = [
 ];
 
 export const payingBoard: BoardDesk[] = [
-  ...institutions.map((firm) => ({
+  ...INSTITUTION_SEEDS.map((firm) => ({
     id: firm.id,
     name: firm.name,
     kind: firm.kind,
@@ -56,7 +56,7 @@ if (placementMix.reduce((sum, row) => sum + row.count, 0) !== OPEN_PLACEMENTS) {
   throw new Error(`ADMIN DATA FAILURE: placement mix must sum to ${OPEN_PLACEMENTS}.`);
 }
 
-/** Illustrated weekly open placements — fixture series, not a warehouse. */
+/** Weekly open placements — stored series, not a warehouse. */
 export const placementWeekly = [5, 6, 4, 7, 8, 6, 5];
 
 export function desksByKind(): { kind: InstitutionKind; label: string; count: number; tone: "camel" | "sage" | "ink" }[] {

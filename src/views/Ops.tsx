@@ -22,13 +22,13 @@ export function Ops() {
           note={`From the ${passport.household.name} passport`}
         />
         <Stat label="Still required" value={`${needed.length}`} note="Signatures and receiving-plan acceptance" />
-        <Stat label="Illustrated time saved" value="~40 min" note="Ops anecdote for the walkthrough, not measured" />
+        <Stat label="Estimated time saved" value="~40 min" note="Ops estimate for the walkthrough, not measured" />
       </div>
 
       <Disclaimer>
-        This packet is a document demo stored on the client record. No transfer agent, ACATS, or
+        This packet is stored on the client record. No transfer agent, ACATS, or
         plan recordkeeper is connected. Morningstar-style holdings and Informa-style product mapping
-        appear as reused extracts — fixtures, not vendor sessions.
+        appear as reused reference extracts, not vendor sessions.
       </Disclaimer>
 
       <div className="split">

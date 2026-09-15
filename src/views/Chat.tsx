@@ -11,6 +11,7 @@ import {
 import { useConsent } from "../context/ConsentContext";
 import { useClient } from "../context/ClientContext";
 import { useOfferDecisions } from "../context/OfferDecisionContext";
+import { useOffers } from "../context/OfferContext";
 import { Badge } from "../components/ui";
 
 let messageSeq = 0;
@@ -24,6 +25,7 @@ export function Chat() {
   const consent = useConsent();
   const { passport } = useClient();
   const { decisions } = useOfferDecisions();
+  const { eligible } = useOffers();
   const threadRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(() => [greetingMessage(passport)]);
 
@@ -44,7 +46,12 @@ export function Chat() {
       text: label,
       handled: true,
     };
-    const reply = answerDeskChat(label, { client: passport, consentOn: consent.shared, decisions });
+    const reply = answerDeskChat(label, {
+      client: passport,
+      consentOn: consent.shared,
+      decisions,
+      offers: eligible,
+    });
     const assistant: ChatMessage = {
       id: nextMessageId(),
       role: "assistant",
@@ -60,7 +67,7 @@ export function Chat() {
         <p className="kicker">Client home</p>
         <h1>Your WealthPass desk</h1>
         <p className="lede">
-          Suggested questions only — each chip has a preloaded fixture reply for{" "}
+          Suggested questions only — each chip has a preloaded reply for{" "}
           {passport.household.clientFirstName}. There is no text box and no live model. Switch the
           client record in the header to load Elena or Priya. The holistic profile stays on{" "}
           <Link to="/passport">Passport</Link>.

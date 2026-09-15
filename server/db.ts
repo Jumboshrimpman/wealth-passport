@@ -2,7 +2,13 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { assemblePassport } from "../shared/assemble.ts";
+import {
+  layoutPayload,
+  mergeLayout,
+  type WidgetLayout,
+} from "../shared/dashboardLayout.ts";
 import { CLIENT_SEEDS } from "../shared/seed/index.ts";
+import { INSTITUTION_SEEDS } from "../shared/seed/institutions.ts";
 import type {
   Account,
   Attestation,
@@ -10,6 +16,9 @@ import type {
   ClientRecord,
   ClientSummary,
   Household,
+  Institution,
+  InstitutionTargeting,
+  Offer,
   OpsPacket,
   PassportConsent,
   SecurityHolding,
@@ -71,15 +80,38 @@ export function openDatabase(path = defaultDatabasePath()): DatabaseSync {
       detail TEXT NOT NULL,
       FOREIGN KEY (client_id) REFERENCES clients(id)
     );
+    CREATE TABLE IF NOT EXISTS institutions (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      kind_label TEXT NOT NULL,
+      desk TEXT NOT NULL,
+      targeting_json TEXT NOT NULL,
+      offer_json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
   return db;
 }
 
 export function seedIfEmpty(db: DatabaseSync): void {
-  const row = db.prepare("SELECT COUNT(*) AS c FROM clients").get() as { c: number };
-  if (row.c > 0) return;
-  for (const client of CLIENT_SEEDS) {
-    insertClient(db, client);
+  const clientRows = db.prepare("SELECT COUNT(*) AS c FROM clients").get() as { c: number };
+  if (clientRows.c === 0) {
+    for (const client of CLIENT_SEEDS) {
+      insertClient(db, client);
+    }
+  }
+  const institutionRows = db.prepare("SELECT COUNT(*) AS c FROM institutions").get() as {
+    c: number;
+  };
+  if (institutionRows.c === 0) {
+    for (const institution of INSTITUTION_SEEDS) {
+      insertInstitution(db, institution);
+    }
   }
 }
 
@@ -279,3 +311,64 @@ export function updateConsent(db: DatabaseSync, id: string, shared: boolean): Cl
 }
 
 export type ConsentPatch = Pick<PassportConsent, "shared">;
+
+export function insertInstitution(db: DatabaseSync, institution: Institution): void {
+  db.prepare(
+    `INSERT INTO institutions (id, name, kind, kind_label, desk, targeting_json, offer_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    institution.id,
+    institution.name,
+    institution.kind,
+    institution.kindLabel,
+    institution.desk,
+    JSON.stringify(institution.targeting),
+    JSON.stringify(institution.offer),
+  );
+}
+
+export function listInstitutions(db: DatabaseSync): Institution[] {
+  const rows = db
+    .prepare("SELECT * FROM institutions ORDER BY json_extract(offer_json, '$.rank')")
+    .all() as Array<{
+    id: string;
+    name: string;
+    kind: Institution["kind"];
+    kind_label: string;
+    desk: string;
+    targeting_json: string;
+    offer_json: string;
+  }>;
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    kindLabel: row.kind_label,
+    desk: row.desk,
+    targeting: JSON.parse(row.targeting_json) as InstitutionTargeting,
+    offer: JSON.parse(row.offer_json) as Offer,
+  }));
+}
+
+const ADMIN_LAYOUT_KEY = "admin-dashboard-layout";
+
+export function getAdminLayout(db: DatabaseSync): WidgetLayout[] {
+  const row = db.prepare("SELECT value_json FROM settings WHERE key = ?").get(ADMIN_LAYOUT_KEY) as
+    | { value_json: string }
+    | undefined;
+  if (!row) return mergeLayout(null);
+  try {
+    return mergeLayout(JSON.parse(row.value_json));
+  } catch {
+    return mergeLayout(null);
+  }
+}
+
+export function setAdminLayout(db: DatabaseSync, layout: WidgetLayout[]): WidgetLayout[] {
+  const merged = mergeLayout(layoutPayload(layout));
+  db.prepare(
+    `INSERT INTO settings (key, value_json, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`,
+  ).run(ADMIN_LAYOUT_KEY, JSON.stringify(layoutPayload(merged)), new Date().toISOString());
+  return merged;
+}

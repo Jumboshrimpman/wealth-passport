@@ -1,29 +1,51 @@
 import { useMemo, useState } from "react";
-import { formatUsd, institutions, offerHeadline, type Institution as InstitutionRecord } from "../data/catalog";
+import { matchInstitution } from "../../shared/match";
+import { formatUsd, offerHeadline, type Institution as InstitutionRecord } from "../data/catalog";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
+import { useClient } from "../context/ClientContext";
+import { useOffers } from "../context/OfferContext";
 
 export function Institution() {
-  const [activeId, setActiveId] = useState(institutions[0].id);
+  const { passport } = useClient();
+  const { institutions, source } = useOffers();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, InstitutionRecord>>({});
+
   const baseline = institutions.find((item) => item.id === activeId) ?? institutions[0];
-  const [draft, setDraft] = useState<InstitutionRecord>(baseline);
+  const draft = baseline ? (drafts[baseline.id] ?? baseline) : undefined;
 
   function selectFirm(id: string) {
-    const next = institutions.find((item) => item.id === id);
-    if (!next) {
+    if (!institutions.some((item) => item.id === id)) {
       throw new Error(`Unknown institution id "${id}".`);
     }
     setActiveId(id);
-    setDraft(next);
   }
 
-  const preview = useMemo(() => draft.offer, [draft]);
+  function patchDraft(next: InstitutionRecord) {
+    setDrafts((current) => ({ ...current, [next.id]: next }));
+  }
+
+  const preview = draft?.offer;
+  const match = useMemo(
+    () => (draft ? matchInstitution(passport, draft) : null),
+    [passport, draft],
+  );
+
+  if (!draft || !preview || !match) {
+    return (
+      <section className="panel">
+        <p className="kicker">Offer console</p>
+        <h1>Loading institutions…</h1>
+      </section>
+    );
+  }
 
   return (
     <div className="stack">
       <SectionHead
         kicker="Institution view · offer console only"
         title="Offer console"
-        lede="A bank, an asset manager, and a private-markets provider each buy a channel into consented passports. Targeting and terms stay in local component state — there is no bidding engine."
+        lede="A bank, an asset manager, and a private-markets provider each buy a channel into consented passports. Desks load from the client store; targeting edits stay in this console — there is no bidding engine."
       />
 
       <div className="row">
@@ -33,10 +55,10 @@ export function Institution() {
             type="button"
             className="badge"
             onClick={() => selectFirm(firm.id)}
-            aria-pressed={firm.id === activeId}
+            aria-pressed={firm.id === draft.id}
             style={{
               cursor: "pointer",
-              background: firm.id === activeId ? "var(--camel-100)" : undefined,
+              background: firm.id === draft.id ? "var(--camel-100)" : undefined,
             }}
           >
             {firm.name}
@@ -46,7 +68,8 @@ export function Institution() {
 
       <Disclaimer>
         Targeting controls update this console only. Changing sliders does not reserve inventory or
-        charge bps until a placement system is connected.
+        charge bps until a placement system is connected. The match check runs the draft targeting
+        against the selected client record{source === "api" ? " in SQLite" : " from the bundled seed"}.
         Client screens are a different mode — they are not in this nav.
       </Disclaimer>
 
@@ -63,7 +86,7 @@ export function Institution() {
                 type="number"
                 value={draft.targeting.minInvestable}
                 onChange={(event) =>
-                  setDraft({
+                  patchDraft({
                     ...draft,
                     targeting: { ...draft.targeting, minInvestable: Number(event.target.value) },
                   })
@@ -76,7 +99,7 @@ export function Institution() {
                 type="number"
                 value={draft.targeting.liquidityMin}
                 onChange={(event) =>
-                  setDraft({
+                  patchDraft({
                     ...draft,
                     targeting: { ...draft.targeting, liquidityMin: Number(event.target.value) },
                   })
@@ -90,7 +113,7 @@ export function Institution() {
                 step="1"
                 value={Math.round(draft.targeting.privateMarketsMinPct * 100)}
                 onChange={(event) =>
-                  setDraft({
+                  patchDraft({
                     ...draft,
                     targeting: {
                       ...draft.targeting,
@@ -105,7 +128,7 @@ export function Institution() {
               <input
                 value={draft.targeting.geography}
                 onChange={(event) =>
-                  setDraft({
+                  patchDraft({
                     ...draft,
                     targeting: { ...draft.targeting, geography: event.target.value },
                   })
@@ -117,7 +140,7 @@ export function Institution() {
               <input
                 value={draft.offer.strategy}
                 onChange={(event) =>
-                  setDraft({
+                  patchDraft({
                     ...draft,
                     offer: { ...draft.offer, strategy: event.target.value, title: event.target.value },
                   })
@@ -130,7 +153,7 @@ export function Institution() {
                 type="number"
                 value={draft.offer.bps}
                 onChange={(event) =>
-                  setDraft({
+                  patchDraft({
                     ...draft,
                     offer: { ...draft.offer, bps: Number(event.target.value) },
                   })
@@ -143,7 +166,7 @@ export function Institution() {
                 type="number"
                 value={draft.offer.feeDiscountPct}
                 onChange={(event) =>
-                  setDraft({
+                  patchDraft({
                     ...draft,
                     offer: { ...draft.offer, feeDiscountPct: Number(event.target.value) },
                   })
@@ -156,7 +179,7 @@ export function Institution() {
                 rows={3}
                 value={draft.offer.terms}
                 onChange={(event) =>
-                  setDraft({
+                  patchDraft({
                     ...draft,
                     offer: { ...draft.offer, terms: event.target.value },
                   })
@@ -167,6 +190,22 @@ export function Institution() {
         </section>
 
         <aside className="stack">
+          <section className="panel">
+            <p className="kicker">Match check · {passport.household.name}</p>
+            <Badge tone={match.eligible ? "verified" : "warn"} compact>
+              {match.eligible ? "Matches this passport" : "Not a match"}
+            </Badge>
+            <ul className="tiny" style={{ margin: "0.7rem 0 0", paddingLeft: "1.1rem" }}>
+              {match.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+            {match.eligible ? (
+              <p className="tiny muted" style={{ marginTop: "0.7rem" }}>
+                {match.fitReason}
+              </p>
+            ) : null}
+          </section>
           <section className="panel">
             <p className="kicker">Paid placement channel</p>
             <Badge tone="paid" compact>
@@ -189,7 +228,7 @@ export function Institution() {
             <h3 className="offer-terms" style={{ fontSize: "1.55rem" }}>
               {offerHeadline(preview)}
             </h3>
-            <p className="offer-fit">{preview.fitReason}</p>
+            <p className="offer-fit">{match.eligible ? match.fitReason : preview.fitReason}</p>
             <p className="tiny">{preview.terms}</p>
           </section>
         </aside>

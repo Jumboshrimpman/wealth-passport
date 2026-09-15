@@ -10,7 +10,7 @@ export function Verification() {
       <SectionHead
         kicker="Verification"
         title="Who attests to this identity"
-        lede="Banks and managers pay against a profile only when the household, the advisor, and at least one custodian are illustrated as verified. Badges below are stored on this client record."
+        lede="Banks and managers pay against a profile only when the household, the advisor, and at least one custodian are verified on the stored record. Badges below are stored on this client record."
       />
 
       <div className="grid grid-2">
@@ -18,11 +18,11 @@ export function Verification() {
           <p className="kicker">Verified advisor</p>
           <div className="row">
             <Badge tone="verified">BrokerCheck ID {advisor.brokerCheckId}</Badge>
-            <Badge>Illustrative · not a live CRD call</Badge>
+            <Badge>Record-based · not a live CRD call</Badge>
           </div>
           <h2 style={{ marginTop: "0.7rem" }}>{advisor.name}</h2>
           <p>
-            {advisor.title}, {advisor.firm}. Illustrated as advisor of record for the{" "}
+            {advisor.title}, {advisor.firm}. Advisor of record for the{" "}
             {household.name} since {advisor.since}.
           </p>
           <dl className="tiny">
@@ -36,8 +36,8 @@ export function Verification() {
             </div>
           </dl>
           <Disclaimer>
-            {advisor.name} and BrokerCheck ID {advisor.brokerCheckId} are demo placeholders. This
-            screen does not query FINRA BrokerCheck, IAPD, or any licensing registry.
+            {advisor.name} and BrokerCheck ID {advisor.brokerCheckId} are stored on the client
+            record. This screen does not query FINRA BrokerCheck, IAPD, or any licensing registry.
           </Disclaimer>
         </article>
 

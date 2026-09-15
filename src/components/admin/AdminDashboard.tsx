@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BOARD_COUNT,
   OPEN_PLACEMENTS,
@@ -16,7 +16,9 @@ import {
   type VizKind,
   type WidgetLayout,
 } from "../../admin/dashboardLayout";
-import { formatUsd, rankedInstitutions } from "../../data/catalog";
+import { fetchAdminLayout, saveAdminLayout, type AdminLayoutSource } from "../../api/admin";
+import { useOffers } from "../../context/OfferContext";
+import { formatUsd } from "../../data/catalog";
 import type { ClientPassport, ClientSummary } from "../../../shared/types";
 import { BarList, Donut, Sparkline, StackedBar, type ChartSlice } from "./Charts";
 
@@ -36,11 +38,30 @@ export function AdminDashboard({
   selectClient: (id: string) => void;
 }) {
   const [layout, setLayout] = useState<WidgetLayout[]>(readStoredLayout);
+  const [layoutSource, setLayoutSource] = useState<AdminLayoutSource>("local");
   const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    fetchAdminLayout()
+      .then((result) => {
+        if (!live) return;
+        setLayout(result.layout);
+        setLayoutSource(result.source);
+        persistLayout(result.layout);
+      })
+      .catch(() => {
+        if (live) setLayoutSource("local");
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   function update(next: WidgetLayout[]) {
     setLayout(next);
     persistLayout(next);
+    void saveAdminLayout(next).then((saved) => setLayoutSource(saved ? "api" : "local"));
   }
 
   const visible = layout.filter((item) => item.visible);
@@ -54,7 +75,10 @@ export function AdminDashboard({
             Customizable dashboard
           </p>
           <p className="tiny muted" style={{ margin: "0.2rem 0 0" }}>
-            Reorder, resize, and switch charts. Layout is saved in this browser.
+            Reorder, resize, and switch charts.{" "}
+            {layoutSource === "api"
+              ? "Layout is saved to the client database."
+              : "API offline — layout is saved in this browser."}
           </p>
         </div>
         <div className="row">
@@ -217,12 +241,12 @@ function WidgetBody({
     { label: "Reused from passport", value: reused, tone: "sage" },
     { label: "Still collected", value: needed, tone: "clay" },
   ];
-  const ranked = rankedInstitutions();
-  const rankRows: ChartSlice[] = ranked.map((firm, index) => ({
-    label: `${firm.offer.rank}. ${firm.name}`,
-    value: ranked.length - index,
+  const { eligible } = useOffers();
+  const rankRows: ChartSlice[] = eligible.map((match, index) => ({
+    label: `${match.institution.offer.rank}. ${match.institution.name}`,
+    value: eligible.length - index,
     tone: TONES[index % TONES.length],
-    tooltip: `${firm.offer.rank}. ${firm.name} · ${firm.offer.strategy}`,
+    tooltip: `${match.institution.offer.rank}. ${match.institution.name} · ${match.institution.offer.strategy}`,
   }));
 
   switch (item.id) {
@@ -329,8 +353,18 @@ function WidgetBody({
         <div className="dash-rank">
           <p className="kicker">{WIDGET_META["bank-ranking"].title}</p>
           {renderViz(item.viz, {
-            bars: <BarList rows={rankRows} format={() => ""} />,
-            donut: <Donut rows={rankRows.map((row) => ({ ...row, value: 1 }))} center="Rank" />,
+            bars: (
+              <BarList
+                rows={rankRows.length ? rankRows : [{ label: "No eligible placements", value: 0, tone: "stone" }]}
+                format={() => ""}
+              />
+            ),
+            donut: (
+              <Donut
+                rows={rankRows.length ? rankRows.map((row) => ({ ...row, value: 1 })) : [{ label: "None", value: 1, tone: "stone" }]}
+                center="Rank"
+              />
+            ),
             stack: null,
             status: null,
           })}

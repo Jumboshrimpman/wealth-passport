@@ -2,33 +2,43 @@ import { OfferCard } from "../components/OfferCard";
 import { Disclaimer, SectionHead } from "../components/ui";
 import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
-import { rankedInstitutions } from "../data/catalog";
+import { useOffers } from "../context/OfferContext";
 
 export function Offers() {
   const consent = useConsent();
   const { passport } = useClient();
-  const ranked = rankedInstitutions();
+  const { eligible } = useOffers();
 
   return (
     <div className="stack">
       <SectionHead
         kicker="Client view · ranked inbox"
         title="Personalized offers"
-        lede={`Each card is a paid placement shown against the ${passport.household.name} passport. The household did not request a quote, and no optimizer selected a winner. Institution matching is still fixture data.`}
+        lede={`Each card is a paid placement matched against the ${passport.household.name} passport — targeting floors are checked against the stored household record. The household did not request a quote, and no optimizer selected a winner.`}
       />
 
       <Disclaimer>
-        Illustrative offers only — not advice, not a solicitation, and not a commitment to lend,
-        allocate, or waive fees. Product facts are drawn as if Morningstar / Informa were the first
-        data layer. No live manager feed is connected.
+        Offers are not advice, not a solicitation, and not a commitment to lend, allocate, or waive
+        fees. Product facts are drawn from the Morningstar / Informa reference layer.
       </Disclaimer>
 
       {consent.shared ? (
-        <div className="stack">
-          {ranked.map((firm) => (
-            <OfferCard key={firm.id} firm={firm} />
-          ))}
-        </div>
+        eligible.length > 0 ? (
+          <div className="stack">
+            {eligible.map((match) => (
+              <OfferCard key={match.institution.id} firm={match.institution} fitReason={match.fitReason} />
+            ))}
+          </div>
+        ) : (
+          <section className="panel">
+            <p className="kicker">No eligible placements</p>
+            <h1>No offers.</h1>
+            <p className="lede">
+              No paying institution’s targeting floors match the {passport.household.name} record
+              right now.
+            </p>
+          </section>
+        )
       ) : (
         <section className="panel">
           <p className="kicker">Consent is off</p>
