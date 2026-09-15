@@ -22,6 +22,8 @@ import type { Placement } from "../shared/placements.ts";
 import type {
   Account,
   Attestation,
+  AuditEvent,
+  AuditEventKind,
   ClientPassport,
   ClientRecord,
   ClientSummary,
@@ -127,6 +129,13 @@ export function openDatabase(path = defaultDatabasePath()): DatabaseSync {
       annual_revenue INTEGER NOT NULL,
       decided_at TEXT NOT NULL,
       snapshot_json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      summary TEXT NOT NULL
     );
   `);
   return db;
@@ -531,4 +540,23 @@ export function listPlacementsForClient(db: DatabaseSync, clientId: string): Pla
     .prepare("SELECT snapshot_json FROM placements WHERE client_id = ? ORDER BY decided_at DESC")
     .all(clientId) as PlacementRow[];
   return rows.map(rowToPlacement);
+}
+
+/** Append-only audit log. There is intentionally no update or delete path. */
+export function appendEvent(
+  db: DatabaseSync,
+  event: { actor: string; kind: AuditEventKind; summary: string },
+): void {
+  db.prepare("INSERT INTO events (ts, actor, kind, summary) VALUES (?, ?, ?, ?)").run(
+    new Date().toISOString(),
+    event.actor,
+    event.kind,
+    event.summary,
+  );
+}
+
+export function listEvents(db: DatabaseSync, limit = 100): AuditEvent[] {
+  return db
+    .prepare("SELECT id, ts, actor, kind, summary FROM events ORDER BY id DESC LIMIT ?")
+    .all(limit) as AuditEvent[];
 }

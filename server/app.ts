@@ -11,9 +11,11 @@ import {
   type Enrollment,
   type EnrollmentPayload,
 } from "../shared/enrollment.ts";
+import { formatUsd } from "../shared/format.ts";
 import { eligibleMatches, matchInstitutions } from "../shared/match.ts";
 import { buildPlacement, type PlacementStatus } from "../shared/placements.ts";
 import {
+  appendEvent,
   getAdminLayout,
   getClientPassport,
   getClientRecord,
@@ -21,6 +23,7 @@ import {
   insertEnrollment,
   listClientSummaries,
   listEnrollmentSummaries,
+  listEvents,
   listInstitutions,
   listPlacements,
   listPlacementsForClient,
@@ -62,6 +65,11 @@ export function createApp(db: DatabaseSync) {
       res.status(404).json({ error: `No client record for "${req.params.id}".` });
       return;
     }
+    appendEvent(db, {
+      actor: passport.household.name,
+      kind: "consent.changed",
+      summary: `${passport.household.name} turned passport share ${shared ? "on" : "off"}.`,
+    });
     res.json({ client: passport });
   });
 
@@ -89,7 +97,18 @@ export function createApp(db: DatabaseSync) {
       res.status(400).json({ error: "Body must include a `widgets` array." });
       return;
     }
-    res.json({ layout: setAdminLayout(db, widgets) });
+    const layout = setAdminLayout(db, widgets);
+    appendEvent(db, {
+      actor: "admin",
+      kind: "admin.layout_updated",
+      summary: `Admin dashboard layout updated (${layout.filter((widget) => widget.visible).length} visible widgets).`,
+    });
+    res.json({ layout });
+  });
+
+  app.get("/api/admin/events", (req, res) => {
+    const limit = Number(req.query.limit ?? 100);
+    res.json({ events: listEvents(db, Number.isFinite(limit) ? limit : 100) });
   });
 
   app.post("/api/enrollments", (req, res) => {
@@ -120,6 +139,11 @@ export function createApp(db: DatabaseSync) {
       status: decision.status,
     };
     insertEnrollment(db, enrollment);
+    appendEvent(db, {
+      actor: payload.account.fullName,
+      kind: "enrollment.submitted",
+      summary: `Enrollment submitted by ${payload.account.fullName} — ${decision.status} (risk ${risk.score}/100).`,
+    });
     res.status(201).json({ enrollment });
   });
 
@@ -174,6 +198,14 @@ export function createApp(db: DatabaseSync) {
     }
     const placement = buildPlacement(record, institution, status as PlacementStatus);
     upsertPlacement(db, placement);
+    appendEvent(db, {
+      actor: record.household.name,
+      kind: "placement.decided",
+      summary:
+        status === "accepted"
+          ? `${record.household.name} accepted ${institution.name} — ${institution.offer.placementFeeBps} bps on ${formatUsd(placement.matchedAssets, true)} books ${formatUsd(placement.annualRevenue)}/yr.`
+          : `${record.household.name} declined ${institution.name}.`,
+    });
     res.status(200).json({ placement, placements: listPlacementsForClient(db, clientId) });
   });
 

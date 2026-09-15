@@ -143,6 +143,22 @@ export interface ClientSummary {
   householdValue: number;
 }
 
+export type AuditEventKind =
+  | "consent.changed"
+  | "placement.decided"
+  | "enrollment.submitted"
+  | "enrollment.decided"
+  | "admin.layout_updated";
+
+/** Append-only audit record — rows are never updated or deleted. */
+export interface AuditEvent {
+  id: number;
+  ts: string;
+  actor: string;
+  kind: AuditEventKind;
+  summary: string;
+}
+
 export type PlacementKind = "bps" | "strategy" | "special";
 
 export type InstitutionKind = "bank" | "asset-manager" | "private-markets";

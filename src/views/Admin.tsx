@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { EnrollmentSummary } from "../../shared/enrollment.ts";
+import type { AuditEvent } from "../../shared/types.ts";
+import { fetchEvents } from "../api/admin";
 import { listEnrollments, type EnrollmentSource } from "../api/enroll";
 import { AdminDashboard } from "../components/admin/AdminDashboard";
 import { Badge, Disclaimer, SectionHead } from "../components/ui";
@@ -9,6 +11,14 @@ import { useConsent } from "../context/ConsentContext";
 import { useOffers } from "../context/OfferContext";
 import { formatUsd, offerHeadline } from "../data/catalog";
 
+const EVENT_KIND_LABEL: Record<AuditEvent["kind"], string> = {
+  "consent.changed": "Consent",
+  "placement.decided": "Placement",
+  "enrollment.submitted": "Enrollment",
+  "enrollment.decided": "Compliance",
+  "admin.layout_updated": "Admin",
+};
+
 export function Admin() {
   const consent = useConsent();
   const { passport, clients, selectClient } = useClient();
@@ -16,6 +26,7 @@ export function Admin() {
   const household = passport.household;
   const [enrollments, setEnrollments] = useState<EnrollmentSummary[]>([]);
   const [enrollmentSource, setEnrollmentSource] = useState<EnrollmentSource>("local");
+  const [events, setEvents] = useState<AuditEvent[] | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -33,12 +44,26 @@ export function Admin() {
     };
   }, []);
 
+  useEffect(() => {
+    let live = true;
+    fetchEvents()
+      .then((rows) => {
+        if (live) setEvents(rows);
+      })
+      .catch(() => {
+        if (live) setEvents(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   return (
     <div className="stack">
       <SectionHead
         kicker="Admin · control room"
         title="Operations dashboard"
-        lede="Widgets for client records, verified AUM, institutions, placements, ops reuse, and bank ranking. Reorder, resize, and switch charts. Client and Institution modes stay separate; this mode is the only place that stacks both."
+        lede="Widgets for client records, verified AUM, institutions, placements, placement revenue, ops reuse, and bank ranking. Reorder, resize, and switch charts. Client and Institution modes stay separate; this mode is the only place that stacks both."
       />
 
       <AdminDashboard clients={clients} passport={passport} selectClient={selectClient} />
@@ -186,6 +211,43 @@ export function Admin() {
             No enrollments yet. New files submitted through <Link to="/enroll">Enroll Now</Link>{" "}
             appear here for compliance review.
           </p>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div>
+            <p className="kicker">Audit trail</p>
+            <h2>Every decision, logged</h2>
+          </div>
+          <Badge>Append-only</Badge>
+        </div>
+        <p className="tiny muted" style={{ marginTop: 0 }}>
+          Consent changes, placement decisions, enrollment submissions, and admin actions are
+          written to the client database as immutable rows — the examination-ready record.
+        </p>
+        {events === null ? (
+          <p className="muted">API offline — the audit trail lives in the client database.</p>
+        ) : events.length === 0 ? (
+          <p className="muted">No events yet. Consent toggles, offer decisions, and enrollment submissions appear here.</p>
+        ) : (
+          <ul className="timeline">
+            {events.map((event) => (
+              <li key={event.id}>
+                <p className="tiny muted" style={{ marginBottom: 0 }}>
+                  {new Date(event.ts).toLocaleString("en-US", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}{" "}
+                  · {event.actor}
+                </p>
+                <div className="row" style={{ marginTop: "0.3rem" }}>
+                  <Badge compact>{EVENT_KIND_LABEL[event.kind] ?? event.kind}</Badge>
+                </div>
+                <p style={{ marginTop: "0.3rem" }}>{event.summary}</p>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>

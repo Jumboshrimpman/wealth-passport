@@ -252,6 +252,35 @@ test("blocks placements while passport share consent is off", async () => {
   });
 });
 
+test("writes an append-only audit event for each decision", async () => {
+  await withApi(async (base) => {
+    await fetch(`${base}/api/clients/priya-shah/consent`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shared: false }),
+    });
+    await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "elena-whitmore", offerId: "offer-muni", status: "accepted" }),
+    });
+
+    const { events } = await fetch(`${base}/api/admin/events`).then((res) => res.json());
+    assert.equal(events.length, 2);
+    // Newest first.
+    assert.equal(events[0].kind, "placement.decided");
+    assert.match(events[0].summary, /Whitmore Household accepted Meridian/);
+    assert.match(events[0].summary, /\$205,200\/yr/);
+    assert.equal(events[1].kind, "consent.changed");
+    assert.match(events[1].summary, /Shah Household turned passport share off/);
+    assert.ok(events[0].id > events[1].id);
+
+    const limited = await fetch(`${base}/api/admin/events?limit=1`).then((res) => res.json());
+    assert.equal(limited.events.length, 1);
+    assert.equal(limited.events[0].kind, "placement.decided");
+  });
+});
+
 function validPayload(overrides?: (payload: EnrollmentPayload) => void): EnrollmentPayload {
   const payload = emptyEnrollmentPayload();
   payload.account = {
