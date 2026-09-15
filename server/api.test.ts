@@ -23,12 +23,23 @@ async function withApi<T>(run: (base: string) => Promise<T>): Promise<T> {
   }
 }
 
-test("seeds Elena and Priya and persists consent on the selected client", async () => {
+test("seeds the household book and persists consent on the selected client", async () => {
   await withApi(async (base) => {
     const list = await fetch(`${base}/api/clients`).then((res) => res.json());
-    assert.equal(list.clients.length, 2);
+    assert.equal(list.clients.length, 10);
     const ids = list.clients.map((row: { id: string }) => row.id).sort();
-    assert.deepEqual(ids, ["elena-whitmore", "priya-shah"]);
+    assert.deepEqual(ids, [
+      "ashworth-family",
+      "beaumont-family",
+      "chen-family",
+      "delgado-family",
+      "elena-whitmore",
+      "fernandez-family",
+      "lindqvist-estate",
+      "nakamura-family",
+      "okafor-trust",
+      "priya-shah",
+    ]);
 
     const elena = await fetch(`${base}/api/clients/elena-whitmore`).then((res) => res.json());
     assert.equal(elena.client.household.clientFirstName, "Elena");
@@ -111,6 +122,23 @@ test("matches offers against each stored client record", async () => {
 
     const missing = await fetch(`${base}/api/clients/not-a-client/offers`);
     assert.equal(missing.status, 404);
+  });
+});
+
+test("matching varies across the wider household book", async () => {
+  await withApi(async (base) => {
+    const eligibleIds = async (clientId: string) => {
+      const body = await fetch(`${base}/api/clients/${clientId}/offers`).then((res) => res.json());
+      return body.eligible
+        .map((match: { institution: { id: string } }) => match.institution.id)
+        .sort();
+    };
+    assert.deepEqual(await eligibleIds("okafor-trust"), ["first-atlantic", "meridian", "oakridge"]);
+    assert.deepEqual(await eligibleIds("chen-family"), ["meridian"]);
+    assert.deepEqual(await eligibleIds("beaumont-family"), ["first-atlantic", "oakridge"]);
+    assert.deepEqual(await eligibleIds("ashworth-family"), ["oakridge"]);
+    assert.deepEqual(await eligibleIds("delgado-family"), []);
+    assert.deepEqual(await eligibleIds("nakamura-family"), []);
   });
 });
 

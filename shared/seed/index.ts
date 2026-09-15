@@ -2,10 +2,11 @@ import { assemblePassport } from "../assemble";
 import type { ClientPassport, ClientRecord } from "../types";
 import { elenaClient } from "./elena";
 import { priyaClient } from "./priya";
+import { GENERATED_CLIENT_SEEDS } from "./households.ts";
 
 export const DEFAULT_CLIENT_ID = "elena-whitmore";
 
-export const CLIENT_SEEDS: ClientRecord[] = [elenaClient, priyaClient];
+export const CLIENT_SEEDS: ClientRecord[] = [elenaClient, priyaClient, ...GENERATED_CLIENT_SEEDS];
 
 export const SEEDED_PASSPORTS: ClientPassport[] = CLIENT_SEEDS.map((record) => assemblePassport(record));
 

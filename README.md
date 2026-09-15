@@ -82,16 +82,26 @@ npm run build      # production bundle
 npm run preview    # serve the built bundle
 ```
 
-Delete `data/wealthpass.sqlite` to re-seed both clients and the institution catalog from `shared/seed/`.
+Delete `data/wealthpass.sqlite` to re-seed all ten clients and the institution catalog from `shared/seed/`.
 
 ### Household figures
 
-Two client records ship in the database:
+Ten client records ship in the database — about **$1B in verified household AUM** across retiree, tech-executive, trust, inherited, business-owner, and international segments:
 
-| Client | Household | Account value | Household AUM | Verified custodian |
-| --- | --- | --- | --- | --- |
-| Elena Whitmore | Greenwich, CT | $186.4M | $300M | Merrill Lynch |
-| Priya Shah | Los Angeles, CA | $48M | $72M | Goldman Sachs |
+| Client | Household | Household AUM | Verified custodian |
+| --- | --- | --- | --- |
+| Elena Whitmore | Greenwich, CT | $300M | Merrill Lynch |
+| Beaumont family | Boston, MA | $210M | State Street Private |
+| Okafor Family Trust | New York, NY | $140M | BNY Mellon |
+| Ashworth family | London, UK | $89M | UBS |
+| Priya Shah | Los Angeles, CA | $72M | Goldman Sachs |
+| Nakamura family | Honolulu, HI | $65M | UBS |
+| Chen family | San Francisco, CA | $50M | Morgan Stanley |
+| Fernandez family | Miami, FL | $50M | J.P. Morgan |
+| Delgado family | Austin, TX | $21.5M | Fidelity |
+| Lindqvist estate | Chicago, IL | $12M | Northern Trust |
+
+Elena and Priya are the hand-authored walkthrough records; the other eight are generated from compact specs in `shared/seed/households.ts` with the same record invariants (account sums, holdings totals, ops reuse counts) enforced at load.
 
 The allocation bar is expandable: **asset class → sleeve/account → individual securities**. Holdings live on the client record.
 
@@ -118,7 +128,7 @@ A global **Client | Institution | Admin** toggle switches completely separate ex
 | Enrollment | `/enroll` | […/enroll](https://jumboshrimpman.github.io/wealth-passport/enroll) | Client, Admin | KYC/AML onboarding wizard (blue **Enroll Now** button in the client header) with screening, risk scoring, and a compliance decision |
 | Institutional console | `/institution` | […/institution](https://jumboshrimpman.github.io/wealth-passport/institution) | Institution, Admin | Targeting and offer terms (local state only) with a live match check against the selected client |
 | Ops reuse | `/ops` | […/ops](https://jumboshrimpman.github.io/wealth-passport/ops) | Client, Admin | Rollover packet with passport-filled fields |
-| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Customizable dashboard: client records, verified AUM, institutions, placements, ops reuse, bank ranking; layout persists in the client database |
+| Admin | `/admin` | […/admin](https://jumboshrimpman.github.io/wealth-passport/admin) | Admin | Customizable dashboard: client records, verified AUM, institutions, placements, placement revenue, ops reuse, bank ranking; layout persists in the client database; enrollment review queue + audit trail |
 | Legacy Trust URL | `/trust` | […/trust](https://jumboshrimpman.github.io/wealth-passport/trust) | — | Redirects to `/verification` |
 | Unknown path | any other URL | […/not-a-view](https://jumboshrimpman.github.io/wealth-passport/not-a-view) | — | Loud “not part of the walkthrough” — no silent fallback |
 
@@ -129,8 +139,10 @@ Deep links work because the deploy workflow copies `index.html` to `404.html`.
 - Client households are seeded records in SQLite (`shared/seed/`), not live custody feeds.
 - Paying institutions are seeded into the same SQLite store (`shared/seed/institutions.ts`) and served from `GET /api/institutions`. `GET /api/clients/:id/offers` matches each desk's targeting floors (investable, liquidity, private-markets sleeve, geography, consent) against the stored client record, so Elena's and Priya's inboxes differ. The static Pages build falls back to the same bundled seeds and runs the matcher locally.
 - The admin dashboard layout persists server-side (`GET` / `PUT /api/admin/layout`) with a browser-storage fallback when the API is unreachable. Admin board counts (14 desks, 41 open placements) are still static data.
-- **Enrollment (KYC/AML):** `POST /api/enrollments` validates the seven-step wizard payload, screens every declared name against local sanctions / PEP / adverse-media lists (`shared/seed/watchlist.ts`), computes a transparent 0–100 risk score, and applies the decision rules (auto-approve / EDD / reject). Files persist in the `enrollments` table and surface in the Admin review queue (`GET /api/enrollments`). On the static Pages build the same shared engine runs in the browser and records stay in local storage. Demo hits: **Ivan Petrov** or **Viktor Marek** → sanctions reject; **Maria Santos** → PEP EDD; **Robert Kahn** → adverse-media EDD; a partial name like **Ivan** → low-confidence EDD.
-- Offer Accept / Decline live in browser storage. Consent is per client and persists in SQLite when the API is running.
+- **Enrollment (KYC/AML):** `POST /api/enrollments` validates the seven-step wizard payload, screens every declared name against local sanctions / PEP / adverse-media lists (`shared/seed/watchlist.ts`), computes a transparent 0–100 risk score, and applies the decision rules (auto-approve / EDD / reject). Files persist in the `enrollments` table and surface in the Admin review queue (`GET /api/enrollments`), where a compliance officer can open the full file and sign off (`PATCH /api/enrollments/:id/decision` — approve activates the account ID; only EDD files are resolvable). On the static Pages build the same shared engine runs in the browser and records stay in local storage. Demo hits: **Ivan Petrov** or **Viktor Marek** → sanctions reject; **Maria Santos** → PEP EDD; **Robert Kahn** → adverse-media EDD; a partial name like **Ivan** → low-confidence EDD.
+- Offer Accept / Decline are placement decisions in SQLite (`POST /api/placements`, per client, consent enforced server-side). Accepting books annualized placement revenue (fee bps × investable assets) that feeds the admin **Placement revenue** widget; per-client browser storage is the offline fallback.
+- Every consent change, placement decision, enrollment submission/resolution, and admin layout update appends to an immutable `events` table, served at `GET /api/admin/events` and shown in the admin **Audit trail** panel.
+- Consent is per client and persists in SQLite when the API is running.
 - The client chat is suggestion chips plus canned replies for the selected client.
 - Vendor names (Morningstar, Informa) appear as first-party data sources, not live feeds.
 
