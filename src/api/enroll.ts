@@ -104,3 +104,41 @@ export async function listEnrollments(): Promise<{
     return { enrollments: readLocalEnrollments().map(summarize), source: "local" };
   }
 }
+
+export async function fetchEnrollment(id: string): Promise<Enrollment | null> {
+  try {
+    const response = await fetch(`/api/enrollments/${id}`);
+    if (!response.ok) return null;
+    const body = (await response.json()) as { enrollment: Enrollment };
+    return body.enrollment ?? null;
+  } catch {
+    return readLocalEnrollments().find((enrollment) => enrollment.id === id) ?? null;
+  }
+}
+
+/**
+ * Manual compliance sign-off on an EDD file. Resolutions only exist in the
+ * client database — there is no browser fallback, so null means try again
+ * with the API running.
+ */
+export async function resolveEnrollmentDecision(
+  id: string,
+  decision: "approved" | "rejected",
+  officer: string,
+): Promise<{ enrollment?: Enrollment; error?: string }> {
+  try {
+    const response = await fetch(`/api/enrollments/${id}/decision`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, officer }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      return { error: body.error ?? `HTTP ${response.status}` };
+    }
+    const body = (await response.json()) as { enrollment: Enrollment };
+    return { enrollment: body.enrollment };
+  } catch {
+    return { error: "API offline — resolutions are stored in the client database." };
+  }
+}

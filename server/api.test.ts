@@ -252,6 +252,59 @@ test("blocks placements while passport share consent is off", async () => {
   });
 });
 
+test("resolves EDD files with manual compliance sign-off", async () => {
+  await withApi(async (base) => {
+    const payload = validPayload((draft) => {
+      draft.account.fullName = "Maria Santos";
+      draft.acknowledgments.signatureName = "Maria Santos";
+    });
+    const submitted = await postEnrollment(base, payload).then((res) => res.json());
+    assert.equal(submitted.enrollment.status, "edd");
+    const enrollmentId = submitted.enrollment.id as string;
+
+    const approved = await fetch(`${base}/api/enrollments/${enrollmentId}/decision`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision: "approved", officer: "Sama Compliance" }),
+    });
+    assert.equal(approved.status, 200);
+    const approvedBody = await approved.json();
+    assert.equal(approvedBody.enrollment.status, "approved");
+    assert.match(approvedBody.enrollment.decision.accountId, /^WP-/);
+    assert.ok(
+      approvedBody.enrollment.decision.reasons.some((reason: string) =>
+        reason.includes("Manual review: approved by Sama Compliance"),
+      ),
+    );
+
+    // Resolved files cannot be resolved again.
+    const again = await fetch(`${base}/api/enrollments/${enrollmentId}/decision`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision: "rejected", officer: "Sama Compliance" }),
+    });
+    assert.equal(again.status, 409);
+
+    const missing = await fetch(`${base}/api/enrollments/nope/decision`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision: "approved", officer: "Sama Compliance" }),
+    });
+    assert.equal(missing.status, 404);
+
+    const badBody = await fetch(`${base}/api/enrollments/${enrollmentId}/decision`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision: "maybe", officer: "Sama Compliance" }),
+    });
+    assert.equal(badBody.status, 400);
+
+    const { events } = await fetch(`${base}/api/admin/events`).then((res) => res.json());
+    assert.equal(events[0].kind, "enrollment.decided");
+    assert.match(events[0].summary, /Sama Compliance approved the enrollment for Maria Santos/);
+  });
+});
+
 test("writes an append-only audit event for each decision", async () => {
   await withApi(async (base) => {
     await fetch(`${base}/api/clients/priya-shah/consent`, {

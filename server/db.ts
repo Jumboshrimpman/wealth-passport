@@ -7,6 +7,7 @@ import {
   mergeLayout,
   type WidgetLayout,
 } from "../shared/dashboardLayout.ts";
+import { generateAccountId } from "../shared/enrollment.ts";
 import type {
   Enrollment,
   EnrollmentDecision,
@@ -494,6 +495,43 @@ export function getEnrollment(db: DatabaseSync, id: string): Enrollment | undefi
     | EnrollmentRow
     | undefined;
   return row ? rowToEnrollment(row) : undefined;
+}
+
+export type EnrollmentDecisionUpdate =
+  | { ok: true; enrollment: Enrollment }
+  | { ok: false; reason: "not-found" | "not-edd" };
+
+/** Manual compliance sign-off on an EDD file. Only EDD files are resolvable. */
+export function resolveEnrollment(
+  db: DatabaseSync,
+  id: string,
+  decision: "approved" | "rejected",
+  officer: string,
+): EnrollmentDecisionUpdate {
+  const existing = getEnrollment(db, id);
+  if (!existing) return { ok: false, reason: "not-found" };
+  if (existing.status !== "edd") return { ok: false, reason: "not-edd" };
+
+  const today = new Date().toISOString();
+  const updated: Enrollment = {
+    ...existing,
+    status: decision,
+    decision: {
+      ...existing.decision,
+      status: decision,
+      accountId: decision === "approved" ? generateAccountId(id) : null,
+      reasons: [
+        ...existing.decision.reasons,
+        `Manual review: ${decision} by ${officer} on ${today.slice(0, 10)}.`,
+      ],
+    },
+  };
+  db.prepare("UPDATE enrollments SET status = ?, decision_json = ? WHERE id = ?").run(
+    decision,
+    JSON.stringify(updated.decision),
+    id,
+  );
+  return { ok: true, enrollment: updated };
 }
 
 interface PlacementRow {

@@ -27,6 +27,7 @@ import {
   listInstitutions,
   listPlacements,
   listPlacementsForClient,
+  resolveEnrollment,
   setAdminLayout,
   updateConsent,
   upsertPlacement,
@@ -158,6 +159,37 @@ export function createApp(db: DatabaseSync) {
       return;
     }
     res.json({ enrollment });
+  });
+
+  app.patch("/api/enrollments/:id/decision", (req, res) => {
+    const { decision, officer } = req.body ?? {};
+    if (decision !== "approved" && decision !== "rejected") {
+      res.status(400).json({ error: "`decision` must be \"approved\" or \"rejected\"." });
+      return;
+    }
+    if (typeof officer !== "string" || officer.trim().length === 0) {
+      res.status(400).json({ error: "Body must include the reviewing `officer`." });
+      return;
+    }
+    const result = resolveEnrollment(db, req.params.id, decision, officer.trim());
+    if (!result.ok) {
+      if (result.reason === "not-found") {
+        res.status(404).json({ error: `No enrollment record for "${req.params.id}".` });
+        return;
+      }
+      res.status(409).json({ error: "Only files in EDD review can be resolved." });
+      return;
+    }
+    appendEvent(db, {
+      actor: officer.trim(),
+      kind: "enrollment.decided",
+      summary: `${officer.trim()} ${decision} the enrollment for ${result.enrollment.payload.account.fullName}${
+        result.enrollment.decision.accountId
+          ? ` — account ${result.enrollment.decision.accountId} activated`
+          : ""
+      }.`,
+    });
+    res.json({ enrollment: result.enrollment });
   });
 
   app.get("/api/placements", (_req, res) => {
