@@ -1,5 +1,6 @@
+import type { OfferMatch } from "../../shared/match.ts";
 import type { ClientPassport } from "../../shared/types";
-import { formatUsd, offerHeadline, rankedInstitutions, type Offer } from "./catalog";
+import { formatUsd, offerHeadline } from "./catalog";
 
 export type OfferDecision = "accepted" | "declined";
 
@@ -67,15 +68,17 @@ function normalize(input: string): string {
   return input.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function offerLine(offer: Offer, decision: OfferDecision | undefined): string {
+function offerLine(match: OfferMatch, decision: OfferDecision | undefined): string {
+  const { offer } = match.institution;
   const status = decision ? ` · ${decision === "accepted" ? "Accepted" : "Declined"}` : " · pending";
-  return `Rank ${offer.rank}: ${offerHeadline(offer)}${status}. ${offer.fitReason}`;
+  return `Rank ${offer.rank}: ${offerHeadline(offer)}${status}. ${match.fitReason}`;
 }
 
 function replyStrategies(
   client: ClientPassport,
   consentOn: boolean,
   decisions: Record<string, OfferDecision>,
+  offers: OfferMatch[],
 ): ChatReply {
   if (!consentOn) {
     return {
@@ -86,13 +89,12 @@ function replyStrategies(
     };
   }
 
-  const ranked = rankedInstitutions();
-  const lines = ranked.map((firm) => offerLine(firm.offer, decisions[firm.offer.id]));
+  const lines = offers.map((match) => offerLine(match, decisions[match.institution.offer.id]));
   return {
     intent: "strategies-offers",
     handled: true,
     text: [
-      `Recommended strategies and latest offers for the ${client.household.name} (fixtures, not a live model). Ranked to this ${formatUsd(client.household.householdValue, true)} household — allocation, ${client.household.domicile}, and verified collateral.`,
+      `Recommended strategies and latest offers for the ${client.household.name}, matched from the client store to this ${formatUsd(client.household.householdValue, true)} household — allocation, ${client.household.domicile}, and verified collateral.`,
       ...lines,
       "Accept or Decline on Offers (or the Passport offer section).",
     ].join("\n\n"),
@@ -103,6 +105,7 @@ function replyUnderstandOffers(
   client: ClientPassport,
   consentOn: boolean,
   decisions: Record<string, OfferDecision>,
+  offers: OfferMatch[],
 ): ChatReply {
   if (!consentOn) {
     return {
@@ -113,13 +116,12 @@ function replyUnderstandOffers(
     };
   }
 
-  const ranked = rankedInstitutions();
-  const lines = ranked.map((firm) => offerLine(firm.offer, decisions[firm.offer.id]));
+  const lines = offers.map((match) => offerLine(match, decisions[match.institution.offer.id]));
   return {
     intent: "understand-offers",
     handled: true,
     text: [
-      `These are paid placements ranked to the ${client.household.name} ${formatUsd(client.household.householdValue, true)} passport — not an optimizer and not a live quote.`,
+      `These are paid placements matched to the ${client.household.name} ${formatUsd(client.household.householdValue, true)} passport — not an optimizer and not a live quote.`,
       ...lines,
       "On Offers or Passport, tap Accept or Decline. It will not accept without consent.",
     ].join("\n\n"),
@@ -133,7 +135,7 @@ function replyVerification(client: ClientPassport): ChatReply {
     handled: true,
     text: [
       `Verification on this passport is stored on the ${client.household.name} client record — no FINRA or custodian API.`,
-      `Advisor: ${client.advisor.name}, ${client.advisor.title} at ${client.advisor.firm}. BrokerCheck ${client.advisor.brokerCheckId} (placeholder). Illustrated since ${client.advisor.since}.`,
+      `Advisor: ${client.advisor.name}, ${client.advisor.title} at ${client.advisor.firm}. BrokerCheck ${client.advisor.brokerCheckId}. Advisor of record since ${client.advisor.since}.`,
       verified
         ? `Custodian: ${verified.custodian} ${verified.name} (${client.verifiedCustodian.accountMask}) is the verified sleeve.`
         : "No custodian sleeve is marked verified on this record.",
@@ -189,7 +191,12 @@ function replyPortfolio(client: ClientPassport): ChatReply {
 
 export function answerDeskChat(
   input: string,
-  ctx: { client: ClientPassport; consentOn: boolean; decisions: Record<string, OfferDecision> },
+  ctx: {
+    client: ClientPassport;
+    consentOn: boolean;
+    decisions: Record<string, OfferDecision>;
+    offers: OfferMatch[];
+  },
 ): ChatReply {
   const suggestion = chatSuggestions.find((item) => normalize(item.label) === normalize(input));
   if (!suggestion) {
@@ -200,8 +207,8 @@ export function answerDeskChat(
     };
   }
 
-  if (suggestion.id === "strategies-offers") return replyStrategies(ctx.client, ctx.consentOn, ctx.decisions);
-  if (suggestion.id === "understand-offers") return replyUnderstandOffers(ctx.client, ctx.consentOn, ctx.decisions);
+  if (suggestion.id === "strategies-offers") return replyStrategies(ctx.client, ctx.consentOn, ctx.decisions, ctx.offers);
+  if (suggestion.id === "understand-offers") return replyUnderstandOffers(ctx.client, ctx.consentOn, ctx.decisions, ctx.offers);
   if (suggestion.id === "portfolio") return replyPortfolio(ctx.client);
   if (suggestion.id === "verification") return replyVerification(ctx.client);
   if (suggestion.id === "ops") return replyOps(ctx.client);

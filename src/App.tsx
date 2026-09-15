@@ -5,6 +5,7 @@ import { ModeRoute } from "./components/ModeRoute";
 import { ClientProvider } from "./context/ClientContext";
 import { ConsentProvider } from "./context/ConsentContext";
 import { ModeProvider, useMode } from "./context/ModeContext";
+import { OfferProvider } from "./context/OfferContext";
 import { OfferDecisionProvider } from "./context/OfferDecisionContext";
 import { MODE_HOMES } from "./data/catalog";
 import { Admin } from "./views/Admin";
@@ -20,8 +21,9 @@ export default function App() {
     <ClerkGate>
       <ClientProvider>
         <ConsentProvider>
-          <OfferDecisionProvider>
-            <ModeProvider>
+          <OfferProvider>
+            <OfferDecisionProvider>
+              <ModeProvider>
             <Routes>
               <Route element={<Layout />}>
                 <Route path="/" element={<HomeRedirect />} />
@@ -85,8 +87,9 @@ export default function App() {
                 <Route path="*" element={<UnknownRoute />} />
               </Route>
             </Routes>
-          </ModeProvider>
-        </OfferDecisionProvider>
+              </ModeProvider>
+            </OfferDecisionProvider>
+          </OfferProvider>
         </ConsentProvider>
       </ClientProvider>
     </ClerkGate>

@@ -1,11 +1,12 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useConsent } from "./ConsentContext";
-import { institutions, type Offer } from "../data/catalog";
+import { INSTITUTION_SEEDS } from "../../shared/seed/institutions.ts";
+import type { Offer } from "../data/catalog";
 import type { OfferDecision } from "../data/chat";
 
 const DECISION_KEY = "wealthpass-offer-decisions";
 
-const OFFER_IDS = new Set(institutions.map((firm) => firm.offer.id));
+const OFFER_IDS = new Set(INSTITUTION_SEEDS.map((firm) => firm.offer.id));
 
 type DecisionMap = Record<string, OfferDecision>;
 
@@ -65,7 +66,7 @@ function persistDecisions(decisions: DecisionMap) {
 }
 
 function assertKnownOffer(offerId: string): Offer {
-  const firm = institutions.find((item) => item.offer.id === offerId);
+  const firm = INSTITUTION_SEEDS.find((item) => item.offer.id === offerId);
   if (!firm) {
     throw new Error(`Unknown offer id "${offerId}".`);
   }

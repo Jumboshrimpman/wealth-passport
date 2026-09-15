@@ -1,7 +1,16 @@
 import cors from "cors";
 import express from "express";
 import type { DatabaseSync } from "node:sqlite";
-import { getClientPassport, listClientSummaries, updateConsent } from "./db.ts";
+import { eligibleMatches, matchInstitutions } from "../shared/match.ts";
+import {
+  getAdminLayout,
+  getClientPassport,
+  getClientRecord,
+  listClientSummaries,
+  listInstitutions,
+  setAdminLayout,
+  updateConsent,
+} from "./db.ts";
 
 export function createApp(db: DatabaseSync) {
   const app = express();
@@ -37,6 +46,33 @@ export function createApp(db: DatabaseSync) {
       return;
     }
     res.json({ client: passport });
+  });
+
+  app.get("/api/institutions", (_req, res) => {
+    res.json({ institutions: listInstitutions(db) });
+  });
+
+  app.get("/api/clients/:id/offers", (req, res) => {
+    const record = getClientRecord(db, req.params.id);
+    if (!record) {
+      res.status(404).json({ error: `No client record for "${req.params.id}".` });
+      return;
+    }
+    const matches = matchInstitutions(record, listInstitutions(db));
+    res.json({ matches, eligible: eligibleMatches(matches) });
+  });
+
+  app.get("/api/admin/layout", (_req, res) => {
+    res.json({ layout: getAdminLayout(db) });
+  });
+
+  app.put("/api/admin/layout", (req, res) => {
+    const widgets = req.body?.widgets;
+    if (!Array.isArray(widgets)) {
+      res.status(400).json({ error: "Body must include a `widgets` array." });
+      return;
+    }
+    res.json({ layout: setAdminLayout(db, widgets) });
   });
 
   return app;

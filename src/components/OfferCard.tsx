@@ -6,9 +6,11 @@ import { Badge } from "./ui";
 
 export function OfferCard({
   firm,
+  fitReason,
   compact = false,
 }: {
   firm: Institution;
+  fitReason?: string;
   compact?: boolean;
 }) {
   const offer = firm.offer;
@@ -55,15 +57,15 @@ export function OfferCard({
         {firm.name}
         <span className="muted"> · {firm.kindLabel}</span>
       </p>
-      <p className="offer-fit">{offer.fitReason}</p>
+      <p className="offer-fit">{fitReason ?? offer.fitReason}</p>
       {!compact ? <p className="muted">{offer.summary}</p> : null}
       <p className="tiny muted">
-        Illustrative terms: {offer.terms} Expires {offer.expires}.
+        Terms: {offer.terms} Expires {offer.expires}.
       </p>
       <div className="offer-actions">
         {status ? (
           <p className="tiny muted" style={{ margin: 0 }}>
-            Decision stored for this demo session ({status === "accepted" ? "Accepted" : "Declined"}
+            Decision stored for this session ({status === "accepted" ? "Accepted" : "Declined"}
             ). Browser storage only — not an institution API.
           </p>
         ) : (

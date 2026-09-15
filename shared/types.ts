@@ -143,6 +143,48 @@ export interface ClientSummary {
   householdValue: number;
 }
 
+export type PlacementKind = "bps" | "strategy" | "special";
+
+export type InstitutionKind = "bank" | "asset-manager" | "private-markets";
+
+export interface Offer {
+  id: string;
+  institutionId: string;
+  title: string;
+  strategy: string;
+  bps: number;
+  feeDiscountPct: number;
+  rank: number;
+  fitReason: string;
+  summary: string;
+  placementKind: PlacementKind;
+  placementLabel: string;
+  paidPlacement: string;
+  terms: string;
+  expires: string;
+  audience: string;
+}
+
+export interface InstitutionTargeting {
+  minInvestable: number;
+  liquidityMin: number;
+  privateMarketsMinPct: number;
+  geography: string;
+  /** Two-letter state codes this desk targets; empty array means national. */
+  states: string[];
+  consentRequired: boolean;
+}
+
+export interface Institution {
+  id: string;
+  name: string;
+  kind: InstitutionKind;
+  kindLabel: string;
+  desk: string;
+  targeting: InstitutionTargeting;
+  offer: Offer;
+}
+
 export function summarizeClient(record: ClientRecord): ClientSummary {
   return {
     id: record.id,
