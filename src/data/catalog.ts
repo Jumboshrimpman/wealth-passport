@@ -46,7 +46,8 @@ export function modesAllowedForPath(pathname: string): AppMode[] {
     pathname === "/passport" ||
     pathname === "/verification" ||
     pathname === "/offers" ||
-    pathname === "/ops"
+    pathname === "/ops" ||
+    pathname === "/enroll"
   ) {
     return ["client", "admin"];
   }

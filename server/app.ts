@@ -1,12 +1,25 @@
 import cors from "cors";
 import express from "express";
+import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import {
+  decideEnrollment,
+  generateAccountId,
+  screenEnrollment,
+  scoreEnrollment,
+  validateEnrollment,
+  type Enrollment,
+  type EnrollmentPayload,
+} from "../shared/enrollment.ts";
 import { eligibleMatches, matchInstitutions } from "../shared/match.ts";
 import {
   getAdminLayout,
   getClientPassport,
   getClientRecord,
+  getEnrollment,
+  insertEnrollment,
   listClientSummaries,
+  listEnrollmentSummaries,
   listInstitutions,
   setAdminLayout,
   updateConsent,
@@ -73,6 +86,50 @@ export function createApp(db: DatabaseSync) {
       return;
     }
     res.json({ layout: setAdminLayout(db, widgets) });
+  });
+
+  app.post("/api/enrollments", (req, res) => {
+    const payload = req.body?.payload as EnrollmentPayload | undefined;
+    if (!payload || typeof payload !== "object") {
+      res.status(400).json({ error: "Body must include an enrollment `payload`." });
+      return;
+    }
+    const errors = validateEnrollment(payload);
+    if (errors.length > 0) {
+      res.status(400).json({ error: "Enrollment payload failed validation.", errors });
+      return;
+    }
+    const screening = screenEnrollment(payload);
+    const risk = scoreEnrollment(payload, screening);
+    const decision = decideEnrollment(payload, screening, risk);
+    const id = randomUUID();
+    if (decision.status === "approved") {
+      decision.accountId = generateAccountId(id);
+    }
+    const enrollment: Enrollment = {
+      id,
+      createdAt: new Date().toISOString(),
+      payload,
+      screening,
+      risk,
+      decision,
+      status: decision.status,
+    };
+    insertEnrollment(db, enrollment);
+    res.status(201).json({ enrollment });
+  });
+
+  app.get("/api/enrollments", (_req, res) => {
+    res.json({ enrollments: listEnrollmentSummaries(db) });
+  });
+
+  app.get("/api/enrollments/:id", (req, res) => {
+    const enrollment = getEnrollment(db, req.params.id);
+    if (!enrollment) {
+      res.status(404).json({ error: `No enrollment record for "${req.params.id}".` });
+      return;
+    }
+    res.json({ enrollment });
   });
 
   return app;

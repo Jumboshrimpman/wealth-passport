@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { test } from "node:test";
+import { emptyEnrollmentPayload, type EnrollmentPayload } from "../shared/enrollment.ts";
 import { createApp } from "./app.ts";
 import { openDatabase, seedIfEmpty } from "./db.ts";
 
@@ -161,5 +162,158 @@ test("persists the admin dashboard layout server-side", async () => {
       body: JSON.stringify({ layout: [] }),
     });
     assert.equal(bad.status, 400);
+  });
+});
+
+function validPayload(overrides?: (payload: EnrollmentPayload) => void): EnrollmentPayload {
+  const payload = emptyEnrollmentPayload();
+  payload.account = {
+    fullName: "Jordan Reyes",
+    email: "jordan.reyes@example.com",
+    phone: "+1 203 555 0184",
+  };
+  payload.identity = {
+    idType: "passport",
+    idNumber: "X1234567",
+    idExpiry: "2031-01-01",
+    issuingCountry: "United States",
+    livenessConfirmed: true,
+  };
+  payload.personal.dob = "1988-04-17";
+  payload.personal.citizenship = "United States";
+  payload.personal.address = {
+    street: "12 Elm Street",
+    city: "Greenwich",
+    state: "CT",
+    postalCode: "06830",
+    country: "United States",
+  };
+  payload.personal.occupation = "Surgeon";
+  payload.personal.industry = "Healthcare";
+  payload.financial.sourceOfFundsDocs = ["Tax returns (last 2 years)"];
+  payload.acknowledgments = {
+    amlProgram: true,
+    privacyPolicy: true,
+    sanctionsDisclosure: true,
+    reportChanges: true,
+    signatureName: "Jordan Reyes",
+  };
+  overrides?.(payload);
+  return payload;
+}
+
+async function postEnrollment(base: string, payload: EnrollmentPayload) {
+  return fetch(`${base}/api/enrollments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ payload }),
+  });
+}
+
+test("enrollment auto-approves a clean low-risk applicant and persists", async () => {
+  await withApi(async (base) => {
+    const created = await postEnrollment(base, validPayload());
+    assert.equal(created.status, 201);
+    const { enrollment } = await created.json();
+    assert.equal(enrollment.status, "approved");
+    assert.equal(enrollment.decision.status, "approved");
+    assert.match(enrollment.decision.accountId, /^WP-\d{8}$/);
+    assert.equal(enrollment.risk.level, "low");
+    assert.equal(enrollment.risk.score, 0);
+    assert.equal(enrollment.screening.sanctions.status, "no-hit");
+
+    const list = await fetch(`${base}/api/enrollments`).then((res) => res.json());
+    assert.equal(list.enrollments.length, 1);
+    assert.equal(list.enrollments[0].fullName, "Jordan Reyes");
+    assert.equal(list.enrollments[0].status, "approved");
+
+    const reread = await fetch(`${base}/api/enrollments/${enrollment.id}`).then((res) => res.json());
+    assert.equal(reread.enrollment.payload.account.email, "jordan.reyes@example.com");
+
+    const missing = await fetch(`${base}/api/enrollments/not-an-enrollment`);
+    assert.equal(missing.status, 404);
+  });
+});
+
+test("enrollment rejects a high-confidence sanctions hit", async () => {
+  await withApi(async (base) => {
+    const created = await postEnrollment(
+      base,
+      validPayload((payload) => {
+        payload.account.fullName = "Ivan Petrov";
+        payload.acknowledgments.signatureName = "Ivan Petrov";
+      }),
+    );
+    assert.equal(created.status, 201);
+    const { enrollment } = await created.json();
+    assert.equal(enrollment.status, "rejected");
+    assert.equal(enrollment.decision.accountId, null);
+    assert.equal(enrollment.screening.sanctions.status, "high-confidence");
+    assert.equal(enrollment.screening.sanctions.hits[0].list, "OFAC SDN");
+    assert.equal(enrollment.risk.level, "high");
+  });
+});
+
+test("enrollment routes PEP and complex business files to EDD", async () => {
+  await withApi(async (base) => {
+    const created = await postEnrollment(
+      base,
+      validPayload((payload) => {
+        payload.pep.isPep = true;
+        payload.pep.pepRole = "City treasurer";
+        payload.pep.pepCountry = "United States";
+        payload.entity.isBusiness = true;
+        payload.entity.legalName = "Reyes Holdings LLC";
+        payload.entity.formationJurisdiction = "Delaware, USA";
+        payload.entity.businessActivity = "Real estate holding company";
+        payload.entity.signatoryRole = "Managing member";
+        payload.entity.owners = [
+          { name: "Jordan Reyes", ownershipPct: 60, isEntity: false },
+          { name: "Reyes Family Trust", ownershipPct: 40, isEntity: true },
+        ];
+      }),
+    );
+    assert.equal(created.status, 201);
+    const { enrollment } = await created.json();
+    assert.equal(enrollment.status, "edd");
+    assert.equal(enrollment.decision.accountId, null);
+    assert.ok(enrollment.risk.score >= 30);
+    assert.ok(enrollment.risk.score < 70);
+    assert.ok(
+      enrollment.decision.eddChecklist.some((item: string) => item.includes("PEP role verification")),
+    );
+    assert.ok(
+      enrollment.decision.eddChecklist.some((item: string) =>
+        item.includes("beneficial-ownership register"),
+      ),
+    );
+    assert.ok(
+      enrollment.risk.factors.some(
+        (factor: { label: string }) => factor.label === "Cascading entity ownership (intermediate legal entity)",
+      ),
+    );
+  });
+});
+
+test("enrollment rejects invalid payloads with field errors", async () => {
+  await withApi(async (base) => {
+    const payload = validPayload((draft) => {
+      draft.account.email = "not-an-email";
+      draft.personal.dob = "2015-01-01";
+      draft.acknowledgments.amlProgram = false;
+    });
+    const response = await postEnrollment(base, payload);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.ok(body.errors.some((error: string) => error.includes("email")));
+    assert.ok(body.errors.some((error: string) => error.includes("18")));
+    assert.ok(body.errors.some((error: string) => error.includes("AML/CFT")));
+
+    const empty = await fetch(`${base}/api/enrollments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    assert.equal(empty.status, 400);
   });
 });

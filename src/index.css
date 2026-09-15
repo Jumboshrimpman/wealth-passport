@@ -1069,6 +1069,90 @@ textarea {
   background: var(--danger-soft);
 }
 
+.enroll-cta {
+  display: inline-block;
+  padding: 0.55rem 1.15rem;
+  border-radius: 999px;
+  background: #2563eb;
+  border: 1px solid #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.enroll-cta:hover {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.enroll-cta[aria-current="page"] {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+}
+
+.enroll-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.enroll-step {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.enroll-step.done {
+  background: var(--sage-100);
+  border-color: var(--sage-300);
+  color: var(--sage-900);
+}
+
+.enroll-step.active {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #fff;
+  font-weight: 600;
+}
+
+.enroll-check {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.enroll-check input[type="checkbox"] {
+  margin-top: 0.2rem;
+  accent-color: #2563eb;
+}
+
+.enroll-owner {
+  display: grid;
+  grid-template-columns: 1fr 6rem auto auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.enroll-summary {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--cream);
+  padding: 0.9rem 1rem;
+}
+
+.enroll-summary p {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 860px) {
   .grid-2,
   .grid-3,
@@ -1079,5 +1163,9 @@ textarea {
 
   .dash-widget.span-2 {
     grid-column: span 1;
+  }
+
+  .enroll-owner {
+    grid-template-columns: 1fr;
   }
 }

@@ -10,6 +10,7 @@ import { OfferDecisionProvider } from "./context/OfferDecisionContext";
 import { MODE_HOMES } from "./data/catalog";
 import { Admin } from "./views/Admin";
 import { Chat } from "./views/Chat";
+import { Enroll } from "./views/Enroll";
 import { Institution } from "./views/Institution";
 import { Offers } from "./views/Offers";
 import { Ops } from "./views/Ops";
@@ -73,6 +74,14 @@ export default function App() {
                   element={
                     <ModeRoute path="/ops">
                       <Ops />
+                    </ModeRoute>
+                  }
+                />
+                <Route
+                  path="/enroll"
+                  element={
+                    <ModeRoute path="/enroll">
+                      <Enroll />
                     </ModeRoute>
                   }
                 />

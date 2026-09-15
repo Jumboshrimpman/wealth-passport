@@ -7,6 +7,15 @@ import {
   mergeLayout,
   type WidgetLayout,
 } from "../shared/dashboardLayout.ts";
+import type {
+  Enrollment,
+  EnrollmentDecision,
+  EnrollmentPayload,
+  EnrollmentStatus,
+  EnrollmentSummary,
+  RiskAssessment,
+  ScreeningResult,
+} from "../shared/enrollment.ts";
 import { CLIENT_SEEDS } from "../shared/seed/index.ts";
 import { INSTITUTION_SEEDS } from "../shared/seed/institutions.ts";
 import type {
@@ -93,6 +102,19 @@ export function openDatabase(path = defaultDatabasePath()): DatabaseSync {
       key TEXT PRIMARY KEY,
       value_json TEXT NOT NULL,
       updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS enrollments (
+      id TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL,
+      status TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      risk_score INTEGER NOT NULL,
+      risk_level TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      screening_json TEXT NOT NULL,
+      risk_json TEXT NOT NULL,
+      decision_json TEXT NOT NULL
     );
   `);
   return db;
@@ -371,4 +393,84 @@ export function setAdminLayout(db: DatabaseSync, layout: WidgetLayout[]): Widget
      ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`,
   ).run(ADMIN_LAYOUT_KEY, JSON.stringify(layoutPayload(merged)), new Date().toISOString());
   return merged;
+}
+
+interface EnrollmentRow {
+  id: string;
+  created_at: string;
+  status: EnrollmentStatus;
+  full_name: string;
+  email: string;
+  risk_score: number;
+  risk_level: RiskAssessment["level"];
+  payload_json: string;
+  screening_json: string;
+  risk_json: string;
+  decision_json: string;
+}
+
+function rowToEnrollment(row: EnrollmentRow): Enrollment {
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    payload: JSON.parse(row.payload_json) as EnrollmentPayload,
+    screening: JSON.parse(row.screening_json) as ScreeningResult,
+    risk: JSON.parse(row.risk_json) as RiskAssessment,
+    decision: JSON.parse(row.decision_json) as EnrollmentDecision,
+    status: row.status,
+  };
+}
+
+export function insertEnrollment(db: DatabaseSync, enrollment: Enrollment): void {
+  db.prepare(
+    `INSERT INTO enrollments (
+      id, created_at, status, full_name, email, risk_score, risk_level,
+      payload_json, screening_json, risk_json, decision_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    enrollment.id,
+    enrollment.createdAt,
+    enrollment.status,
+    enrollment.payload.account.fullName,
+    enrollment.payload.account.email,
+    enrollment.risk.score,
+    enrollment.risk.level,
+    JSON.stringify(enrollment.payload),
+    JSON.stringify(enrollment.screening),
+    JSON.stringify(enrollment.risk),
+    JSON.stringify(enrollment.decision),
+  );
+}
+
+export function listEnrollmentSummaries(db: DatabaseSync): EnrollmentSummary[] {
+  const rows = db
+    .prepare(
+      `SELECT id, created_at, status, full_name, email, risk_score, risk_level
+       FROM enrollments ORDER BY created_at DESC`,
+    )
+    .all() as Array<{
+    id: string;
+    created_at: string;
+    status: EnrollmentStatus;
+    full_name: string;
+    email: string;
+    risk_score: number;
+    risk_level: RiskAssessment["level"];
+  }>;
+  return rows.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    fullName: row.full_name,
+    email: row.email,
+    status: row.status,
+    riskScore: row.risk_score,
+    riskLevel: row.risk_level,
+  }));
+}
+
+export function getEnrollment(db: DatabaseSync, id: string): Enrollment | undefined {
+  const row = db.prepare("SELECT * FROM enrollments WHERE id = ?").get(id) as
+    | EnrollmentRow
+    | undefined;
+  return row ? rowToEnrollment(row) : undefined;
 }
