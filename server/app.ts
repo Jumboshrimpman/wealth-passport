@@ -11,8 +11,11 @@ import {
   type Enrollment,
   type EnrollmentPayload,
 } from "../shared/enrollment.ts";
+import { formatUsd } from "../shared/format.ts";
 import { eligibleMatches, matchInstitutions } from "../shared/match.ts";
+import { buildPlacement, type PlacementStatus } from "../shared/placements.ts";
 import {
+  appendEvent,
   getAdminLayout,
   getClientPassport,
   getClientRecord,
@@ -20,9 +23,14 @@ import {
   insertEnrollment,
   listClientSummaries,
   listEnrollmentSummaries,
+  listEvents,
   listInstitutions,
+  listPlacements,
+  listPlacementsForClient,
+  resolveEnrollment,
   setAdminLayout,
   updateConsent,
+  upsertPlacement,
 } from "./db.ts";
 
 export function createApp(db: DatabaseSync) {
@@ -58,6 +66,11 @@ export function createApp(db: DatabaseSync) {
       res.status(404).json({ error: `No client record for "${req.params.id}".` });
       return;
     }
+    appendEvent(db, {
+      actor: passport.household.name,
+      kind: "consent.changed",
+      summary: `${passport.household.name} turned passport share ${shared ? "on" : "off"}.`,
+    });
     res.json({ client: passport });
   });
 
@@ -85,7 +98,18 @@ export function createApp(db: DatabaseSync) {
       res.status(400).json({ error: "Body must include a `widgets` array." });
       return;
     }
-    res.json({ layout: setAdminLayout(db, widgets) });
+    const layout = setAdminLayout(db, widgets);
+    appendEvent(db, {
+      actor: "admin",
+      kind: "admin.layout_updated",
+      summary: `Admin dashboard layout updated (${layout.filter((widget) => widget.visible).length} visible widgets).`,
+    });
+    res.json({ layout });
+  });
+
+  app.get("/api/admin/events", (req, res) => {
+    const limit = Number(req.query.limit ?? 100);
+    res.json({ events: listEvents(db, Number.isFinite(limit) ? limit : 100) });
   });
 
   app.post("/api/enrollments", (req, res) => {
@@ -116,6 +140,11 @@ export function createApp(db: DatabaseSync) {
       status: decision.status,
     };
     insertEnrollment(db, enrollment);
+    appendEvent(db, {
+      actor: payload.account.fullName,
+      kind: "enrollment.submitted",
+      summary: `Enrollment submitted by ${payload.account.fullName} — ${decision.status} (risk ${risk.score}/100).`,
+    });
     res.status(201).json({ enrollment });
   });
 
@@ -130,6 +159,86 @@ export function createApp(db: DatabaseSync) {
       return;
     }
     res.json({ enrollment });
+  });
+
+  app.patch("/api/enrollments/:id/decision", (req, res) => {
+    const { decision, officer } = req.body ?? {};
+    if (decision !== "approved" && decision !== "rejected") {
+      res.status(400).json({ error: "`decision` must be \"approved\" or \"rejected\"." });
+      return;
+    }
+    if (typeof officer !== "string" || officer.trim().length === 0) {
+      res.status(400).json({ error: "Body must include the reviewing `officer`." });
+      return;
+    }
+    const result = resolveEnrollment(db, req.params.id, decision, officer.trim());
+    if (!result.ok) {
+      if (result.reason === "not-found") {
+        res.status(404).json({ error: `No enrollment record for "${req.params.id}".` });
+        return;
+      }
+      res.status(409).json({ error: "Only files in EDD review can be resolved." });
+      return;
+    }
+    appendEvent(db, {
+      actor: officer.trim(),
+      kind: "enrollment.decided",
+      summary: `${officer.trim()} ${decision} the enrollment for ${result.enrollment.payload.account.fullName}${
+        result.enrollment.decision.accountId
+          ? ` — account ${result.enrollment.decision.accountId} activated`
+          : ""
+      }.`,
+    });
+    res.json({ enrollment: result.enrollment });
+  });
+
+  app.get("/api/placements", (_req, res) => {
+    res.json({ placements: listPlacements(db) });
+  });
+
+  app.get("/api/clients/:id/placements", (req, res) => {
+    if (!getClientRecord(db, req.params.id)) {
+      res.status(404).json({ error: `No client record for "${req.params.id}".` });
+      return;
+    }
+    res.json({ placements: listPlacementsForClient(db, req.params.id) });
+  });
+
+  app.post("/api/placements", (req, res) => {
+    const { clientId, offerId, status } = req.body ?? {};
+    if (typeof clientId !== "string" || typeof offerId !== "string") {
+      res.status(400).json({ error: "Body must include string `clientId` and `offerId`." });
+      return;
+    }
+    if (status !== "accepted" && status !== "declined") {
+      res.status(400).json({ error: "`status` must be \"accepted\" or \"declined\"." });
+      return;
+    }
+    const record = getClientRecord(db, clientId);
+    if (!record) {
+      res.status(404).json({ error: `No client record for "${clientId}".` });
+      return;
+    }
+    const institution = listInstitutions(db).find((firm) => firm.offer.id === offerId);
+    if (!institution) {
+      res.status(404).json({ error: `No offer record for "${offerId}".` });
+      return;
+    }
+    if (!record.consent.shared) {
+      res.status(403).json({ error: "Passport share consent is off for this client." });
+      return;
+    }
+    const placement = buildPlacement(record, institution, status as PlacementStatus);
+    upsertPlacement(db, placement);
+    appendEvent(db, {
+      actor: record.household.name,
+      kind: "placement.decided",
+      summary:
+        status === "accepted"
+          ? `${record.household.name} accepted ${institution.name} — ${institution.offer.placementFeeBps} bps on ${formatUsd(placement.matchedAssets, true)} books ${formatUsd(placement.annualRevenue)}/yr.`
+          : `${record.household.name} declined ${institution.name}.`,
+    });
+    res.status(200).json({ placement, placements: listPlacementsForClient(db, clientId) });
   });
 
   return app;

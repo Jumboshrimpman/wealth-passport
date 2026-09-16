@@ -1,12 +1,21 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { useConsent } from "./ConsentContext";
+import { useClient } from "./ClientContext";
 import { INSTITUTION_SEEDS } from "../../shared/seed/institutions.ts";
 import type { Offer } from "../data/catalog";
 import type { OfferDecision } from "../data/chat";
-
-const DECISION_KEY = "wealthpass-offer-decisions";
-
-const OFFER_IDS = new Set(INSTITUTION_SEEDS.map((firm) => firm.offer.id));
+import {
+  fetchPlacements,
+  persistLocalDecisions,
+  postPlacementDecision,
+  readLocalDecisions,
+} from "../api/placements";
 
 type DecisionMap = Record<string, OfferDecision>;
 
@@ -21,50 +30,6 @@ type OfferDecisionContextValue = {
 
 const OfferDecisionContext = createContext<OfferDecisionContextValue | null>(null);
 
-function isDecision(value: unknown): value is OfferDecision {
-  return value === "accepted" || value === "declined";
-}
-
-function readStoredDecisions(): DecisionMap {
-  let stored: string | null = null;
-  try {
-    stored = sessionStorage.getItem(DECISION_KEY) ?? localStorage.getItem(DECISION_KEY);
-  } catch {
-    return {};
-  }
-  if (!stored) return {};
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stored);
-  } catch {
-    throw new Error("Offer decision storage is corrupt and cannot be read.");
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("Offer decision storage is not an object.");
-  }
-  const next: DecisionMap = {};
-  for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
-    if (!OFFER_IDS.has(id)) {
-      throw new Error(`Offer decision storage has unknown offer id "${id}".`);
-    }
-    if (!isDecision(value)) {
-      throw new Error(`Offer decision storage has invalid status for "${id}".`);
-    }
-    next[id] = value;
-  }
-  return next;
-}
-
-function persistDecisions(decisions: DecisionMap) {
-  const value = JSON.stringify(decisions);
-  try {
-    sessionStorage.setItem(DECISION_KEY, value);
-    localStorage.setItem(DECISION_KEY, value);
-  } catch {
-    // In-memory map still updates if storage is blocked.
-  }
-}
-
 function assertKnownOffer(offerId: string): Offer {
   const firm = INSTITUTION_SEEDS.find((item) => item.offer.id === offerId);
   if (!firm) {
@@ -73,15 +38,47 @@ function assertKnownOffer(offerId: string): Offer {
   return firm.offer;
 }
 
+/**
+ * Offer decisions are placements in the client store: accepting books
+ * annualized placement revenue against the household's investable assets.
+ * When the API is unreachable the same decisions fall back to per-client
+ * browser storage.
+ */
 export function OfferDecisionProvider({ children }: { children: ReactNode }) {
   const consent = useConsent();
-  const [decisions, setDecisions] = useState<DecisionMap>(readStoredDecisions);
+  const { passport } = useClient();
+  const [decisions, setDecisions] = useState<DecisionMap>(() => readLocalDecisions(passport.id));
+
+  useEffect(() => {
+    let live = true;
+    void fetchPlacements(passport.id).then(({ placements, source }) => {
+      if (!live) return;
+      if (source === "api") {
+        const next: DecisionMap = {};
+        for (const placement of placements) next[placement.offerId] = placement.status;
+        setDecisions(next);
+        persistLocalDecisions(passport.id, next);
+      } else {
+        setDecisions(readLocalDecisions(passport.id));
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [passport.id]);
 
   function write(offerId: string, status: OfferDecision) {
     setDecisions((current) => {
       const next = { ...current, [offerId]: status };
-      persistDecisions(next);
+      persistLocalDecisions(passport.id, next);
       return next;
+    });
+    void postPlacementDecision(passport.id, offerId, status).then((placements) => {
+      if (!placements) return;
+      const next: DecisionMap = {};
+      for (const placement of placements) next[placement.offerId] = placement.status;
+      setDecisions(next);
+      persistLocalDecisions(passport.id, next);
     });
   }
 

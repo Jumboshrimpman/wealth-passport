@@ -17,8 +17,15 @@ import {
   type WidgetLayout,
 } from "../../admin/dashboardLayout";
 import { fetchAdminLayout, saveAdminLayout, type AdminLayoutSource } from "../../api/admin";
+import { fetchAllPlacements } from "../../api/placements";
 import { useOffers } from "../../context/OfferContext";
 import { formatUsd } from "../../data/catalog";
+import {
+  acceptedPlacements,
+  blendedFeeBps,
+  placementRevenueTotal,
+  type Placement,
+} from "../../../shared/placements.ts";
 import type { ClientPassport, ClientSummary } from "../../../shared/types";
 import { BarList, Donut, Sparkline, StackedBar, type ChartSlice } from "./Charts";
 
@@ -39,7 +46,18 @@ export function AdminDashboard({
 }) {
   const [layout, setLayout] = useState<WidgetLayout[]>(readStoredLayout);
   const [layoutSource, setLayoutSource] = useState<AdminLayoutSource>("local");
+  const [placements, setPlacements] = useState<Placement[]>([]);
   const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    void fetchAllPlacements().then((result) => {
+      if (live) setPlacements(result.placements);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -120,7 +138,13 @@ export function AdminDashboard({
         {visible.map((item) => (
           <article key={item.id} className={`dash-widget span-${item.span}`}>
             {editing ? <WidgetChrome layout={layout} item={item} onChange={update} /> : null}
-            <WidgetBody item={item} clients={clients} passport={passport} selectClient={selectClient} />
+            <WidgetBody
+              item={item}
+              clients={clients}
+              passport={passport}
+              selectClient={selectClient}
+              placements={placements}
+            />
           </article>
         ))}
       </div>
@@ -204,11 +228,13 @@ function WidgetBody({
   clients,
   passport,
   selectClient,
+  placements,
 }: {
   item: WidgetLayout;
   clients: ClientSummary[];
   passport: ClientPassport;
   selectClient: (id: string) => void;
+  placements: Placement[];
 }) {
   const aumRows = useMemo<ChartSlice[]>(
     () =>
@@ -247,6 +273,14 @@ function WidgetBody({
     value: eligible.length - index,
     tone: TONES[index % TONES.length],
     tooltip: `${match.institution.offer.rank}. ${match.institution.name} · ${match.institution.offer.strategy}`,
+  }));
+  const accepted = acceptedPlacements(placements);
+  const revenueTotal = placementRevenueTotal(placements);
+  const revenueRows: ChartSlice[] = accepted.map((placement, index) => ({
+    label: `${placement.clientName} · ${placement.institutionName}`,
+    value: placement.annualRevenue,
+    tone: TONES[index % TONES.length],
+    tooltip: `${placement.clientName} accepted ${placement.institutionName} — ${placement.strategy}\n${placement.placementFeeBps} bps on ${formatUsd(placement.matchedAssets, true)} matched assets → ${formatUsd(placement.annualRevenue)}/yr`,
   }));
 
   switch (item.id) {
@@ -329,6 +363,53 @@ function WidgetBody({
             stack: <StackedBar rows={placementRows} />,
             bars: <BarList rows={placementRows} />,
             donut: <Donut rows={placementRows} center={String(OPEN_PLACEMENTS)} />,
+            status: null,
+          })}
+        </MetricShell>
+      );
+    case "revenue":
+      return (
+        <MetricShell
+          kicker={WIDGET_META.revenue.title}
+          value={formatUsd(revenueTotal, true)}
+          note={
+            accepted.length > 0
+              ? `${accepted.length} accepted placement${accepted.length === 1 ? "" : "s"} · blended fee ${blendedFeeBps(placements)} bps · annualized run-rate`
+              : "No accepted placements yet — accept an offer from the client inbox"
+          }
+        >
+          {renderViz(item.viz, {
+            bars: (
+              <BarList
+                rows={
+                  revenueRows.length
+                    ? revenueRows
+                    : [{ label: "No accepted placements", value: 0, tone: "stone" }]
+                }
+                format={(n) => formatUsd(n, true)}
+              />
+            ),
+            donut: (
+              <Donut
+                rows={
+                  revenueRows.length
+                    ? revenueRows
+                    : [{ label: "None", value: 1, tone: "stone" }]
+                }
+                center={formatUsd(revenueTotal, true)}
+                format={(n) => formatUsd(n, true)}
+              />
+            ),
+            stack: (
+              <StackedBar
+                rows={
+                  revenueRows.length
+                    ? revenueRows
+                    : [{ label: "No accepted placements", value: 0, tone: "stone" }]
+                }
+                format={(n) => formatUsd(n, true)}
+              />
+            ),
             status: null,
           })}
         </MetricShell>

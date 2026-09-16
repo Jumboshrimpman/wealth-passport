@@ -143,6 +143,22 @@ export interface ClientSummary {
   householdValue: number;
 }
 
+export type AuditEventKind =
+  | "consent.changed"
+  | "placement.decided"
+  | "enrollment.submitted"
+  | "enrollment.decided"
+  | "admin.layout_updated";
+
+/** Append-only audit record — rows are never updated or deleted. */
+export interface AuditEvent {
+  id: number;
+  ts: string;
+  actor: string;
+  kind: AuditEventKind;
+  summary: string;
+}
+
 export type PlacementKind = "bps" | "strategy" | "special";
 
 export type InstitutionKind = "bank" | "asset-manager" | "private-markets";
@@ -159,6 +175,8 @@ export interface Offer {
   summary: string;
   placementKind: PlacementKind;
   placementLabel: string;
+  /** Annualized bps the institution pays WealthPass on matched assets when a client accepts. */
+  placementFeeBps: number;
   paidPlacement: string;
   terms: string;
   expires: string;

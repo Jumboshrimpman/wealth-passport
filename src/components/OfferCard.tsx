@@ -65,8 +65,8 @@ export function OfferCard({
       <div className="offer-actions">
         {status ? (
           <p className="tiny muted" style={{ margin: 0 }}>
-            Decision stored for this session ({status === "accepted" ? "Accepted" : "Declined"}
-            ). Browser storage only — not an institution API.
+            Decision stored in the client database{status === "accepted" ? " — placement revenue booked" : ""}
+            {" "}(browser storage when offline). Not an institution API.
           </p>
         ) : (
           <>

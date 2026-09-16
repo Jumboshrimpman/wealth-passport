@@ -7,6 +7,7 @@ import {
   mergeLayout,
   type WidgetLayout,
 } from "../shared/dashboardLayout.ts";
+import { generateAccountId } from "../shared/enrollment.ts";
 import type {
   Enrollment,
   EnrollmentDecision,
@@ -18,9 +19,12 @@ import type {
 } from "../shared/enrollment.ts";
 import { CLIENT_SEEDS } from "../shared/seed/index.ts";
 import { INSTITUTION_SEEDS } from "../shared/seed/institutions.ts";
+import type { Placement } from "../shared/placements.ts";
 import type {
   Account,
   Attestation,
+  AuditEvent,
+  AuditEventKind,
   ClientPassport,
   ClientRecord,
   ClientSummary,
@@ -115,6 +119,24 @@ export function openDatabase(path = defaultDatabasePath()): DatabaseSync {
       screening_json TEXT NOT NULL,
       risk_json TEXT NOT NULL,
       decision_json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS placements (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      offer_id TEXT NOT NULL,
+      institution_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      matched_assets INTEGER NOT NULL,
+      annual_revenue INTEGER NOT NULL,
+      decided_at TEXT NOT NULL,
+      snapshot_json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      summary TEXT NOT NULL
     );
   `);
   return db;
@@ -473,4 +495,106 @@ export function getEnrollment(db: DatabaseSync, id: string): Enrollment | undefi
     | EnrollmentRow
     | undefined;
   return row ? rowToEnrollment(row) : undefined;
+}
+
+export type EnrollmentDecisionUpdate =
+  | { ok: true; enrollment: Enrollment }
+  | { ok: false; reason: "not-found" | "not-edd" };
+
+/** Manual compliance sign-off on an EDD file. Only EDD files are resolvable. */
+export function resolveEnrollment(
+  db: DatabaseSync,
+  id: string,
+  decision: "approved" | "rejected",
+  officer: string,
+): EnrollmentDecisionUpdate {
+  const existing = getEnrollment(db, id);
+  if (!existing) return { ok: false, reason: "not-found" };
+  if (existing.status !== "edd") return { ok: false, reason: "not-edd" };
+
+  const today = new Date().toISOString();
+  const updated: Enrollment = {
+    ...existing,
+    status: decision,
+    decision: {
+      ...existing.decision,
+      status: decision,
+      accountId: decision === "approved" ? generateAccountId(id) : null,
+      reasons: [
+        ...existing.decision.reasons,
+        `Manual review: ${decision} by ${officer} on ${today.slice(0, 10)}.`,
+      ],
+    },
+  };
+  db.prepare("UPDATE enrollments SET status = ?, decision_json = ? WHERE id = ?").run(
+    decision,
+    JSON.stringify(updated.decision),
+    id,
+  );
+  return { ok: true, enrollment: updated };
+}
+
+interface PlacementRow {
+  snapshot_json: string;
+}
+
+function rowToPlacement(row: PlacementRow): Placement {
+  return JSON.parse(row.snapshot_json) as Placement;
+}
+
+export function upsertPlacement(db: DatabaseSync, placement: Placement): void {
+  db.prepare(
+    `INSERT INTO placements (
+      id, client_id, offer_id, institution_id, status, matched_assets, annual_revenue, decided_at, snapshot_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      status = excluded.status,
+      matched_assets = excluded.matched_assets,
+      annual_revenue = excluded.annual_revenue,
+      decided_at = excluded.decided_at,
+      snapshot_json = excluded.snapshot_json`,
+  ).run(
+    placement.id,
+    placement.clientId,
+    placement.offerId,
+    placement.institutionId,
+    placement.status,
+    placement.matchedAssets,
+    placement.annualRevenue,
+    placement.decidedAt,
+    JSON.stringify(placement),
+  );
+}
+
+export function listPlacements(db: DatabaseSync): Placement[] {
+  const rows = db
+    .prepare("SELECT snapshot_json FROM placements ORDER BY decided_at DESC")
+    .all() as PlacementRow[];
+  return rows.map(rowToPlacement);
+}
+
+export function listPlacementsForClient(db: DatabaseSync, clientId: string): Placement[] {
+  const rows = db
+    .prepare("SELECT snapshot_json FROM placements WHERE client_id = ? ORDER BY decided_at DESC")
+    .all(clientId) as PlacementRow[];
+  return rows.map(rowToPlacement);
+}
+
+/** Append-only audit log. There is intentionally no update or delete path. */
+export function appendEvent(
+  db: DatabaseSync,
+  event: { actor: string; kind: AuditEventKind; summary: string },
+): void {
+  db.prepare("INSERT INTO events (ts, actor, kind, summary) VALUES (?, ?, ?, ?)").run(
+    new Date().toISOString(),
+    event.actor,
+    event.kind,
+    event.summary,
+  );
+}
+
+export function listEvents(db: DatabaseSync, limit = 100): AuditEvent[] {
+  return db
+    .prepare("SELECT id, ts, actor, kind, summary FROM events ORDER BY id DESC LIMIT ?")
+    .all(limit) as AuditEvent[];
 }
