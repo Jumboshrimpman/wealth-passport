@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { CONSENT_SCOPE_IDS, CONSENT_SCOPE_META } from "../../shared/consent.ts";
+import { householdInsights } from "../../shared/insights.ts";
 import { AllocationDrilldown } from "../components/AllocationDrilldown";
 import { OfferCard } from "../components/OfferCard";
 import { Badge, Disclaimer, SectionHead, Stat } from "../components/ui";
@@ -18,7 +20,7 @@ export function Passport() {
       <SectionHead
         kicker="Client view · holistic profile"
         title={household.name}
-        lede={`${household.principals} · ${household.entity}. A single financial identity assembled from multi-custodian accounts and one broad consent so paying institutions can send offers.`}
+        lede={`${household.principals} · ${household.entity}. A single financial identity assembled from multi-custodian accounts. Scope-level consent decides which slices paying institutions can see.`}
       />
 
       <div className="row">
@@ -49,6 +51,8 @@ export function Passport() {
         <Stat label="Liquidity reserve" value={formatUsd(household.liquidity, true)} note="Cash, T-bills, short municipals" />
         <Stat label="Risk posture" value={household.risk.label} note={household.risk.horizon} />
       </div>
+
+      <HouseholdInsightsPanel record={passport} />
 
       <section className="panel">
         <div className="row" style={{ justifyContent: "space-between" }}>
@@ -128,8 +132,9 @@ export function Passport() {
         <p className="kicker">Consent</p>
         <h2>Share this passport with paying institutions</h2>
         <p className="muted">
-          One broad consent, stored per client. If it is on, any paying institution may send an
-          offer. If it is off, no offers appear. With the API running, the toggle writes to SQLite.
+          Master share turns the inbox on. Each scope is independently revocable — withheld
+          slices drop out of matching and the institution-side preview. With the API running,
+          toggles write to the client database.
         </p>
         <div className="card">
           <button
@@ -144,9 +149,6 @@ export function Passport() {
                 Last changed {consent.lastChanged}
                 {consent.persisted ? " · saved to client database" : " · in-memory only"}
               </p>
-              <p className="tiny" style={{ margin: "0.35rem 0 0" }}>
-                {consent.scopes.join(" · ")}
-              </p>
             </div>
             <span className={`switch ${consent.shared ? "on" : ""}`} aria-hidden="true">
               <i />
@@ -155,9 +157,33 @@ export function Passport() {
           <div className="row" style={{ marginTop: "0.7rem" }}>
             <Badge tone={consent.shared ? "verified" : "warn"}>
               {consent.shared
-                ? "On — any paying institution may offer"
+                ? "On — paying institutions may offer against shared scopes"
                 : "Off — no institution may offer"}
             </Badge>
+          </div>
+          <div className="scope-list">
+            {CONSENT_SCOPE_IDS.map((id) => {
+              const on = consent.scopes.includes(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className="toggle scope-toggle"
+                  onClick={() => consent.toggleScope(id)}
+                  aria-pressed={on}
+                >
+                  <div>
+                    <h3>{CONSENT_SCOPE_META[id].label}</h3>
+                    <p className="tiny muted" style={{ margin: 0 }}>
+                      {CONSENT_SCOPE_META[id].blurb}
+                    </p>
+                  </div>
+                  <span className={`switch ${on ? "on" : ""}`} aria-hidden="true">
+                    <i />
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -184,5 +210,39 @@ export function Passport() {
         )}
       </section>
     </div>
+  );
+}
+
+function HouseholdInsightsPanel({ record }: { record: Parameters<typeof householdInsights>[0] }) {
+  const insights = householdInsights(record);
+  if (insights.length === 0) return null;
+  return (
+    <section className="panel">
+      <p className="kicker">Household insights</p>
+      <h2>What the stored book is saying</h2>
+      <p className="tiny muted" style={{ marginTop: 0 }}>
+        Computed from this client record — concentration, cash runway, and rollover candidates.
+        Not advice and not a recommendation.
+      </p>
+      <ul className="insight-list">
+        {insights.map((insight) => (
+          <li key={`${insight.kind}-${insight.title}`}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <strong>{insight.title}</strong>
+              <Badge tone={insight.severity === "watch" ? "warn" : "default"} compact>
+                {insight.kind === "concentration"
+                  ? "Concentration"
+                  : insight.kind === "liquidity"
+                    ? "Liquidity"
+                    : "Rollover"}
+              </Badge>
+            </div>
+            <p className="tiny muted" style={{ margin: "0.25rem 0 0" }}>
+              {insight.detail}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

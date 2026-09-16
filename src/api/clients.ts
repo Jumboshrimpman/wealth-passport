@@ -52,12 +52,15 @@ export async function fetchClientPassport(id: string): Promise<{ client: ClientP
   }
 }
 
-export async function patchClientConsent(id: string, shared: boolean): Promise<ClientPassport | null> {
+export async function patchClientConsent(
+  id: string,
+  patch: { shared: boolean; scopes: string[] },
+): Promise<ClientPassport | null> {
   try {
     const response = await fetch(`/api/clients/${id}/consent`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shared }),
+      body: JSON.stringify(patch),
     });
     if (!response.ok) return null;
     const body = (await response.json()) as { client: ClientPassport };

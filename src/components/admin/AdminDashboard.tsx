@@ -19,6 +19,7 @@ import {
 import { fetchAdminLayout, saveAdminLayout, type AdminLayoutSource } from "../../api/admin";
 import { fetchAllPlacements } from "../../api/placements";
 import { useOffers } from "../../context/OfferContext";
+import { usePrivacy } from "../../context/PrivacyContext";
 import { formatUsd } from "../../data/catalog";
 import {
   acceptedPlacements,
@@ -26,6 +27,7 @@ import {
   placementRevenueTotal,
   type Placement,
 } from "../../../shared/placements.ts";
+import { maskName } from "../../../shared/privacy.ts";
 import type { ClientPassport, ClientSummary } from "../../../shared/types";
 import { BarList, Donut, Sparkline, StackedBar, type ChartSlice } from "./Charts";
 
@@ -236,15 +238,22 @@ function WidgetBody({
   selectClient: (id: string) => void;
   placements: Placement[];
 }) {
+  const { maskPii } = usePrivacy();
+  const { eligible } = useOffers();
+  const person = (name: string) => (maskPii ? maskName(name) : name);
   const aumRows = useMemo<ChartSlice[]>(
     () =>
       clients.map((client, index) => ({
-        label: `${client.clientFirstName} · ${client.name}`,
+        label: `${person(client.clientFirstName)} · ${person(client.name)}`,
         value: client.householdValue,
         tone: TONES[index % TONES.length],
-        tooltip: verifiedAumTooltip(client.clientFirstName, client.principals, client.householdValue),
+        tooltip: verifiedAumTooltip(
+          person(client.clientFirstName),
+          person(client.principals),
+          client.householdValue,
+        ),
       })),
-    [clients],
+    [clients, maskPii],
   );
   const aumTotal = aumRows.reduce((sum, row) => sum + row.value, 0);
   const kindRows = desksByKind().map((row) => ({
@@ -267,7 +276,6 @@ function WidgetBody({
     { label: "Reused from passport", value: reused, tone: "sage" },
     { label: "Still collected", value: needed, tone: "clay" },
   ];
-  const { eligible } = useOffers();
   const rankRows: ChartSlice[] = eligible.map((match, index) => ({
     label: `${match.institution.offer.rank}. ${match.institution.name}`,
     value: eligible.length - index,
@@ -277,10 +285,10 @@ function WidgetBody({
   const accepted = acceptedPlacements(placements);
   const revenueTotal = placementRevenueTotal(placements);
   const revenueRows: ChartSlice[] = accepted.map((placement, index) => ({
-    label: `${placement.clientName} · ${placement.institutionName}`,
+    label: `${person(placement.clientName)} · ${placement.institutionName}`,
     value: placement.annualRevenue,
     tone: TONES[index % TONES.length],
-    tooltip: `${placement.clientName} accepted ${placement.institutionName} — ${placement.strategy}\n${placement.placementFeeBps} bps on ${formatUsd(placement.matchedAssets, true)} matched assets → ${formatUsd(placement.annualRevenue)}/yr`,
+    tooltip: `${person(placement.clientName)} accepted ${placement.institutionName} — ${placement.strategy}\n${placement.placementFeeBps} bps on ${formatUsd(placement.matchedAssets, true)} matched assets → ${formatUsd(placement.annualRevenue)}/yr`,
   }));
 
   switch (item.id) {
@@ -289,16 +297,18 @@ function WidgetBody({
         <MetricShell
           kicker={WIDGET_META.clients.title}
           value={String(clients.length)}
-          note={clients.map((client) => client.clientFirstName).join(" · ") || "No records"}
+          note={clients.map((client) => person(client.clientFirstName)).join(" · ") || "No records"}
         >
           {renderViz(item.viz, {
             bars: (
               <BarList
                 rows={aumRows.length ? aumRows : [{ label: "None", value: 0, tone: "stone" }]}
                 format={(n) => formatUsd(n, true)}
-                selected={`${passport.household.clientFirstName} · ${passport.household.name}`}
+                selected={`${person(passport.household.clientFirstName)} · ${person(passport.household.name)}`}
                 onSelect={(label) => {
-                  const match = clients.find((client) => `${client.clientFirstName} · ${client.name}` === label);
+                  const match = clients.find(
+                    (client) => `${person(client.clientFirstName)} · ${person(client.name)}` === label,
+                  );
                   if (match) selectClient(match.id);
                 }}
               />
@@ -306,7 +316,7 @@ function WidgetBody({
             donut: (
               <Donut
                 rows={clients.map((client, i) => ({
-                  label: client.clientFirstName,
+                  label: person(client.clientFirstName),
                   value: 1,
                   tone: TONES[i],
                 }))}
@@ -419,7 +429,7 @@ function WidgetBody({
         <MetricShell
           kicker={WIDGET_META.ops.title}
           value={`${reused} / ${passport.opsPacket.total}`}
-          note={`${passport.household.name} · ${passport.opsPacket.title}`}
+          note={`${person(passport.household.name)} · ${passport.opsPacket.title}`}
         >
           {renderViz(item.viz, {
             donut: <Donut rows={opsRows} center={`${reused}/${passport.opsPacket.total}`} />,

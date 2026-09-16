@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import type { Enrollment, EnrollmentSummary } from "../../shared/enrollment.ts";
+import { maskEmail, maskFreeText, maskName } from "../../shared/privacy.ts";
 import type { AuditEvent } from "../../shared/types.ts";
 import { fetchEvents } from "../api/admin";
 import {
@@ -15,6 +16,7 @@ import { Badge, Disclaimer, SectionHead } from "../components/ui";
 import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
 import { useOffers } from "../context/OfferContext";
+import { usePrivacy } from "../context/PrivacyContext";
 import { formatUsd, offerHeadline } from "../data/catalog";
 
 const EVENT_KIND_LABEL: Record<AuditEvent["kind"], string> = {
@@ -29,7 +31,20 @@ export function Admin() {
   const consent = useConsent();
   const { passport, clients, selectClient } = useClient();
   const { eligible } = useOffers();
+  const { maskPii, toggleMask } = usePrivacy();
   const { user } = useUser();
+  const person = (name: string) => (maskPii ? maskName(name) : name);
+  const email = (value: string) => (maskPii ? maskEmail(value) : value);
+  const text = (value: string) => {
+    if (!maskPii) return value;
+    let next = maskFreeText(value);
+    for (const client of clients) {
+      next = next.replaceAll(client.name, maskName(client.name));
+      next = next.replaceAll(client.clientFirstName, maskName(client.clientFirstName));
+      next = next.replaceAll(client.principals, maskName(client.principals));
+    }
+    return next;
+  };
   const officer =
     user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? "Compliance desk";
   const household = passport.household;
@@ -99,8 +114,19 @@ export function Admin() {
       <SectionHead
         kicker="Admin · control room"
         title="Operations dashboard"
-        lede="Widgets for client records, verified AUM, institutions, placements, placement revenue, ops reuse, and bank ranking. Reorder, resize, and switch charts. Client and Institution modes stay separate; this mode is the only place that stacks both."
+        lede="Widgets for client records, verified AUM, institutions, placements, placement revenue, ops reuse, and bank ranking. Reorder, resize, and switch charts. Client and Institution modes stay separate; this mode is the only place that stacks both. Mask PII for a pitch screen — source records stay intact."
       />
+
+      <div className="dash-toolbar">
+        <p className="tiny muted" style={{ margin: 0 }}>
+          {maskPii
+            ? "Names, emails, and audit copy are masked on this console."
+            : "Household names and enrollment emails are shown in full."}
+        </p>
+        <button type="button" className="dash-tool" aria-pressed={maskPii} onClick={toggleMask}>
+          {maskPii ? "PII masked" : "Mask PII"}
+        </button>
+      </div>
 
       <AdminDashboard clients={clients} passport={passport} selectClient={selectClient} />
 
@@ -114,14 +140,14 @@ export function Admin() {
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div>
               <p className="kicker">Client side</p>
-              <h2>{household.name}</h2>
+              <h2>{person(household.name)}</h2>
             </div>
             <Link to="/passport" className="badge">
               Open passport
             </Link>
           </div>
           <p>
-            {household.principals} · Account {formatUsd(household.accountValue)} · Household{" "}
+            {person(household.principals)} · Account {formatUsd(household.accountValue)} · Household{" "}
             {formatUsd(household.householdValue)} · Investable {formatUsd(household.investable)} ·{" "}
             {household.risk.label}. {clients.length} client records available.
           </p>
@@ -154,7 +180,7 @@ export function Admin() {
             </Link>
           </div>
           <p className="tiny muted" style={{ marginTop: 0 }}>
-            Matched against the {household.name} record in the client store.
+            Matched against the {person(household.name)} record in the client store.
           </p>
           {eligible.length > 0 ? (
             <table className="table">
@@ -221,6 +247,8 @@ export function Admin() {
                   resolveError={expandedId === enrollment.id ? resolveError : null}
                   onToggle={() => toggleReview(enrollment.id)}
                   onResolve={resolve}
+                  person={person}
+                  email={email}
                 />
               ))}
             </tbody>
@@ -261,12 +289,12 @@ export function Admin() {
                     dateStyle: "medium",
                     timeStyle: "short",
                   })}{" "}
-                  · {event.actor}
+                  · {person(event.actor)}
                 </p>
                 <div className="row" style={{ marginTop: "0.3rem" }}>
                   <Badge compact>{EVENT_KIND_LABEL[event.kind] ?? event.kind}</Badge>
                 </div>
-                <p style={{ marginTop: "0.3rem" }}>{event.summary}</p>
+                <p style={{ marginTop: "0.3rem" }}>{text(event.summary)}</p>
               </li>
             ))}
           </ul>
@@ -284,6 +312,8 @@ function EnrollmentRow({
   resolveError,
   onToggle,
   onResolve,
+  person,
+  email,
 }: {
   enrollment: EnrollmentSummary;
   expanded: boolean;
@@ -292,13 +322,15 @@ function EnrollmentRow({
   resolveError: string | null;
   onToggle: () => void;
   onResolve: (id: string, decision: "approved" | "rejected") => void;
+  person: (name: string) => string;
+  email: (value: string) => string;
 }) {
   return (
     <>
       <tr>
         <td>
-          <strong>{enrollment.fullName}</strong>
-          <div className="tiny muted">{enrollment.email}</div>
+          <strong>{person(enrollment.fullName)}</strong>
+          <div className="tiny muted">{email(enrollment.email)}</div>
         </td>
         <td>
           <Badge tone={enrollment.status === "approved" ? "verified" : "warn"} compact>

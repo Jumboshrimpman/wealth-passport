@@ -653,6 +653,43 @@ nav.primary a[aria-current="page"] {
   left: 20px;
 }
 
+.scope-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.scope-toggle {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--cream);
+}
+
+.scope-toggle[aria-pressed="true"] {
+  background: var(--sage-100);
+  border-color: var(--sage-300);
+}
+
+.insight-list {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.insight-list li {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  background: var(--cream);
+}
+
+.table tr.is-selected td {
+  background: var(--camel-50);
+}
+
 .disclaimer {
   border: 1px dashed var(--line-strong);
   background: var(--camel-50);

@@ -7,6 +7,7 @@ import { ConsentProvider } from "./context/ConsentContext";
 import { ModeProvider, useMode } from "./context/ModeContext";
 import { OfferProvider } from "./context/OfferContext";
 import { OfferDecisionProvider } from "./context/OfferDecisionContext";
+import { PrivacyProvider } from "./context/PrivacyContext";
 import { MODE_HOMES } from "./data/catalog";
 import { Admin } from "./views/Admin";
 import { Chat } from "./views/Chat";
@@ -20,12 +21,13 @@ import { Verification } from "./views/Verification";
 export default function App() {
   return (
     <ClerkGate>
-      <ClientProvider>
-        <ConsentProvider>
-          <OfferProvider>
-            <OfferDecisionProvider>
-              <ModeProvider>
-            <Routes>
+      <PrivacyProvider>
+        <ClientProvider>
+          <ConsentProvider>
+            <OfferProvider>
+              <OfferDecisionProvider>
+                <ModeProvider>
+                  <Routes>
               <Route element={<Layout />}>
                 <Route path="/" element={<HomeRedirect />} />
                 <Route
@@ -96,11 +98,12 @@ export default function App() {
                 <Route path="*" element={<UnknownRoute />} />
               </Route>
             </Routes>
-              </ModeProvider>
-            </OfferDecisionProvider>
-          </OfferProvider>
-        </ConsentProvider>
-      </ClientProvider>
+                </ModeProvider>
+              </OfferDecisionProvider>
+            </OfferProvider>
+          </ConsentProvider>
+        </ClientProvider>
+      </PrivacyProvider>
     </ClerkGate>
   );
 }

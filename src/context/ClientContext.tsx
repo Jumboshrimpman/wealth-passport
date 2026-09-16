@@ -14,6 +14,7 @@ type ClientContextValue = {
   passport: ClientPassport;
   source: ClientDataSource;
   selectClient: (id: string) => void;
+  applyPassport: (passport: ClientPassport) => void;
 };
 
 const ClientContext = createContext<ClientContextValue | null>(null);
@@ -55,6 +56,10 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     void load(id);
   }
 
+  function applyPassport(next: ClientPassport) {
+    setPassport(next);
+  }
+
   if (error) {
     return (
       <section className="panel">
@@ -75,7 +80,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ClientContext.Provider value={{ clients, passport, source, selectClient }}>{children}</ClientContext.Provider>
+    <ClientContext.Provider value={{ clients, passport, source, selectClient, applyPassport }}>{children}</ClientContext.Provider>
   );
 }
 
