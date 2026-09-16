@@ -16,7 +16,7 @@
     "test:api": "tsx --test server/api.test.ts",
     "test:admin": "tsx --test src/admin/dashboardLayout.test.ts",
     "test:kyc": "tsx --test shared/enrollment.test.ts",
-    "test": "tsx --test server/api.test.ts src/admin/dashboardLayout.test.ts shared/enrollment.test.ts"
+    "test": "tsx --test server/api.test.ts src/admin/dashboardLayout.test.ts shared/enrollment.test.ts shared/consent.test.ts shared/insights.test.ts shared/privacy.test.ts shared/campaign.test.ts shared/match.test.ts"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.9",

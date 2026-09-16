@@ -1,3 +1,4 @@
+import { CONSENT_SCOPE_META, hasScope, requiredScopesFor } from "./consent.ts";
 import { formatPct, formatUsd } from "./format.ts";
 import type { ClientRecord, Institution } from "./types.ts";
 
@@ -59,43 +60,62 @@ export function matchInstitution(client: ClientRecord, institution: Institution)
     }
   }
 
-  if (household.investable >= targeting.minInvestable) {
-    reasons.push(
-      `Investable ${formatUsd(household.investable, true)} clears the ${formatUsd(targeting.minInvestable, true)} floor.`,
-    );
-  } else {
-    eligible = false;
-    reasons.push(
-      `Investable ${formatUsd(household.investable, true)} is below the ${formatUsd(targeting.minInvestable, true)} floor.`,
-    );
-  }
-
-  if (household.liquidity >= targeting.liquidityMin) {
-    reasons.push(
-      `Liquidity ${formatUsd(household.liquidity, true)} clears the ${formatUsd(targeting.liquidityMin, true)} floor.`,
-    );
-  } else {
-    eligible = false;
-    reasons.push(
-      `Liquidity ${formatUsd(household.liquidity, true)} is below the ${formatUsd(targeting.liquidityMin, true)} floor.`,
-    );
-  }
-
-  if (targeting.privateMarketsMinPct > 0) {
-    const sleeve = household.risk.privateMarketsSleeve;
-    if (sleeve >= targeting.privateMarketsMinPct) {
-      reasons.push(
-        `Private-markets sleeve ${formatPct(sleeve)} clears the ${formatPct(targeting.privateMarketsMinPct)} floor.`,
-      );
+  for (const scope of requiredScopesFor(institution)) {
+    if (hasScope(consent.scopes, scope)) {
+      reasons.push(`${CONSENT_SCOPE_META[scope].label} is shared.`);
     } else {
       eligible = false;
       reasons.push(
-        `Private-markets sleeve ${formatPct(sleeve)} is below the ${formatPct(targeting.privateMarketsMinPct)} floor.`,
+        `${CONSENT_SCOPE_META[scope].label} is not shared — targeting cannot use that slice.`,
       );
     }
   }
 
-  if (targeting.states.length > 0) {
+  const canUseHoldings = hasScope(consent.scopes, "holdings");
+  const canUseRisk = hasScope(consent.scopes, "risk");
+  const canUseDomicile = hasScope(consent.scopes, "domicile");
+
+  if (canUseHoldings) {
+    if (household.investable >= targeting.minInvestable) {
+      reasons.push(
+        `Investable ${formatUsd(household.investable, true)} clears the ${formatUsd(targeting.minInvestable, true)} floor.`,
+      );
+    } else {
+      eligible = false;
+      reasons.push(
+        `Investable ${formatUsd(household.investable, true)} is below the ${formatUsd(targeting.minInvestable, true)} floor.`,
+      );
+    }
+  }
+
+  if (canUseRisk) {
+    if (household.liquidity >= targeting.liquidityMin) {
+      reasons.push(
+        `Liquidity ${formatUsd(household.liquidity, true)} clears the ${formatUsd(targeting.liquidityMin, true)} floor.`,
+      );
+    } else {
+      eligible = false;
+      reasons.push(
+        `Liquidity ${formatUsd(household.liquidity, true)} is below the ${formatUsd(targeting.liquidityMin, true)} floor.`,
+      );
+    }
+
+    if (targeting.privateMarketsMinPct > 0) {
+      const sleeve = household.risk.privateMarketsSleeve;
+      if (sleeve >= targeting.privateMarketsMinPct) {
+        reasons.push(
+          `Private-markets sleeve ${formatPct(sleeve)} clears the ${formatPct(targeting.privateMarketsMinPct)} floor.`,
+        );
+      } else {
+        eligible = false;
+        reasons.push(
+          `Private-markets sleeve ${formatPct(sleeve)} is below the ${formatPct(targeting.privateMarketsMinPct)} floor.`,
+        );
+      }
+    }
+  }
+
+  if (canUseDomicile && targeting.states.length > 0) {
     const state = clientState(household.domicile);
     if (state && targeting.states.includes(state)) {
       reasons.push(`Domicile ${household.domicile} sits inside the ${targeting.geography} target.`);

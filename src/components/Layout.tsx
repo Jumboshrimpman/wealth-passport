@@ -70,8 +70,9 @@ export function Layout() {
           <h2>Disclosure and verification so institutions can pay to show a fit.</h2>
           <p>
             Banks, asset managers, and private-market providers pay for placement against a
-            reusable, consented {PRODUCT_NAME} profile. One broad consent lets any paying
-            institution send an offer; if it is off, the inbox is empty.
+            reusable, consented {PRODUCT_NAME} profile. Master share plus per-scope
+            consent lets a paying institution send an offer against the slices the
+            household still shares; if master share is off, the inbox is empty.
           </p>
           <p className="tiny">
             Quant-driven matching and instant quotes are on the roadmap. Data vendors first:

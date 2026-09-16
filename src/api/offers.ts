@@ -28,7 +28,7 @@ export async function fetchInstitutions(): Promise<{
  */
 export async function fetchOfferMatches(
   clientId: string,
-  consentShared: boolean,
+  consent: { shared: boolean; scopes: string[] },
 ): Promise<{ matches: OfferMatch[]; source: ClientDataSource }> {
   try {
     const response = await fetch(`/api/clients/${clientId}/offers`);
@@ -39,7 +39,7 @@ export async function fetchOfferMatches(
   } catch {
     const seeded = seedById(clientId);
     if (!seeded) throw new Error(`No seed fallback for client "${clientId}".`);
-    const record = { ...seeded, consent: { ...seeded.consent, shared: consentShared } };
+    const record = { ...seeded, consent: { ...seeded.consent, shared: consent.shared, scopes: consent.scopes } };
     return { matches: matchInstitutions(record, INSTITUTION_SEEDS), source: "seed" };
   }
 }

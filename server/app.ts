@@ -16,19 +16,24 @@ import { eligibleMatches, matchInstitutions } from "../shared/match.ts";
 import { buildPlacement, type PlacementStatus } from "../shared/placements.ts";
 import {
   appendEvent,
+  consentChangeSummary,
   getAdminLayout,
   getClientPassport,
   getClientRecord,
   getEnrollment,
+  getPiiMask,
   insertEnrollment,
+  listCampaigns,
   listClientSummaries,
   listEnrollmentSummaries,
   listEvents,
   listInstitutions,
   listPlacements,
   listPlacementsForClient,
+  recordCampaignActivity,
   resolveEnrollment,
   setAdminLayout,
+  setPiiMask,
   updateConsent,
   upsertPlacement,
 } from "./db.ts";
@@ -57,11 +62,24 @@ export function createApp(db: DatabaseSync) {
 
   app.patch("/api/clients/:id/consent", (req, res) => {
     const shared = req.body?.shared;
-    if (typeof shared !== "boolean") {
-      res.status(400).json({ error: "Body must include boolean `shared`." });
+    const scopes = req.body?.scopes;
+    if (typeof shared !== "boolean" && !Array.isArray(scopes)) {
+      res.status(400).json({ error: "Body must include boolean `shared` and/or a `scopes` array." });
       return;
     }
-    const passport = updateConsent(db, req.params.id, shared);
+    if (shared !== undefined && typeof shared !== "boolean") {
+      res.status(400).json({ error: "`shared` must be a boolean." });
+      return;
+    }
+    const existing = getClientRecord(db, req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: `No client record for "${req.params.id}".` });
+      return;
+    }
+    const passport = updateConsent(db, req.params.id, {
+      shared: typeof shared === "boolean" ? shared : undefined,
+      scopes: Array.isArray(scopes) ? scopes : undefined,
+    });
     if (!passport) {
       res.status(404).json({ error: `No client record for "${req.params.id}".` });
       return;
@@ -69,7 +87,7 @@ export function createApp(db: DatabaseSync) {
     appendEvent(db, {
       actor: passport.household.name,
       kind: "consent.changed",
-      summary: `${passport.household.name} turned passport share ${shared ? "on" : "off"}.`,
+      summary: consentChangeSummary(existing.consent, passport.consent, passport.household.name),
     });
     res.json({ client: passport });
   });
@@ -85,6 +103,7 @@ export function createApp(db: DatabaseSync) {
       return;
     }
     const matches = matchInstitutions(record, listInstitutions(db));
+    recordCampaignActivity(db, matches, record.consent.shared);
     res.json({ matches, eligible: eligibleMatches(matches) });
   });
 
@@ -110,6 +129,23 @@ export function createApp(db: DatabaseSync) {
   app.get("/api/admin/events", (req, res) => {
     const limit = Number(req.query.limit ?? 100);
     res.json({ events: listEvents(db, Number.isFinite(limit) ? limit : 100) });
+  });
+
+  app.get("/api/campaigns", (_req, res) => {
+    res.json({ campaigns: listCampaigns(db) });
+  });
+
+  app.get("/api/admin/privacy", (_req, res) => {
+    res.json({ maskPii: getPiiMask(db) });
+  });
+
+  app.put("/api/admin/privacy", (req, res) => {
+    const maskPii = req.body?.maskPii;
+    if (typeof maskPii !== "boolean") {
+      res.status(400).json({ error: "Body must include boolean `maskPii`." });
+      return;
+    }
+    res.json({ maskPii: setPiiMask(db, maskPii) });
   });
 
   app.post("/api/enrollments", (req, res) => {

@@ -39,3 +39,49 @@ export async function fetchEvents(limit = 100): Promise<AuditEvent[]> {
   if (!Array.isArray(body.events)) throw new Error("Malformed events payload");
   return body.events;
 }
+
+const PII_STORAGE_KEY = "wealthpass-admin-pii-mask";
+
+export function readLocalPiiMask(): boolean {
+  try {
+    return (localStorage.getItem(PII_STORAGE_KEY) ?? sessionStorage.getItem(PII_STORAGE_KEY)) === "on";
+  } catch {
+    return false;
+  }
+}
+
+export function persistLocalPiiMask(mask: boolean) {
+  const value = mask ? "on" : "off";
+  try {
+    localStorage.setItem(PII_STORAGE_KEY, value);
+    sessionStorage.setItem(PII_STORAGE_KEY, value);
+  } catch {
+    // In-memory toggle still works.
+  }
+}
+
+export async function fetchPiiMask(): Promise<{ maskPii: boolean; source: AdminLayoutSource }> {
+  try {
+    const response = await fetch("/api/admin/privacy");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const body = (await response.json()) as { maskPii: boolean };
+    persistLocalPiiMask(body.maskPii === true);
+    return { maskPii: body.maskPii === true, source: "api" };
+  } catch {
+    return { maskPii: readLocalPiiMask(), source: "local" };
+  }
+}
+
+export async function savePiiMask(maskPii: boolean): Promise<boolean> {
+  persistLocalPiiMask(maskPii);
+  try {
+    const response = await fetch("/api/admin/privacy", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ maskPii }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}

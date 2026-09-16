@@ -514,3 +514,83 @@ test("enrollment rejects invalid payloads with field errors", async () => {
     assert.equal(empty.status, 400);
   });
 });
+
+test("persists per-scope consent and withholds numeric match reasons", async () => {
+  await withApi(async (base) => {
+    const patched = await fetch(`${base}/api/clients/elena-whitmore/consent`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scopes: ["Holdings and sleeves", "risk", "verification"] }),
+    }).then((res) => res.json());
+    assert.deepEqual(patched.client.consent.scopes, ["holdings", "risk", "verification"]);
+    assert.equal(patched.client.consent.shared, true);
+
+    const body = await fetch(`${base}/api/clients/elena-whitmore/offers`).then((res) => res.json());
+    assert.deepEqual(
+      body.eligible.map((match: { institution: { id: string } }) => match.institution.id),
+      ["oakridge"],
+    );
+    const meridian = body.matches.find(
+      (match: { institution: { id: string } }) => match.institution.id === "meridian",
+    );
+    assert.equal(meridian.eligible, false);
+    assert.ok(meridian.reasons.some((reason: string) => reason.includes("Domicile is not shared")));
+    assert.equal(
+      meridian.reasons.some((reason: string) => reason.includes("Greenwich, CT")),
+      false,
+    );
+
+    const { events } = await fetch(`${base}/api/admin/events`).then((res) => res.json());
+    assert.equal(events[0].kind, "consent.changed");
+    assert.match(events[0].summary, /set shared scopes to Holdings and sleeves, Risk posture and liquidity, Verification badges/);
+  });
+});
+
+test("records campaign funnel counters and cost per accept", async () => {
+  await withApi(async (base) => {
+    const before = await fetch(`${base}/api/campaigns`).then((res) => res.json());
+    assert.equal(before.campaigns.length, 3);
+    assert.ok(before.campaigns.every((row: { views: number }) => row.views === 0));
+
+    await fetch(`${base}/api/clients/elena-whitmore/offers`);
+    await fetch(`${base}/api/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: "elena-whitmore", offerId: "offer-muni", status: "accepted" }),
+    });
+
+    const after = await fetch(`${base}/api/campaigns`).then((res) => res.json());
+    const meridian = after.campaigns.find((row: { institutionId: string }) => row.institutionId === "meridian");
+    assert.equal(meridian.views, 1);
+    assert.equal(meridian.matches, 1);
+    assert.equal(meridian.impressions, 1);
+    assert.equal(meridian.accepts, 1);
+    assert.equal(meridian.bookedRevenue, 205_200);
+    assert.equal(meridian.costPerAccept, 205_200);
+  });
+});
+
+test("stores the admin PII-mask toggle", async () => {
+  await withApi(async (base) => {
+    const initial = await fetch(`${base}/api/admin/privacy`).then((res) => res.json());
+    assert.equal(initial.maskPii, false);
+
+    const put = await fetch(`${base}/api/admin/privacy`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ maskPii: true }),
+    });
+    assert.equal(put.status, 200);
+    assert.equal((await put.json()).maskPii, true);
+
+    const reread = await fetch(`${base}/api/admin/privacy`).then((res) => res.json());
+    assert.equal(reread.maskPii, true);
+
+    const bad = await fetch(`${base}/api/admin/privacy`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    assert.equal(bad.status, 400);
+  });
+});

@@ -43,7 +43,7 @@ export function OfferProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let live = true;
-    void fetchOfferMatches(passport.id, consent.shared).then((result) => {
+    void fetchOfferMatches(passport.id, { shared: consent.shared, scopes: consent.scopes }).then((result) => {
       if (!live) return;
       setMatches(result.matches);
       setSource(result.source);
@@ -51,7 +51,7 @@ export function OfferProvider({ children }: { children: ReactNode }) {
     return () => {
       live = false;
     };
-  }, [passport.id, consent.shared]);
+  }, [passport.id, consent.shared, consent.scopes]);
 
   const eligible = useMemo(() => eligibleMatches(matches), [matches]);
 

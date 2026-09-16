@@ -17,6 +17,9 @@ import type {
   RiskAssessment,
   ScreeningResult,
 } from "../shared/enrollment.ts";
+import { emptyCounters, withFunnel, type CampaignRow } from "../shared/campaign.ts";
+import { normalizeScopes, scopeLabels } from "../shared/consent.ts";
+import type { OfferMatch } from "../shared/match.ts";
 import { CLIENT_SEEDS } from "../shared/seed/index.ts";
 import { INSTITUTION_SEEDS } from "../shared/seed/institutions.ts";
 import type { Placement } from "../shared/placements.ts";
@@ -138,6 +141,12 @@ export function openDatabase(path = defaultDatabasePath()): DatabaseSync {
       kind TEXT NOT NULL,
       summary TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS campaign_counters (
+      institution_id TEXT PRIMARY KEY,
+      views INTEGER NOT NULL DEFAULT 0,
+      matches INTEGER NOT NULL DEFAULT 0,
+      impressions INTEGER NOT NULL DEFAULT 0
+    );
   `);
   return db;
 }
@@ -157,6 +166,12 @@ export function seedIfEmpty(db: DatabaseSync): void {
       insertInstitution(db, institution);
     }
   }
+  for (const institution of listInstitutions(db)) {
+    db.prepare(
+      `INSERT OR IGNORE INTO campaign_counters (institution_id, views, matches, impressions)
+       VALUES (?, 0, 0, 0)`,
+    ).run(institution.id);
+  }
 }
 
 export function insertClient(db: DatabaseSync, client: ClientRecord): void {
@@ -173,7 +188,7 @@ export function insertClient(db: DatabaseSync, client: ClientRecord): void {
       JSON.stringify(client.advisor),
       client.consent.shared ? 1 : 0,
       client.consent.lastChanged,
-      JSON.stringify(client.consent.scopes),
+      JSON.stringify(normalizeScopes(client.consent.scopes)),
       JSON.stringify(client.opsPacket),
       JSON.stringify(client.verifiedCustodian),
     );
@@ -329,7 +344,7 @@ export function getClientRecord(db: DatabaseSync, id: string): ClientRecord | un
     consent: {
       shared: row.consent_shared === 1,
       lastChanged: row.consent_last_changed,
-      scopes: JSON.parse(row.consent_scopes_json) as string[],
+      scopes: normalizeScopes(JSON.parse(row.consent_scopes_json)),
     },
     attestations,
     opsPacket: JSON.parse(row.ops_packet_json) as OpsPacket,
@@ -342,19 +357,40 @@ export function getClientPassport(db: DatabaseSync, id: string): ClientPassport 
   return record ? assemblePassport(record) : undefined;
 }
 
-export function updateConsent(db: DatabaseSync, id: string, shared: boolean): ClientPassport | undefined {
+export function updateConsent(
+  db: DatabaseSync,
+  id: string,
+  patch: { shared?: boolean; scopes?: string[] },
+): ClientPassport | undefined {
   const existing = getClientRecord(db, id);
   if (!existing) return undefined;
   const lastChanged = new Date().toISOString().slice(0, 10);
-  db.prepare("UPDATE clients SET consent_shared = ?, consent_last_changed = ? WHERE id = ?").run(
-    shared ? 1 : 0,
-    lastChanged,
-    id,
-  );
+  const shared = patch.shared ?? existing.consent.shared;
+  const scopes = patch.scopes !== undefined ? normalizeScopes(patch.scopes) : existing.consent.scopes;
+  db.prepare(
+    "UPDATE clients SET consent_shared = ?, consent_last_changed = ?, consent_scopes_json = ? WHERE id = ?",
+  ).run(shared ? 1 : 0, lastChanged, JSON.stringify(scopes), id);
   return getClientPassport(db, id);
 }
 
-export type ConsentPatch = Pick<PassportConsent, "shared">;
+export type ConsentPatch = { shared?: boolean; scopes?: string[] };
+
+export function consentChangeSummary(
+  previous: { shared: boolean; scopes: string[] },
+  next: { shared: boolean; scopes: string[] },
+  householdName: string,
+): string {
+  const bits: string[] = [];
+  if (previous.shared !== next.shared) {
+    bits.push(`turned passport share ${next.shared ? "on" : "off"}`);
+  }
+  const before = scopeLabels(previous.scopes).join(", ") || "none";
+  const after = scopeLabels(next.scopes).join(", ") || "none";
+  if (before !== after) {
+    bits.push(`set shared scopes to ${after}`);
+  }
+  return `${householdName} ${bits.join(" and ")}.`;
+}
 
 export function insertInstitution(db: DatabaseSync, institution: Institution): void {
   db.prepare(
@@ -597,4 +633,78 @@ export function listEvents(db: DatabaseSync, limit = 100): AuditEvent[] {
   return db
     .prepare("SELECT id, ts, actor, kind, summary FROM events ORDER BY id DESC LIMIT ?")
     .all(limit) as AuditEvent[];
+}
+
+export function recordCampaignActivity(
+  db: DatabaseSync,
+  matches: OfferMatch[],
+  consentShared: boolean,
+): void {
+  const upsert = db.prepare(
+    `INSERT INTO campaign_counters (institution_id, views, matches, impressions)
+     VALUES (?, 1, ?, ?)
+     ON CONFLICT(institution_id) DO UPDATE SET
+       views = views + 1,
+       matches = matches + excluded.matches,
+       impressions = impressions + excluded.impressions`,
+  );
+  for (const match of matches) {
+    const isMatch = match.eligible ? 1 : 0;
+    const impressed = match.eligible && consentShared ? 1 : 0;
+    upsert.run(match.institution.id, isMatch, impressed);
+  }
+}
+
+export function listCampaigns(db: DatabaseSync): CampaignRow[] {
+  const institutions = listInstitutions(db);
+  const placements = listPlacements(db);
+  const counterRows = db.prepare("SELECT * FROM campaign_counters").all() as Array<{
+    institution_id: string;
+    views: number;
+    matches: number;
+    impressions: number;
+  }>;
+  const counters = new Map(counterRows.map((row) => [row.institution_id, row]));
+  return institutions.map((firm) => {
+    const raw = counters.get(firm.id);
+    const base = raw
+      ? {
+          institutionId: firm.id,
+          views: raw.views,
+          matches: raw.matches,
+          impressions: raw.impressions,
+        }
+      : emptyCounters(firm.id);
+    const deskPlacements = placements.filter((row) => row.institutionId === firm.id);
+    const accepts = deskPlacements.filter((row) => row.status === "accepted");
+    return withFunnel(base, {
+      name: firm.name,
+      kindLabel: firm.kindLabel,
+      accepts: accepts.length,
+      declines: deskPlacements.filter((row) => row.status === "declined").length,
+      bookedRevenue: accepts.reduce((sum, row) => sum + row.annualRevenue, 0),
+    });
+  });
+}
+
+const PII_MASK_KEY = "admin-pii-mask";
+
+export function getPiiMask(db: DatabaseSync): boolean {
+  const row = db.prepare("SELECT value_json FROM settings WHERE key = ?").get(PII_MASK_KEY) as
+    | { value_json: string }
+    | undefined;
+  if (!row) return false;
+  try {
+    return JSON.parse(row.value_json) === true;
+  } catch {
+    return false;
+  }
+}
+
+export function setPiiMask(db: DatabaseSync, mask: boolean): boolean {
+  db.prepare(
+    `INSERT INTO settings (key, value_json, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`,
+  ).run(PII_MASK_KEY, JSON.stringify(mask), new Date().toISOString());
+  return mask;
 }
