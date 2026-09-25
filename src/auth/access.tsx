@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-react";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 const DEMO_KEY = "wealthpass-demo-access";
 
@@ -30,11 +30,21 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const [demo, setDemo] = useState(readDemo);
   const [clerkLoaded, setClerkLoaded] = useState(!hasClerkKey());
   const [clerkSignedIn, setClerkSignedIn] = useState(false);
+  const clerkLoadedRef = useRef(clerkLoaded);
+  clerkLoadedRef.current = clerkLoaded;
 
   const setClerk = useCallback((next: { loaded: boolean; signedIn: boolean }) => {
     setClerkLoaded(next.loaded);
     setClerkSignedIn(next.signedIn);
   }, []);
+
+  useEffect(() => {
+    if (!hasClerkKey()) return;
+    const timer = window.setTimeout(() => {
+      if (!clerkLoadedRef.current) setClerk({ loaded: true, signedIn: false });
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [setClerk]);
 
   const allowDemo = useCallback(() => {
     try {

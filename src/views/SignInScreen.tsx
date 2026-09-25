@@ -1,7 +1,7 @@
 import { SignIn, useAuth } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 import { hasClerkKey } from "../auth/access";
-import { CLERK_AFTER_AUTH_URL, clerkAppearance } from "../auth/clerk";
+import { CLERK_AFTER_AUTH_URL, CLERK_PAGES_ORIGIN, clerkAppearance } from "../auth/clerk";
 import { ClerkMissingKey } from "../components/ClerkMissingKey";
 import { LegalFooter } from "../components/LegalFooter";
 
@@ -25,6 +25,12 @@ function ClerkSignIn() {
           transferable={false}
           signUpUrl=""
           appearance={clerkAppearance}
+          fallback={
+            <aside className="gate-error" role="alert">
+              Clerk sign-in did not load. Check the publishable key and the allowed origin{" "}
+              {CLERK_PAGES_ORIGIN}.
+            </aside>
+          }
         />
       </main>
       <LegalFooter />

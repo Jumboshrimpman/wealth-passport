@@ -56,14 +56,14 @@ export default function App() {
 }
 
 function Landing() {
-  const { ready, allowed } = usePortalAccess();
-  if (!ready) return <p className="quiet-load">WealthPass</p>;
-  if (!allowed) return <PublicHome />;
-  return <Navigate to="/assistant" replace />;
+  const { demo, clerkLoaded, clerkSignedIn } = usePortalAccess();
+  if (demo || (clerkLoaded && clerkSignedIn)) return <Navigate to="/assistant" replace />;
+  return <PublicHome />;
 }
 
 function RequirePortal() {
-  const { ready, allowed } = usePortalAccess();
+  const { ready, allowed, demo } = usePortalAccess();
+  if (demo) return <Outlet />;
   if (!ready) return <p className="quiet-load">WealthPass</p>;
   if (!allowed) return <Navigate to="/" replace />;
   return <Outlet />;
