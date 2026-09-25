@@ -98,9 +98,41 @@ export function Admin() {
     <div className="stack">
       <SectionHead
         kicker="Admin · control room"
-        title="Operations dashboard"
-        lede="Widgets for client records, verified AUM, institutions, placements, placement revenue, ops reuse, and bank ranking. Reorder, resize, and switch charts. Client and Institution modes stay separate; this mode is the only place that stacks both."
+        title="All client records"
+        lede="Every household in the book is listed here. Open one to read the record. The charts below stay available."
       />
+
+      <section className="record-browser">
+        <ul className="record-list">
+          {clients.map((client) => (
+            <li key={client.id}>
+              <button
+                type="button"
+                className={client.id === passport.id ? "is-current" : ""}
+                onClick={() => selectClient(client.id)}
+              >
+                <span>{client.name}</span>
+                <span>{client.domicile}</span>
+                <span>{formatUsd(client.householdValue, true)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="record-detail">
+          <h2>{household.name}</h2>
+          <p>
+            {household.principals} · {household.domicile} · {formatUsd(household.householdValue)} ·{" "}
+            {household.risk.label}
+          </p>
+          <ul>
+            {passport.accounts.map((account) => (
+              <li key={account.id}>
+                {account.name} · {account.custodian} · {formatUsd(account.balance)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       <AdminDashboard clients={clients} passport={passport} selectClient={selectClient} />
 
@@ -116,8 +148,8 @@ export function Admin() {
               <p className="kicker">Client side</p>
               <h2>{household.name}</h2>
             </div>
-            <Link to="/passport" className="badge">
-              Open passport
+            <Link to="/financials" className="badge">
+              Open financials
             </Link>
           </div>
           <p>
@@ -133,13 +165,11 @@ export function Admin() {
             </Badge>
           </div>
           <p className="tiny muted">
-            <Link to="/chat">Open chat</Link>
+            <Link to="/assistant">Open assistant</Link>
             {" · "}
-            <Link to="/ops">Open ops reuse</Link>
+            <Link to="/financials">Open financials</Link>
             {" · "}
-            <Link to="/verification">Open verification</Link>
-            {" · "}
-            <Link to="/offers">Open inbox</Link>
+            <Link to="/offers">Open offers</Link>
           </p>
         </section>
 
@@ -147,7 +177,7 @@ export function Admin() {
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div>
               <p className="kicker">Institution side</p>
-              <h2>Ranked paid placements</h2>
+              <h2>Offers institutions sent</h2>
             </div>
             <Link to="/institution" className="badge">
               Open console

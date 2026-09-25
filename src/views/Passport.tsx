@@ -166,7 +166,7 @@ export function Passport() {
         <SectionHead
           kicker="Last section · client inbox"
           title="Offers from banks and asset managers"
-          lede="Ranked paid placements matched to this passport from the client store. Terms are the primary line. Paid placement is a small label only."
+          lede="Offers matched to this passport from the client store. Terms are the primary line. The ranking cannot be bought."
         />
         {consent.shared ? (
           eligible.map((match) => (

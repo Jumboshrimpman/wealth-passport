@@ -207,14 +207,15 @@ export function Institution() {
             ) : null}
           </section>
           <section className="panel">
-            <p className="kicker">Paid placement channel</p>
-            <Badge tone="paid" compact>
-              {preview.placementLabel}
-            </Badge>
+            <p className="kicker">Offer channel</p>
             <h3 className="offer-terms" style={{ fontSize: "1.55rem", marginTop: "0.55rem" }}>
               {offerHeadline(preview)}
             </h3>
-            <p>{preview.paidPlacement}</p>
+            <p>
+              Institutions can send this offer through WealthPass. The market is price-sensitive, so
+              delivery is what a desk pays for. Delivery does not buy the ranking and does not change
+              it.
+            </p>
             <p className="tiny muted">
               Audience: {preview.audience}. Broad passport consent required:{" "}
               {draft.targeting.consentRequired ? "yes" : "no"}. Floor{" "}

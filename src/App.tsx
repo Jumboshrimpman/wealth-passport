@@ -1,124 +1,70 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import { ClerkGate } from "./components/ClerkGate";
-import { Layout } from "./components/Layout";
-import { ModeRoute } from "./components/ModeRoute";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { usePortalAccess } from "./auth/access";
+import { PortalShell } from "./components/PortalShell";
+import { AssistantProvider } from "./context/AssistantContext";
 import { ClientProvider } from "./context/ClientContext";
 import { ConsentProvider } from "./context/ConsentContext";
-import { ModeProvider, useMode } from "./context/ModeContext";
-import { OfferProvider } from "./context/OfferContext";
+import { DemoProvider } from "./context/DemoContext";
 import { OfferDecisionProvider } from "./context/OfferDecisionContext";
-import { MODE_HOMES } from "./data/catalog";
+import { OfferProvider } from "./context/OfferContext";
 import { Admin } from "./views/Admin";
-import { Chat } from "./views/Chat";
+import { Assistant } from "./views/Assistant";
 import { Enroll } from "./views/Enroll";
+import { Financials } from "./views/Financials";
 import { Institution } from "./views/Institution";
 import { Offers } from "./views/Offers";
-import { Ops } from "./views/Ops";
-import { Passport } from "./views/Passport";
-import { Verification } from "./views/Verification";
+import { PublicHome } from "./views/PublicHome";
+import { Settings } from "./views/Settings";
+import { SignInScreen } from "./views/SignInScreen";
 
 export default function App() {
   return (
-    <ClerkGate>
-      <ClientProvider>
-        <ConsentProvider>
-          <OfferProvider>
-            <OfferDecisionProvider>
-              <ModeProvider>
-            <Routes>
-              <Route element={<Layout />}>
-                <Route path="/" element={<HomeRedirect />} />
-                <Route
-                  path="/chat"
-                  element={
-                    <ModeRoute path="/chat">
-                      <Chat />
-                    </ModeRoute>
-                  }
-                />
-                <Route
-                  path="/passport"
-                  element={
-                    <ModeRoute path="/passport">
-                      <Passport />
-                    </ModeRoute>
-                  }
-                />
-                <Route path="/trust" element={<Navigate to="/verification" replace />} />
-                <Route
-                  path="/verification"
-                  element={
-                    <ModeRoute path="/verification">
-                      <Verification />
-                    </ModeRoute>
-                  }
-                />
-                <Route
-                  path="/offers"
-                  element={
-                    <ModeRoute path="/offers">
-                      <Offers />
-                    </ModeRoute>
-                  }
-                />
-                <Route
-                  path="/institution"
-                  element={
-                    <ModeRoute path="/institution">
-                      <Institution />
-                    </ModeRoute>
-                  }
-                />
-                <Route
-                  path="/ops"
-                  element={
-                    <ModeRoute path="/ops">
-                      <Ops />
-                    </ModeRoute>
-                  }
-                />
-                <Route
-                  path="/enroll"
-                  element={
-                    <ModeRoute path="/enroll">
-                      <Enroll />
-                    </ModeRoute>
-                  }
-                />
-                <Route
-                  path="/admin"
-                  element={
-                    <ModeRoute path="/admin">
-                      <Admin />
-                    </ModeRoute>
-                  }
-                />
-                <Route path="*" element={<UnknownRoute />} />
-              </Route>
-            </Routes>
-              </ModeProvider>
-            </OfferDecisionProvider>
-          </OfferProvider>
-        </ConsentProvider>
-      </ClientProvider>
-    </ClerkGate>
+    <ClientProvider>
+      <ConsentProvider>
+        <OfferProvider>
+          <OfferDecisionProvider>
+            <DemoProvider>
+              <AssistantProvider>
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/sign-in" element={<SignInScreen />} />
+                  <Route path="/enroll" element={<Enroll />} />
+                  <Route element={<RequirePortal />}>
+                    <Route element={<PortalShell />}>
+                      <Route path="/assistant" element={<Assistant />} />
+                      <Route path="/offers" element={<Offers />} />
+                      <Route path="/financials" element={<Financials />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/admin" element={<Admin />} />
+                      <Route path="/institution" element={<Institution />} />
+                    </Route>
+                  </Route>
+                  <Route path="/chat" element={<Navigate to="/assistant" replace />} />
+                  <Route path="/passport" element={<Navigate to="/financials" replace />} />
+                  <Route path="/verification" element={<Navigate to="/financials" replace />} />
+                  <Route path="/trust" element={<Navigate to="/financials" replace />} />
+                  <Route path="/ops" element={<Navigate to="/settings" replace />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </AssistantProvider>
+            </DemoProvider>
+          </OfferDecisionProvider>
+        </OfferProvider>
+      </ConsentProvider>
+    </ClientProvider>
   );
 }
 
-function HomeRedirect() {
-  const { mode } = useMode();
-  return <Navigate to={MODE_HOMES[mode]} replace />;
+function Landing() {
+  const { demo, clerkLoaded, clerkSignedIn } = usePortalAccess();
+  if (demo || (clerkLoaded && clerkSignedIn)) return <Navigate to="/assistant" replace />;
+  return <PublicHome />;
 }
 
-function UnknownRoute() {
-  return (
-    <section className="panel">
-      <p className="kicker">Routing</p>
-      <h1>This view is not part of the walkthrough.</h1>
-      <p className="lede">
-        There is no silent fallback. Use the mode toggle and navigation to open a labeled demo
-        screen.
-      </p>
-    </section>
-  );
+function RequirePortal() {
+  const { ready, allowed, demo } = usePortalAccess();
+  if (demo) return <Outlet />;
+  if (!ready) return <p className="quiet-load">WealthPass</p>;
+  if (!allowed) return <Navigate to="/" replace />;
+  return <Outlet />;
 }

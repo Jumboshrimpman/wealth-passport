@@ -33,10 +33,10 @@ export const INSTITUTION_SEEDS: Institution[] = [
       summary:
         "Up to 55% advance on the verified taxable book, interest-only for 24 months. Indicative spread, subject to credit approval.",
       placementKind: "bps",
-      placementLabel: "Paid placement",
+      placementLabel: "Sent through WealthPass",
       placementFeeBps: 12,
-      paidPlacement:
-        "Institution paid 12 bps (annualized on committed line) to appear against this consented passport.",
+      channelNote:
+        "The institution sent this offer through WealthPass. Delivery does not change the ranking.",
       terms: "SOFR + 1.85%. No prepayment penalty. Recourse limited to pledged securities.",
       expires: "2026-10-31",
       audience: "Households with ≥ $50M verified brokerage collateral",
@@ -69,10 +69,10 @@ export const INSTITUTION_SEEDS: Institution[] = [
       summary:
         "Separately managed national + state-preference book. Target duration 6.4 years. Fee follows the standard SMA schedule.",
       placementKind: "strategy",
-      placementLabel: "Paid placement",
+      placementLabel: "Sent through WealthPass",
       placementFeeBps: 9,
-      paidPlacement:
-        "Institution paid 9 bps (annualized on matched assets) for strategy placement against passports with a taxable fixed-income sleeve.",
+      channelNote:
+        "The institution sent this offer through WealthPass. Delivery does not change the ranking.",
       terms: "38 bps all-in SMA. No wrap. Quarterly tax-loss harvest.",
       expires: "2026-11-15",
       audience: "Taxable accounts ≥ $20M in high-tax domiciles",
@@ -105,10 +105,10 @@ export const INSTITUTION_SEEDS: Institution[] = [
       summary:
         "Closed-end secondaries sleeve with 15% carry. Capital calls staged over 18 months. Not a solicitation.",
       placementKind: "special",
-      placementLabel: "Paid placement",
+      placementLabel: "Sent through WealthPass",
       placementFeeBps: 15,
-      paidPlacement:
-        "Institution paid 15 bps (annualized on matched assets) for a special-offer slot against consented passports.",
+      channelNote:
+        "The institution sent this offer through WealthPass. Delivery does not change the ranking.",
       terms: "1.5 / 15. Capital calls staged over 18 months. Not a solicitation.",
       expires: "2026-12-01",
       audience: "Households with an existing private-markets sleeve ≥ 10%",

@@ -12,6 +12,7 @@ import {
   type EnrollmentPayload,
 } from "../shared/enrollment.ts";
 import { formatUsd } from "../shared/format.ts";
+import { runDemoConnector } from "../shared/marketplace.ts";
 import { eligibleMatches, matchInstitutions } from "../shared/match.ts";
 import { buildPlacement, type PlacementStatus } from "../shared/placements.ts";
 import {
@@ -40,6 +41,26 @@ export function createApp(db: DatabaseSync) {
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, store: "sqlite", scope: "client" });
+  });
+
+  app.post("/api/demo/connect", (req, res) => {
+    const provider = req.body?.provider;
+    const clientId = typeof req.body?.clientId === "string" ? req.body.clientId : "elena-whitmore";
+    if (typeof provider !== "string") {
+      res.status(400).json({ error: "Body must include string `provider`." });
+      return;
+    }
+    const record = getClientRecord(db, clientId);
+    if (!record) {
+      res.status(404).json({ error: `No client record for "${clientId}".` });
+      return;
+    }
+    const result = runDemoConnector(provider, record);
+    if (!result) {
+      res.status(400).json({ error: "Unknown connector." });
+      return;
+    }
+    res.json(result);
   });
 
   app.get("/api/clients", (_req, res) => {

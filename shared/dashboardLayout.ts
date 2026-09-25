@@ -42,7 +42,7 @@ export const WIDGET_META: Record<
     defaultSpan: 2,
   },
   placements: {
-    title: "Paid placements (open)",
+    title: "Open offers",
     allowedViz: ["stack", "bars", "donut"],
     defaultViz: "stack",
     defaultSpan: 2,

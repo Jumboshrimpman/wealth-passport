@@ -25,14 +25,14 @@ const hideSignUpFooter = { display: "none" } as const;
 
 export const clerkAppearance = {
   variables: {
-    colorPrimary: "#6b7f5a",
-    colorBackground: "#fffdf8",
-    colorText: "#221c14",
-    colorTextSecondary: "#4a4033",
-    colorInputBackground: "#fffdf8",
-    colorInputText: "#221c14",
-    borderRadius: "14px",
-    fontFamily: '"Source Sans 3", "Segoe UI", sans-serif',
+    colorPrimary: "#111111",
+    colorBackground: "#ffffff",
+    colorText: "#161616",
+    colorTextSecondary: "#5e5e5e",
+    colorInputBackground: "#ffffff",
+    colorInputText: "#161616",
+    borderRadius: "0px",
+    fontFamily: '"Instrument Sans", "Segoe UI", sans-serif',
   },
   elements: {
     footerAction: hideSignUpFooter,
