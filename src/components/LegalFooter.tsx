@@ -1,4 +1,4 @@
-const CONTACT_HREF = `mailto:Aptally.app@gmail.com?subject=${encodeURIComponent("WealthPass")}&body=${encodeURIComponent("Hello,\n\nI have a question about WealthPass.\n")}`;
+const CONTACT_HREF = `mailto:samapostgrad@gmail.com?subject=${encodeURIComponent("WealthPass")}&body=${encodeURIComponent("Hello,\n\nI have a question about WealthPass.\n")}`;
 
 export function LegalFooter() {
   return (
