@@ -15,7 +15,7 @@ import { useConsent } from "./ConsentContext";
 
 type OfferContextValue = {
   institutions: Institution[];
-  /** Every desk evaluated against the selected client, eligible first in paid-rank order. */
+  /** Every desk evaluated against the selected client, eligible first in rank order. */
   matches: OfferMatch[];
   /** Eligible placements only — the client inbox. */
   eligible: OfferMatch[];

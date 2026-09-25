@@ -177,7 +177,8 @@ export interface Offer {
   placementLabel: string;
   /** Annualized bps the institution pays WealthPass on matched assets when a client accepts. */
   placementFeeBps: number;
-  paidPlacement: string;
+  /** Note shown to operators. Delivery through the platform does not change rank. */
+  channelNote: string;
   terms: string;
   expires: string;
   audience: string;

@@ -47,9 +47,7 @@ export function OfferCard({
               Declined
             </Badge>
           ) : null}
-          <Badge tone="paid" compact>
-            {offer.placementLabel}
-          </Badge>
+          <Badge compact>Sent through WealthPass</Badge>
         </div>
       </div>
       <Heading className="offer-terms">{offerHeadline(offer)}</Heading>

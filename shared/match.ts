@@ -113,7 +113,7 @@ export function matchInstitution(client: ClientRecord, institution: Institution)
   };
 }
 
-/** Every desk evaluated against the client record, eligible placements first in paid-rank order. */
+/** Every desk evaluated against the client record, eligible offers first in rank order. */
 export function matchInstitutions(client: ClientRecord, institutions: Institution[]): OfferMatch[] {
   return institutions
     .map((institution) => matchInstitution(client, institution))

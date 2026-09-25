@@ -514,3 +514,27 @@ test("enrollment rejects invalid payloads with field errors", async () => {
     assert.equal(empty.status, 400);
   });
 });
+
+test("demo connect returns a canned bank pull and rejects unknown providers", async () => {
+  await withApi(async (base) => {
+    const response = await fetch(`${base}/api/demo/connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "plaid", clientId: "elena-whitmore" }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.kind, "bank");
+    assert.equal(body.fullName, "Elena Whitmore");
+    assert.equal(
+      body.accounts.some((account: { id: string }) => account.id === "oak-pe"),
+      false,
+    );
+    const unknown = await fetch(`${base}/api/demo/connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "not-a-connector", clientId: "elena-whitmore" }),
+    });
+    assert.equal(unknown.status, 400);
+  });
+});

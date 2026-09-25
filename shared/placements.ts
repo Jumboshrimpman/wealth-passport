@@ -3,7 +3,7 @@ import type { ClientRecord, Institution } from "./types.ts";
 export type PlacementStatus = "accepted" | "declined";
 
 /**
- * A client's decision on a paid placement. Accepting books annualized revenue:
+ * A client's decision on an institution offer. Accepting books annualized revenue:
  * the institution's placement fee (bps) against the household's investable
  * assets at decision time.
  */
