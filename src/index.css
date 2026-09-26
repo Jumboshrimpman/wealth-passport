@@ -1392,25 +1392,58 @@ textarea {
   padding: 1rem 0;
 }
 
-.assistant-panel.dock {
+.assistant-panel.dock,
+.assistant-panel.home {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  overflow: hidden;
+}
+
+.assistant-panel.dock {
   padding: 0.35rem 1.1rem 1rem;
+}
+
+.assistant-panel.home > h1,
+.assistant-panel.home .assistant-prompts,
+.assistant-panel.home .assistant-form,
+.assistant-panel.dock .assistant-greeting,
+.assistant-panel.dock .assistant-prompts,
+.assistant-panel.dock .assistant-form {
+  flex: none;
+}
+
+.assistant-panel.home .assistant-thread {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(22rem, calc(100dvh - 26rem));
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .assistant-panel.dock .assistant-thread {
   flex: 1 1 auto;
-  min-height: 6rem;
-  overflow: auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-.assistant-panel.dock .assistant-form {
-  position: sticky;
-  bottom: 0;
-  background: #fff;
+.portal-main.chat-lock {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-main.chat-lock .portal-sheet {
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-top: 2.75rem;
+  padding-bottom: 1.25rem;
 }
 
 .assistant-greeting,
@@ -1457,7 +1490,12 @@ textarea {
 }
 
 .assistant-home {
-  padding-top: 6vh;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: 0;
 }
 
 .offer-page h1,
@@ -1852,8 +1890,25 @@ textarea {
     text-underline-offset: 0.28em;
   }
 
+  .portal.chat-home {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .portal.chat-home .portal-frame {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .portal.chat-home .portal-main {
+    overflow: hidden;
+  }
+
+  .assistant-panel.home .assistant-thread,
   .assistant-panel.dock .assistant-thread {
-    max-height: 16rem;
+    max-height: min(16rem, calc(100dvh - 22rem));
   }
 
   .offers-table {

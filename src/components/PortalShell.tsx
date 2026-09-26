@@ -18,7 +18,8 @@ export function PortalShell() {
   const location = useLocation();
   const { clerkSignedIn } = usePortalAccess();
   const { minimized, setMinimized } = useAssistant();
-  const showDock = location.pathname !== "/assistant";
+  const chatHome = location.pathname === "/assistant";
+  const showDock = !chatHome;
   const wide = location.pathname === "/admin" || location.pathname === "/institution";
   const roomy = location.pathname === "/offers";
   const pinned = useRef<{ path: string; minimized: boolean } | null>(null);
@@ -43,7 +44,7 @@ export function PortalShell() {
   }
 
   return (
-    <div className="portal">
+    <div className={`portal ${chatHome ? "chat-home" : ""}`}>
       <a className="skip-link" href="#main">
         Skip to content
       </a>
@@ -62,7 +63,7 @@ export function PortalShell() {
         {hasClerkKey() && clerkSignedIn ? <UserButton appearance={clerkAppearance} /> : null}
       </header>
       <div className={`portal-frame ${showDock ? "has-dock" : ""}`}>
-        <main id="main" className={`portal-main ${wide ? "wide" : ""} ${roomy ? "roomy" : ""}`}>
+        <main id="main" className={`portal-main ${wide ? "wide" : ""} ${roomy ? "roomy" : ""} ${chatHome ? "chat-lock" : ""}`}>
           <div className="portal-sheet">
             <Outlet />
           </div>
