@@ -3,6 +3,7 @@ import {
   acceptChoicesFor,
   acceptOnRow,
   choicePrice,
+  listsAfterAccept,
   rowCanAccept,
   type AcceptableChoice,
   type RowAcceptance,
@@ -61,8 +62,10 @@ export function Offers() {
   }
 
   function accept(rowKey: string, choice: AcceptableChoice) {
+    const matchesOpen = Boolean(open[`${rowKey}:matches`]);
+    const offersOpen = Boolean(open[`${rowKey}:offers`]);
     setAccepted((current) => {
-      const next = acceptOnRow(current, rowKey, choice);
+      const next = acceptOnRow(current, rowKey, choice, { matchesOpen, offersOpen });
       writeAcceptedOffers(passport.id, next);
       return next;
     });
@@ -138,20 +141,27 @@ function OfferRow({
   onCancelPick: () => void;
   onAccept: (choice: AcceptableChoice) => void;
 }) {
-  const matches = revealedItems(row.algorithmic, matchesOpen);
-  const offers = revealedItems(row.offers, offersOpen);
-  const matchLabel = revealLabel("matches", row.algorithmic.length, matchesOpen);
-  const offerLabel = revealLabel("offers", row.offers.length, offersOpen);
+  const shown = accepted ? listsAfterAccept(row, accepted) : null;
+  const matches = shown ? shown.algorithmic : revealedItems(row.algorithmic, matchesOpen);
+  const offers = shown ? shown.offers : revealedItems(row.offers, offersOpen);
+  const matchLabel = accepted ? null : revealLabel("matches", row.algorithmic.length, matchesOpen);
+  const offerLabel = accepted ? null : revealLabel("offers", row.offers.length, offersOpen);
   const choices = acceptChoicesFor(row, matchesOpen, offersOpen);
   return (
-    <tr>
+    <tr className={accepted ? "is-accepted" : undefined}>
       <th scope="row">
         <span className="offer-account">{row.accountName}</span>
         <span className="offer-meta">{row.meta}</span>
       </th>
       <td>
         {matches.map((recommendation, index) => (
-          <AlgorithmicMatch key={recommendation.id} recommendation={recommendation} rank={index + 1} />
+          <AlgorithmicMatch
+            key={recommendation.id}
+            recommendation={recommendation}
+            rank={index + 1}
+            compact={Boolean(accepted)}
+            chosen={accepted?.choiceId === `match:${recommendation.id}`}
+          />
         ))}
         {matchLabel ? (
           <button type="button" className="reveal-next" aria-expanded={false} onClick={() => onExpand(`${row.key}:matches`)}>
@@ -161,7 +171,13 @@ function OfferRow({
       </td>
       <td className="offer-lane">
         {offers.map((offer, index) => (
-          <BidBlock key={offer.id} offer={offer} rank={index + 1} />
+          <BidBlock
+            key={offer.id}
+            offer={offer}
+            rank={index + 1}
+            compact={Boolean(accepted)}
+            chosen={accepted?.choiceId === `bid:${offer.id}`}
+          />
         ))}
         {offerLabel ? (
           <button type="button" className="reveal-next" aria-expanded={false} onClick={() => onExpand(`${row.key}:offers`)}>
@@ -241,38 +257,66 @@ function AcceptCell({
   );
 }
 
-function AlgorithmicMatch({ recommendation, rank }: { recommendation: Recommendation; rank: number }) {
+function AlgorithmicMatch({
+  recommendation,
+  rank,
+  compact = false,
+  chosen = false,
+}: {
+  recommendation: Recommendation;
+  rank: number;
+  compact?: boolean;
+  chosen?: boolean;
+}) {
   return (
-    <div className="lane-block">
+    <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
-      <p className="proposed-kicker">Proposed</p>
+      {chosen ? <p className="accepted-mark">Accepted</p> : null}
+      {compact ? null : <p className="proposed-kicker">Proposed</p>}
       <p className="proposed-name">{recommendation.nextStrategy}</p>
       <p className="all-in-fee">{allInFeeLabel(recommendation.allInBps)}</p>
-      <p className="strategy-from">
-        <span className="from-label">Currently</span> {recommendation.currentStrategy}
-      </p>
-      <p className="match-line">
-        <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
-          {recommendation.matchPct}% match
-        </span>
-      </p>
-      <p className="strategy-reason">{recommendation.reason}</p>
+      {compact ? null : (
+        <p className="strategy-from">
+          <span className="from-label">Currently</span> {recommendation.currentStrategy}
+        </p>
+      )}
+      {compact ? null : (
+        <p className="match-line">
+          <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
+            {recommendation.matchPct}% match
+          </span>
+        </p>
+      )}
+      {compact ? null : <p className="strategy-reason">{recommendation.reason}</p>}
     </div>
   );
 }
 
-function BidBlock({ offer, rank }: { offer: BiddingOffer; rank: number }) {
+function BidBlock({
+  offer,
+  rank,
+  compact = false,
+  chosen = false,
+}: {
+  offer: BiddingOffer;
+  rank: number;
+  compact?: boolean;
+  chosen?: boolean;
+}) {
   return (
-    <div className="lane-block">
+    <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
+      {chosen ? <p className="accepted-mark">Accepted</p> : null}
       <p className="bid-name">{offer.bidder}</p>
       <p className="bid-title">{offer.title}</p>
       <p className="bid-rate">{offer.terms}</p>
-      <p className="match-line">
-        <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
-          {offer.matchPct}% match
-        </span>
-      </p>
+      {compact ? null : (
+        <p className="match-line">
+          <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
+            {offer.matchPct}% match
+          </span>
+        </p>
+      )}
     </div>
   );
 }

@@ -6,7 +6,9 @@ import {
   acceptanceConfirmation,
   acceptOnRow,
   allInBpsFromTerms,
+  listsAfterAccept,
   rowCanAccept,
+  withVisibility,
 } from "./acceptOffer.ts";
 import { buildOfferBoard, defaultFit, revealedItems } from "./marketplace.ts";
 import { CLIENT_SEEDS } from "./seed/index.ts";
@@ -82,4 +84,33 @@ test("each account and the household can accept one visible choice", () => {
 
   const blob = JSON.stringify(collapsed) + JSON.stringify(expanded) + booked[merrill.key].confirmation;
   assert.equal(blob.toLowerCase().includes(["paid", "placement"].join(" ")), false);
+
+  const meridian = expanded.find((choice) => choice.id === "bid:meridian");
+  assert.ok(meridian);
+  const keptOpen = acceptOnRow({}, merrill.key, meridian, { matchesOpen: true, offersOpen: true });
+  const openLists = listsAfterAccept(merrill, keptOpen[merrill.key]);
+  assert.equal(openLists.algorithmic.length, 3);
+  assert.equal(openLists.offers.length, 3);
+  assert.equal(
+    openLists.offers.some((offer) => `bid:${offer.id}` === keptOpen[merrill.key].choiceId),
+    true,
+  );
+  assert.equal(
+    openLists.algorithmic.some((item) => `match:${item.id}` === "match:ml-pw-cheaper"),
+    true,
+  );
+
+  const keptClosed = acceptOnRow({}, household.key, householdChoices[0], { matchesOpen: false, offersOpen: false });
+  const closedLists = listsAfterAccept(household, keptClosed[household.key]);
+  assert.equal(closedLists.algorithmic.length, 1);
+  assert.equal(closedLists.offers.length, 1);
+
+  const fromStorage = withVisibility({
+    ...keptClosed[household.key],
+    matchesOpen: undefined as unknown as boolean,
+    offersOpen: undefined as unknown as boolean,
+  });
+  assert.equal(fromStorage.matchesOpen, false);
+  assert.equal(fromStorage.offersOpen, false);
+  assert.equal(listsAfterAccept(household, fromStorage).algorithmic.length, 1);
 });

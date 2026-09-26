@@ -1,4 +1,4 @@
-import type { RowAcceptance } from "../../shared/acceptOffer.ts";
+import { withVisibility, type RowAcceptance } from "../../shared/acceptOffer.ts";
 
 const STORAGE_KEY = "wealthpass-row-accepts-v1";
 
@@ -33,7 +33,7 @@ function readBook(): Book {
       if (!rows || typeof rows !== "object" || Array.isArray(rows)) continue;
       const next: Record<string, RowAcceptance> = {};
       for (const [rowKey, value] of Object.entries(rows as Record<string, unknown>)) {
-        if (isAcceptance(value)) next[rowKey] = value;
+        if (isAcceptance(value)) next[rowKey] = withVisibility(value);
       }
       book[clientId] = next;
     }

@@ -23,6 +23,15 @@ export interface RowAcceptance {
   allInBps: number | null;
   rateLabel: string | null;
   confirmation: string;
+  /** Algorithmic list was already expanded when this row was accepted. */
+  matchesOpen: boolean;
+  /** Top-offers list was already expanded when this row was accepted. */
+  offersOpen: boolean;
+}
+
+export interface AcceptVisibility {
+  matchesOpen: boolean;
+  offersOpen: boolean;
 }
 
 /** Pull an all-in bps figure from a bid line such as "all-in 38 bps". */
@@ -91,6 +100,7 @@ export function acceptOnRow(
   current: Readonly<Record<string, RowAcceptance>>,
   rowKey: string,
   choice: AcceptableChoice,
+  visibility: AcceptVisibility = { matchesOpen: false, offersOpen: false },
 ): Record<string, RowAcceptance> {
   if (current[rowKey]) return { ...current };
   return {
@@ -103,6 +113,30 @@ export function acceptOnRow(
       allInBps: choice.allInBps,
       rateLabel: choice.rateLabel,
       confirmation: acceptanceConfirmation(choice),
+      matchesOpen: visibility.matchesOpen,
+      offersOpen: visibility.offersOpen,
     },
+  };
+}
+
+/**
+ * After accept, keep whatever was already on screen. Expanded ranks stay.
+ * A collapsed list stays on rank 1.
+ */
+export function listsAfterAccept(row: OfferBoardRow, visibility: AcceptVisibility): {
+  algorithmic: Recommendation[];
+  offers: BiddingOffer[];
+} {
+  return {
+    algorithmic: [...revealedItems(row.algorithmic, visibility.matchesOpen)],
+    offers: [...revealedItems(row.offers, visibility.offersOpen)],
+  };
+}
+
+export function withVisibility(row: RowAcceptance): RowAcceptance {
+  return {
+    ...row,
+    matchesOpen: row.matchesOpen === true,
+    offersOpen: row.offersOpen === true,
   };
 }
