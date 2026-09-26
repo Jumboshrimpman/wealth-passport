@@ -1,11 +1,5 @@
-import type { OfferMatch } from "../../shared/match.ts";
 import { formatUsd } from "../../shared/format.ts";
-import {
-  countNewOffers,
-  greetingLine,
-  type OfferBook,
-  type WealthPicture,
-} from "../../shared/marketplace.ts";
+import { greetingLine, type OfferBoard, type WealthPicture } from "../../shared/marketplace.ts";
 import type { ClientPassport } from "../../shared/types.ts";
 
 export const STARTER_PROMPTS = [
@@ -30,35 +24,36 @@ export function answerQuestion(
   input: string,
   ctx: {
     client: ClientPassport;
-    book: OfferBook;
+    board: OfferBoard;
     wealth: WealthPicture;
-    institutions: OfferMatch[];
   },
 ): string {
-  const { client, book, wealth, institutions } = ctx;
+  const { client, board, wealth } = ctx;
   const first = client.household.clientFirstName;
   const intent = intentOf(input);
 
   if (intent === "offers") {
-    const count = countNewOffers(book, institutions.length);
     const lines = [
-      `${greetingLine(first, wealth.total, count)}`,
-      ...book.accounts.map((account) => {
-        const top = account.recommendations[0];
-        return `${account.accountName} at ${account.custodian} (${formatUsd(account.balance, true)}): ${top.title}, ${top.matchPct}% match. ${top.reason}`;
-      }),
-      `Household: ${book.household[0].title}, ${book.household[0].matchPct}% match. ${book.household[0].reason}`,
+      greetingLine(first, wealth.total, board.rows.filter((row) => row.offers.length > 0).length),
+      "Algorithmic match is our ranking of the next strategy. Top offers are companies bidding their best rates. Each list opens on rank 1.",
     ];
-    if (institutions.length > 0) {
-      lines.push(
-        `Also sent through WealthPass, without changing that ranking: ${institutions
-          .map((match) => `${match.institution.name} — ${match.institution.offer.title}. ${match.fitReason}`)
-          .join(" ")}`,
-      );
-    } else {
-      lines.push(`No institution has sent an offer that fits the ${client.household.name} record.`);
+    for (const row of board.rows) {
+      const algorithmic = row.algorithmic[0];
+      const bid = row.offers[0];
+      const where = row.key === "household" ? "Household" : `${row.accountName} (${row.meta})`;
+      const parts: string[] = [];
+      if (algorithmic) {
+        parts.push(
+          `Algorithmic match: ${algorithmic.currentStrategy} → ${algorithmic.nextStrategy}, ${algorithmic.matchPct}% match. ${algorithmic.reason}`,
+        );
+      }
+      if (bid) {
+        parts.push(`Top offer: ${bid.bidder}, ${bid.title}, ${bid.terms}, ${bid.matchPct}% match.`);
+      }
+      if (parts.length > 0) lines.push(`${where}. ${parts.join(" ")}`);
     }
-    lines.push("The ranking is proprietary. It cannot be bought.");
+    lines.push("Ranks 2 and 3 stay on the Offers page until you ask to see the next matches or the next offers.");
+    lines.push("The algorithmic ranking is ours. It cannot be bought.");
     return lines.join("\n\n");
   }
 
@@ -93,11 +88,18 @@ export function answerQuestion(
     const classes = client.allocationTree
       .map((node) => `${node.label} ${Math.round(node.pct)}% (${formatUsd(node.value, true)})`)
       .join("; ");
-    return [
+    const lines = [
       `${client.household.name} in ${client.household.domicile}. ${client.household.principals}. Household value ${formatUsd(client.household.householdValue)}. Risk on file: ${client.household.risk.label}, ${client.household.risk.horizon}. ${client.household.risk.capacity}.`,
       classes ? `Allocation: ${classes}.` : "Allocation is not broken out on this record.",
-      `The household recommendation is ${book.household[0].title} (${book.household[0].matchPct}% match). ${book.household[0].reason}`,
-    ].join("\n\n");
+    ];
+    const household = board.rows.find((row) => row.key === "household");
+    const algorithmic = household?.algorithmic[0];
+    if (algorithmic) {
+      lines.push(
+        `The algorithmic match for the household is ${algorithmic.title} (${algorithmic.matchPct}% match). ${algorithmic.reason}`,
+      );
+    }
+    return lines.join("\n\n");
   }
 
   const largest = [...client.accounts].sort((a, b) => b.balance - a.balance)[0];

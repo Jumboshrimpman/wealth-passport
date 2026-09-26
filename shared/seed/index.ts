@@ -6,6 +6,11 @@ import { GENERATED_CLIENT_SEEDS } from "./households.ts";
 
 export const DEFAULT_CLIENT_ID = "elena-whitmore";
 
+/**
+ * Seed clients keep every account. Offers shows each account, and the household
+ * on its own row. Each row has up to three algorithmic matches and up to three
+ * company bids (see shared/seed/bids.ts). The page opens on rank 1 of each list.
+ */
 export const CLIENT_SEEDS: ClientRecord[] = [elenaClient, priyaClient, ...GENERATED_CLIENT_SEEDS];
 
 export const SEEDED_PASSPORTS: ClientPassport[] = CLIENT_SEEDS.map((record) => assemblePassport(record));

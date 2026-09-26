@@ -20,7 +20,7 @@ export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" 
   return (
     <div className={`assistant-panel ${variant}`}>
       {variant === "home" ? <h1>{greeting}</h1> : <p className="assistant-greeting">{greeting}</p>}
-      <div className="assistant-thread" ref={threadRef} role="log" aria-live="polite">
+      <div className="assistant-thread" ref={threadRef} role="log" aria-live="polite" tabIndex={0}>
         {messages.map((message) => (
           <p key={message.id} className={message.role === "user" ? "from-you" : "from-assistant"}>
             {message.text}
