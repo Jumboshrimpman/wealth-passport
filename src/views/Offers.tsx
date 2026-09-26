@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  acceptChoicesFor,
+  acceptOnRow,
+  choicePrice,
+  rowCanAccept,
+  type AcceptableChoice,
+  type RowAcceptance,
+} from "../../shared/acceptOffer.ts";
+import {
   allInFeeLabel,
   buildOfferBoard,
   defaultFit,
@@ -12,6 +20,7 @@ import {
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 import { useOffers } from "../context/OfferContext";
+import { readAcceptedOffers, writeAcceptedOffers } from "../offers/acceptedOffers";
 
 /** Darker green is a higher match. Every step stays readable on white. */
 function matchColor(pct: number): string {
@@ -38,13 +47,26 @@ export function Offers() {
     [eligible, fit, passport],
   );
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [picking, setPicking] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState<Record<string, RowAcceptance>>(() => readAcceptedOffers(passport.id));
 
   useEffect(() => {
     setOpen({});
+    setPicking(null);
+    setAccepted(readAcceptedOffers(passport.id));
   }, [passport.id]);
 
   function expand(key: string) {
     setOpen((current) => ({ ...current, [key]: true }));
+  }
+
+  function accept(rowKey: string, choice: AcceptableChoice) {
+    setAccepted((current) => {
+      const next = acceptOnRow(current, rowKey, choice);
+      writeAcceptedOffers(passport.id, next);
+      return next;
+    });
+    setPicking(null);
   }
 
   return (
@@ -53,7 +75,7 @@ export function Offers() {
       <p className="lede-quiet">
         Each account, and the household on its own, has two lists. Algorithmic match names the
         proposed strategy and its all-in fee. Top offers are companies bidding their best rates on
-        this profile. Both lists open on the top result.
+        this profile. Both lists open on the top result. Accept one choice on a row.
       </p>
       <div className="offers-scroll">
         <table className="offers-table">
@@ -68,6 +90,9 @@ export function Offers() {
                 <span className="col-title">Top offers</span>
                 <span className="col-note">Companies bidding</span>
               </th>
+              <th scope="col">
+                <span className="col-title">Accept</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -78,6 +103,11 @@ export function Offers() {
                 matchesOpen={Boolean(open[`${row.key}:matches`])}
                 offersOpen={Boolean(open[`${row.key}:offers`])}
                 onExpand={expand}
+                accepted={accepted[row.key] ?? null}
+                picking={picking === row.key}
+                onStartPick={() => setPicking(row.key)}
+                onCancelPick={() => setPicking(null)}
+                onAccept={(choice) => accept(row.key, choice)}
               />
             ))}
           </tbody>
@@ -92,16 +122,27 @@ function OfferRow({
   matchesOpen,
   offersOpen,
   onExpand,
+  accepted,
+  picking,
+  onStartPick,
+  onCancelPick,
+  onAccept,
 }: {
   row: OfferBoardRow;
   matchesOpen: boolean;
   offersOpen: boolean;
   onExpand: (key: string) => void;
+  accepted: RowAcceptance | null;
+  picking: boolean;
+  onStartPick: () => void;
+  onCancelPick: () => void;
+  onAccept: (choice: AcceptableChoice) => void;
 }) {
   const matches = revealedItems(row.algorithmic, matchesOpen);
   const offers = revealedItems(row.offers, offersOpen);
   const matchLabel = revealLabel("matches", row.algorithmic.length, matchesOpen);
   const offerLabel = revealLabel("offers", row.offers.length, offersOpen);
+  const choices = acceptChoicesFor(row, matchesOpen, offersOpen);
   return (
     <tr>
       <th scope="row">
@@ -128,7 +169,75 @@ function OfferRow({
           </button>
         ) : null}
       </td>
+      <td className="accept-lane">
+        <AcceptCell
+          canAccept={rowCanAccept(row)}
+          accepted={accepted}
+          picking={picking}
+          choices={choices}
+          onStartPick={onStartPick}
+          onCancelPick={onCancelPick}
+          onAccept={onAccept}
+        />
+      </td>
     </tr>
+  );
+}
+
+function AcceptCell({
+  canAccept,
+  accepted,
+  picking,
+  choices,
+  onStartPick,
+  onCancelPick,
+  onAccept,
+}: {
+  canAccept: boolean;
+  accepted: RowAcceptance | null;
+  picking: boolean;
+  choices: AcceptableChoice[];
+  onStartPick: () => void;
+  onCancelPick: () => void;
+  onAccept: (choice: AcceptableChoice) => void;
+}) {
+  if (!canAccept) return null;
+  if (accepted) {
+    return (
+      <div className="accepted-offer" role="status">
+        <p className="accepted-kicker">Accepted</p>
+        <p className="accepted-copy">{accepted.confirmation}</p>
+      </div>
+    );
+  }
+  if (!picking) {
+    return (
+      <button type="button" className="text-button" aria-expanded={false} onClick={onStartPick}>
+        Accept offer
+      </button>
+    );
+  }
+  return (
+    <div className="accept-picker">
+      <p className="accept-picker-label">Choose one</p>
+      <div role="listbox" aria-label="Choose one offer">
+        {choices.map((choice) => {
+          const price = choicePrice(choice);
+          return (
+            <button key={choice.id} type="button" className="accept-choice" onClick={() => onAccept(choice)}>
+              <span className="accept-choice-strategy">{choice.strategy}</span>
+              <span className="accept-choice-meta">
+                {choice.party}
+                {price ? ` · ${price}` : ""}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" className="reveal-next" onClick={onCancelPick}>
+        Cancel
+      </button>
+    </div>
   );
 }
 
