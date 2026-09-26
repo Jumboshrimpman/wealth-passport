@@ -37,9 +37,9 @@ export function Financials() {
       <ul className="wealth-points">
         {picture.points.map((point) => (
           <li key={point.id}>
-            <div>
+            <div className="wealth-copy">
               <strong>{point.label}</strong>
-              <span>{point.note}</span>
+              {point.note ? <span className="wealth-note">{point.note}</span> : null}
             </div>
             <span className={point.status}>{formatUsd(point.amount)}</span>
           </li>

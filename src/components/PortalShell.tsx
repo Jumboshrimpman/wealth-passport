@@ -1,5 +1,5 @@
 import { UserButton } from "@clerk/clerk-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { hasClerkKey, usePortalAccess } from "../auth/access";
 import { clerkAppearance } from "../auth/clerk";
@@ -20,14 +20,27 @@ export function PortalShell() {
   const { minimized, setMinimized } = useAssistant();
   const showDock = location.pathname !== "/assistant";
   const wide = location.pathname === "/admin" || location.pathname === "/institution";
+  const roomy = location.pathname === "/offers";
+  const pinned = useRef<{ path: string; minimized: boolean } | null>(null);
 
   useEffect(() => {
-    if (location.pathname === "/offers" || location.pathname === "/financials") {
-      setMinimized(false);
-    } else if (showDock) {
-      setMinimized(true);
+    if (!showDock) return;
+    if (pinned.current?.path === location.pathname) {
+      setMinimized(pinned.current.minimized);
+      return;
     }
+    setMinimized(!(location.pathname === "/offers" || location.pathname === "/financials"));
   }, [location.pathname, setMinimized, showDock]);
+
+  function minimize() {
+    pinned.current = { path: location.pathname, minimized: true };
+    setMinimized(true);
+  }
+
+  function expand() {
+    pinned.current = { path: location.pathname, minimized: false };
+    setMinimized(false);
+  }
 
   return (
     <div className="portal">
@@ -48,27 +61,32 @@ export function PortalShell() {
         </nav>
         {hasClerkKey() && clerkSignedIn ? <UserButton appearance={clerkAppearance} /> : null}
       </header>
-      <div className={`portal-frame ${showDock && !minimized ? "with-dock" : ""}`}>
-        <main id="main" className={`portal-main ${wide ? "wide" : ""}`}>
-          <Outlet />
+      <div className={`portal-frame ${showDock ? "has-dock" : ""}`}>
+        <main id="main" className={`portal-main ${wide ? "wide" : ""} ${roomy ? "roomy" : ""}`}>
+          <div className="portal-sheet">
+            <Outlet />
+          </div>
         </main>
-        {showDock && !minimized ? (
-          <aside className="assistant-dock" aria-label="Assistant">
-            <button type="button" className="text-button" onClick={() => setMinimized(true)}>
-              Minimize
-            </button>
-            <AssistantPanel variant="dock" />
+        {showDock ? (
+          <aside className={`assistant-dock ${minimized ? "is-collapsed" : ""}`} aria-label="Assistant">
+            {minimized ? (
+              <button type="button" className="assistant-rail" aria-expanded={false} onClick={expand}>
+                Assistant
+              </button>
+            ) : (
+              <>
+                <div className="assistant-dock-bar">
+                  <span>Assistant</span>
+                  <button type="button" className="text-button" aria-expanded={true} onClick={minimize}>
+                    Minimize
+                  </button>
+                </div>
+                <AssistantPanel variant="dock" />
+              </>
+            )}
           </aside>
         ) : null}
       </div>
-      {showDock && minimized ? (
-        <aside className="chat-mini" aria-label="Assistant">
-          <button type="button" className="text-button" onClick={() => setMinimized(false)}>
-            Open
-          </button>
-          <AssistantPanel variant="mini" />
-        </aside>
-      ) : null}
     </div>
   );
 }

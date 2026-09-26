@@ -18,6 +18,10 @@ import { useDemo } from "../context/DemoContext";
 import { PRODUCT_NAME } from "../data/catalog";
 
 type Step =
+  | "fork"
+  | "agent"
+  | "agent-run"
+  | "agent-pause"
   | "connect"
   | "returned"
   | "fundrise"
@@ -30,6 +34,13 @@ type Step =
   | "balance"
   | "motive"
   | "focus";
+
+type AgentChoice = "chatgpt" | "anthropic";
+
+const AGENTS: { id: AgentChoice; label: string }[] = [
+  { id: "chatgpt", label: "ChatGPT Finance" },
+  { id: "anthropic", label: "Anthropic RIA dashboard" },
+];
 
 const RISKS: { id: RiskChoice; label: string }[] = [
   { id: "aggressive", label: "Aggressive" },
@@ -54,7 +65,9 @@ export function Enroll() {
   const { saveProfile } = useDemo();
   const { allowDemo } = usePortalAccess();
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>("connect");
+  const [step, setStep] = useState<Step>("fork");
+  const [agent, setAgent] = useState<AgentChoice | null>(null);
+  const [agentLines, setAgentLines] = useState<string[]>([]);
   const [provider, setProvider] = useState<"plaid" | "kubera" | null>(null);
   const [bank, setBank] = useState<BankConnectResult | null>(null);
   const [fundrise, setFundrise] = useState<AssetConnectResult | null>(null);
@@ -119,32 +132,136 @@ export function Enroll() {
     }
   }
 
-  function finish() {
-    if (!bank || !provider || !risk || !balance || !motive || focus.length === 0) return;
-    const amount = Number(otherAmount.replace(/[^0-9.]/g, ""));
+  function completeEnrollment(input: {
+    bank: BankConnectResult;
+    provider: "plaid" | "kubera";
+    fundrise: AssetConnectResult | null;
+    coinbase: AssetConnectResult | null;
+    kalshi: AssetConnectResult | null;
+    other: { label: string; amount: number } | null;
+    taxDocName: string | null;
+    risk: RiskChoice;
+    balance: BalanceChoice;
+    motive: MotiveChoice;
+    focus: string[];
+  }) {
+    if (input.focus.length === 0) return;
     const profile: DemoProfile = {
       clientId: passport.id,
-      provider,
-      providerLabel: bank.providerLabel,
-      fullName: bank.fullName,
-      pulledAccounts: bank.accounts,
-      fundrise: fundrise
-        ? { connected: true, amount: fundrise.amount, label: fundrise.label }
+      provider: input.provider,
+      providerLabel: input.bank.providerLabel,
+      fullName: input.bank.fullName,
+      pulledAccounts: input.bank.accounts,
+      fundrise: input.fundrise
+        ? { connected: true, amount: input.fundrise.amount, label: input.fundrise.label }
         : { connected: false, amount: 0, label: "" },
-      coinbase: coinbase
-        ? { connected: true, amount: coinbase.amount, label: coinbase.label }
+      coinbase: input.coinbase
+        ? { connected: true, amount: input.coinbase.amount, label: input.coinbase.label }
         : { connected: false, amount: 0, label: "" },
-      kalshi: kalshi
-        ? { connected: true, amount: kalshi.amount, label: kalshi.label }
+      kalshi: input.kalshi
+        ? { connected: true, amount: input.kalshi.amount, label: input.kalshi.label }
         : { connected: false, amount: 0, label: "" },
-      other: Number.isFinite(amount) && amount > 0 ? { label: otherLabel.trim() || "Other assets", amount } : null,
-      taxDocName: taxName,
-      fit: { risk, balance, motive, focusAccountIds: focus },
+      other: input.other,
+      taxDocName: input.taxDocName,
+      fit: {
+        risk: input.risk,
+        balance: input.balance,
+        motive: input.motive,
+        focusAccountIds: input.focus,
+      },
     };
     saveProfile(profile);
     allowDemo();
     selectClient(passport.id);
     navigate("/assistant");
+  }
+
+  function finish() {
+    if (!bank || !provider || !risk || !balance || !motive || focus.length === 0) return;
+    const amount = Number(otherAmount.replace(/[^0-9.]/g, ""));
+    completeEnrollment({
+      bank,
+      provider,
+      fundrise,
+      coinbase,
+      kalshi,
+      other: Number.isFinite(amount) && amount > 0 ? { label: otherLabel.trim() || "Other assets", amount } : null,
+      taxDocName: taxName,
+      risk,
+      balance,
+      motive,
+      focus,
+    });
+  }
+
+  async function pullAsset(next: "fundrise" | "coinbase" | "kalshi"): Promise<AssetConnectResult | null> {
+    try {
+      const result = await connectDemo(next, passport.id);
+      if (result.kind !== "asset") return null;
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
+  async function startAgent(choice: AgentChoice) {
+    const label = choice === "chatgpt" ? "ChatGPT Finance" : "Anthropic RIA dashboard";
+    setAgent(choice);
+    setStep("agent-run");
+    setError(null);
+    setBusy(true);
+    const lines = [`${label} is running enrollment. This demo does not call that product.`];
+    setAgentLines(lines);
+    try {
+      const bankResult = await connectDemo("plaid", passport.id);
+      if (bankResult.kind !== "bank") throw new Error("Expected a bank pull.");
+      setProvider("plaid");
+      setBank(bankResult);
+      const largest = [...bankResult.accounts].sort((a, b) => b.balance - a.balance)[0];
+      setFocus(largest ? [largest.id] : []);
+      lines.push(`Plaid returned ${bankResult.accounts.length} accounts for ${bankResult.fullName}.`);
+      setAgentLines([...lines]);
+
+      const fund = await pullAsset("fundrise");
+      setFundrise(fund);
+      lines.push(fund ? `${fund.label} is in.` : "No Fundrise position came back.");
+      setAgentLines([...lines]);
+
+      const coin = await pullAsset("coinbase");
+      setCoinbase(coin);
+      lines.push(coin ? `${coin.label} is in.` : "No Coinbase balance came back.");
+      setAgentLines([...lines]);
+
+      const kal = await pullAsset("kalshi");
+      setKalshi(kal);
+      lines.push(kal ? `${kal.label} is in.` : "No Kalshi positions came back.");
+      lines.push("Paused. How you take risk has to come from you.");
+      setAgentLines([...lines]);
+      setStep("agent-pause");
+    } catch {
+      setError("The demo agent did not finish. You can enroll yourself instead.");
+      setStep("fork");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function answerRisk(choice: RiskChoice) {
+    if (!bank) return;
+    const largest = [...bank.accounts].sort((a, b) => b.balance - a.balance)[0];
+    completeEnrollment({
+      bank,
+      provider: "plaid",
+      fundrise,
+      coinbase,
+      kalshi,
+      other: null,
+      taxDocName: null,
+      risk: choice,
+      balance: "balanced",
+      motive: "change",
+      focus: largest ? [largest.id] : [],
+    });
   }
 
   return (
@@ -153,6 +270,95 @@ export function Enroll() {
         <p className="wordmark">
           <Link to="/">{PRODUCT_NAME}</Link>
         </p>
+        {step === "fork" ? (
+          <section>
+            <h1>How do you want to enroll?</h1>
+            <p>Either way stays in this demo. Nothing is sent to a bank, a model, or an advisor.</p>
+            <div className="fork-options">
+              <div>
+                <button type="button" onClick={() => setStep("agent")}>
+                  Use my finance agent
+                </button>
+                <p>
+                  ChatGPT Finance, or an Anthropic RIA-style dashboard, runs the connections and only
+                  pauses when a person needs to answer.
+                </p>
+              </div>
+              <div>
+                <button type="button" onClick={() => setStep("connect")}>
+                  I&rsquo;ll enroll myself
+                </button>
+                <p>Connect each source yourself, in order.</p>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {step === "agent" ? (
+          <section>
+            <h1>Which agent should run this?</h1>
+            <p>Demo only. Neither product is connected.</p>
+            <div className="choices">
+              {AGENTS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void startAgent(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="text-button" onClick={() => setStep("connect")}>
+              I&rsquo;ll enroll myself instead
+            </button>
+          </section>
+        ) : null}
+
+        {step === "agent-run" ? (
+          <section>
+            <h1>Your agent is enrolling.</h1>
+            <p>It stops when it needs a person.</p>
+            <ul className="agent-log">
+              {agentLines.map((line, index) => (
+                <li key={`${index}-${line}`}>{line}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {step === "agent-pause" ? (
+          <section>
+            <h1>Your agent paused.</h1>
+            <p>
+              {agent === "anthropic" ? "The Anthropic RIA dashboard" : "ChatGPT Finance"} has the
+              connections. This answer has to come from you. Demo only.
+            </p>
+            <ul className="agent-log">
+              {agentLines.map((line, index) => (
+                <li key={`${index}-${line}`}>{line}</li>
+              ))}
+            </ul>
+            <div className="choices" role="listbox" aria-label="How do you take risk?">
+              {RISKS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={risk === option.id}
+                  className={risk === option.id ? "is-on" : ""}
+                  onClick={() => setRisk(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="text-button" disabled={!risk} onClick={() => risk && answerRisk(risk)}>
+              Continue
+            </button>
+          </section>
+        ) : null}
+
         {step === "connect" ? (
           <section>
             <h1>Connect a bank or a balance sheet.</h1>
