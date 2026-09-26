@@ -60,6 +60,23 @@ const MOTIVES: { id: MotiveChoice; label: string }[] = [
   { id: "cheaper", label: "I want something cheaper" },
 ];
 
+/** A log line that stops the agent until the person answers. */
+function agentPausePrompt(line: string): string | null {
+  const match = /^Paused\.\s+(.+)$/.exec(line.trim());
+  return match?.[1] ?? null;
+}
+
+function splitAgentLines(lines: string[]): { status: string[]; prompts: string[] } {
+  const status: string[] = [];
+  const prompts: string[] = [];
+  for (const line of lines) {
+    const prompt = agentPausePrompt(line);
+    if (prompt) prompts.push(prompt);
+    else status.push(line);
+  }
+  return { status, prompts };
+}
+
 export function Enroll() {
   const { passport, selectClient } = useClient();
   const { saveProfile } = useDemo();
@@ -317,30 +334,17 @@ export function Enroll() {
         ) : null}
 
         {step === "agent-run" ? (
-          <section>
-            <h1>Your agent is enrolling.</h1>
-            <p>It stops when it needs a person.</p>
-            <ul className="agent-log">
-              {agentLines.map((line, index) => (
-                <li key={`${index}-${line}`}>{line}</li>
-              ))}
-            </ul>
-          </section>
+          <AgentRun lines={agentLines} />
         ) : null}
 
         {step === "agent-pause" ? (
           <section>
             <h1>Your agent paused.</h1>
-            <p>
-              {agent === "anthropic" ? "The Anthropic RIA dashboard" : "ChatGPT Finance"} has the
-              connections. This answer has to come from you. Demo only.
-            </p>
-            <ul className="agent-log">
-              {agentLines.map((line, index) => (
-                <li key={`${index}-${line}`}>{line}</li>
-              ))}
-            </ul>
-            <div className="choices" role="listbox" aria-label="How do you take risk?">
+            <AgentPausePrompts
+              lines={agentLines}
+              waiting={agent === "anthropic" ? "The Anthropic RIA dashboard" : "ChatGPT Finance"}
+            />
+            <div className="choices agent-pause-choices" role="listbox" aria-label="How do you take risk?">
               {RISKS.map((option) => (
                 <button
                   key={option.id}
@@ -356,6 +360,7 @@ export function Enroll() {
             <button type="button" className="text-button" disabled={!risk} onClick={() => risk && answerRisk(risk)}>
               Continue
             </button>
+            <AgentStatusLog lines={agentLines} />
           </section>
         ) : null}
 
@@ -576,6 +581,45 @@ export function Enroll() {
       </main>
       <LegalFooter />
     </div>
+  );
+}
+
+function AgentRun({ lines }: { lines: string[] }) {
+  return (
+    <section>
+      <h1>Your agent is enrolling.</h1>
+      <p>It stops when it needs a person.</p>
+      <AgentPausePrompts lines={lines} />
+      <AgentStatusLog lines={lines} />
+    </section>
+  );
+}
+
+function AgentPausePrompts({ lines, waiting }: { lines: string[]; waiting?: string }) {
+  const { prompts } = splitAgentLines(lines);
+  if (prompts.length === 0) return null;
+  return (
+    <>
+      {prompts.map((prompt) => (
+        <div key={prompt} className="agent-needs-you" role="status">
+          <p className="agent-needs-kicker">Needs your answer</p>
+          <p className="agent-needs-prompt">{prompt}</p>
+          {waiting ? <p className="agent-needs-note">{waiting} is waiting. Demo only.</p> : null}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function AgentStatusLog({ lines }: { lines: string[] }) {
+  const { status } = splitAgentLines(lines);
+  if (status.length === 0) return null;
+  return (
+    <ul className="agent-log">
+      {status.map((line, index) => (
+        <li key={`${index}-${line}`}>{line}</li>
+      ))}
+    </ul>
   );
 }
 

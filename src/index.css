@@ -1730,6 +1730,56 @@ textarea {
   color: #5e5e5e;
 }
 
+.agent-needs-you {
+  margin: 0.4rem 0 0.2rem;
+  padding: 1rem 1.15rem 1.05rem;
+  max-width: 34rem;
+  background: #f3f3f3;
+  border-left: 3px solid #111;
+}
+
+.enroll-flow .agent-needs-kicker,
+.enroll-flow .agent-needs-prompt,
+.enroll-flow .agent-needs-note {
+  color: #111;
+  max-width: none;
+}
+
+.enroll-flow .agent-needs-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.enroll-flow .agent-needs-prompt {
+  margin: 0;
+  font-size: 1.28rem;
+  font-weight: 560;
+  line-height: 1.3;
+}
+
+.enroll-flow .agent-needs-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.98rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.choices.agent-pause-choices {
+  margin-top: 0.6rem;
+}
+
+.choices.agent-pause-choices button {
+  color: #111;
+  font-size: 1.05rem;
+}
+
+.choices.agent-pause-choices button.is-on {
+  font-weight: 560;
+}
+
 .offer-line {
   padding: 1.35rem 0;
   border-top: 1px solid #f0f0f0;
