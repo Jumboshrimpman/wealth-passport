@@ -5,6 +5,7 @@ import {
   defaultFit,
   describeWealth,
   greetingLine,
+  type InstitutionOfferRef,
 } from "../../shared/marketplace.ts";
 import { answerQuestion, STARTER_PROMPTS } from "../data/assistantCopy";
 import { useClient } from "./ClientContext";
@@ -46,10 +47,19 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const fit = useMemo(() => activeProfile?.fit ?? defaultFit(passport), [activeProfile, passport]);
   const wealth = useMemo(() => describeWealth(passport, activeProfile), [activeProfile, passport]);
   const book = useMemo(() => buildOfferBook(passport, fit), [fit, passport]);
+  const institutionRefs = useMemo<InstitutionOfferRef[]>(
+    () =>
+      eligible.map((match) => ({
+        id: match.institution.id,
+        title: match.institution.offer.title,
+        rank: match.institution.offer.rank,
+      })),
+    [eligible],
+  );
   const greeting = greetingLine(
     passport.household.clientFirstName,
     wealth.total,
-    countNewOffers(book, eligible.length),
+    countNewOffers(book, institutionRefs),
   );
 
   useEffect(() => {

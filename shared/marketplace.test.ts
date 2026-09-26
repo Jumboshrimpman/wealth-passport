@@ -1,15 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { eligibleMatches, matchInstitutions } from "./match.ts";
 import {
   buildOfferBook,
   clientFullName,
   defaultFit,
   describeWealth,
+  institutionOfferScore,
+  MAX_OFFERS_PER_CLIENT,
   oneBankHouseholdMinimum,
   runDemoConnector,
+  selectClientOffers,
   type DemoProfile,
+  type InstitutionOfferRef,
 } from "./marketplace.ts";
 import { CLIENT_SEEDS } from "./seed/index.ts";
+import { INSTITUTION_SEEDS } from "./seed/institutions.ts";
 
 function sampleProfile(clientId: string): DemoProfile {
   const client = CLIENT_SEEDS.find((row) => row.id === clientId);
@@ -151,4 +157,82 @@ test("one-bank household minimum is not a threshold a single account already mee
   assert.doesNotMatch(splitReason, /meets that \$40M/);
   assert.doesNotMatch(splitReason, /meets that \$50M/);
   assert.doesNotMatch(splitReason, /\$40M household minimum/);
+});
+
+function institutionRefs(clientId: string): InstitutionOfferRef[] {
+  const client = CLIENT_SEEDS.find((row) => row.id === clientId);
+  if (!client) throw new Error(`missing ${clientId}`);
+  return eligibleMatches(matchInstitutions(client, INSTITUTION_SEEDS)).map((match) => ({
+    id: match.institution.id,
+    title: match.institution.offer.title,
+    rank: match.institution.offer.rank,
+  }));
+}
+
+test("a client sees at most three offers, highest match first", () => {
+  assert.equal(MAX_OFFERS_PER_CLIENT, 3);
+  assert.equal(institutionOfferScore(1), 92);
+  assert.equal(institutionOfferScore(2), 88);
+  assert.equal(institutionOfferScore(3), 84);
+  assert.equal(institutionOfferScore(4), 80);
+
+  const elena = CLIENT_SEEDS.find((row) => row.id === "elena-whitmore");
+  if (!elena) throw new Error("elena missing");
+  const book = buildOfferBook(elena, defaultFit(elena));
+  const selected = selectClientOffers(book, institutionRefs(elena.id));
+  assert.equal(selected.length, 3);
+  assert.deepEqual(
+    selected.map((offer) => offer.id),
+    ["ml-pw-cheaper", "household-combine", "meridian"],
+  );
+  assert.equal(
+    selected.some((offer) => offer.kind === "strategy" && offer.extra),
+    false,
+  );
+  assert.equal(selected.some((offer) => offer.id === "first-atlantic" || offer.id === "oakridge"), false);
+
+  const withFourth = selectClientOffers(book, [
+    ...institutionRefs(elena.id),
+    { id: "rank-four", title: "Fourth desk", rank: 4 },
+  ]);
+  assert.equal(withFourth.length, 3);
+  assert.equal(withFourth.some((offer) => offer.id === "rank-four"), false);
+
+  const tiny = structuredClone(elena);
+  tiny.accounts = [elena.accounts[0]];
+  tiny.household = { ...elena.household, name: "Tiny household" };
+  const tinyBook = buildOfferBook(tiny, {
+    ...defaultFit(tiny),
+    focusAccountIds: [tiny.accounts[0].id],
+  });
+  const tinySelected = selectClientOffers(tinyBook, []);
+  assert.equal(tinySelected.length, 3);
+  assert.deepEqual(
+    tinySelected.map((offer) => offer.id),
+    ["ml-pw-cheaper", "household-combine", "ml-pw-change"],
+  );
+  assert.equal(tinySelected.filter((offer) => offer.kind === "strategy" && offer.extra).length, 1);
+
+  for (const client of CLIENT_SEEDS) {
+    const clientBook = buildOfferBook(client, defaultFit(client));
+    const refs = institutionRefs(client.id);
+    const visible = selectClientOffers(clientBook, refs);
+    assert.ok(visible.length <= MAX_OFFERS_PER_CLIENT);
+    assert.ok(visible.length >= 1);
+    const primaryIds = new Set([
+      ...clientBook.accounts.map((account) => account.recommendations[0].id),
+      clientBook.household[0].id,
+      ...refs.map((ref) => ref.id),
+    ]);
+    if (primaryIds.size >= MAX_OFFERS_PER_CLIENT) {
+      for (const offer of visible) {
+        assert.equal(primaryIds.has(offer.id), true, `${client.id} surfaced an extra while primaries filled the cap`);
+      }
+    }
+    const scores = visible.map((offer) => offer.score);
+    assert.deepEqual(scores, [...scores].sort((a, b) => b - a));
+  }
+
+  const blob = JSON.stringify(selected);
+  assert.equal(blob.toLowerCase().includes(["paid", "placement"].join(" ")), false);
 });

@@ -1,9 +1,11 @@
 import type { OfferMatch } from "../../shared/match.ts";
 import { formatUsd } from "../../shared/format.ts";
 import {
-  countNewOffers,
   greetingLine,
+  selectClientOffers,
+  type InstitutionOfferRef,
   type OfferBook,
+  type SurfacedOffer,
   type WealthPicture,
 } from "../../shared/marketplace.ts";
 import type { ClientPassport } from "../../shared/types.ts";
@@ -40,22 +42,12 @@ export function answerQuestion(
   const intent = intentOf(input);
 
   if (intent === "offers") {
-    const count = countNewOffers(book, institutions.length);
-    const lines = [
-      `${greetingLine(first, wealth.total, count)}`,
-      ...book.accounts.map((account) => {
-        const top = account.recommendations[0];
-        return `${account.accountName} at ${account.custodian} (${formatUsd(account.balance, true)}): ${top.title}, ${top.matchPct}% match. ${top.reason}`;
-      }),
-      `Household: ${book.household[0].title}, ${book.household[0].matchPct}% match. ${book.household[0].reason}`,
-    ];
-    if (institutions.length > 0) {
-      lines.push(
-        `Also sent through WealthPass, without changing that ranking: ${institutions
-          .map((match) => `${match.institution.name} — ${match.institution.offer.title}. ${match.fitReason}`)
-          .join(" ")}`,
-      );
-    } else {
+    const selected = selectClientOffers(book, institutionRefs(institutions));
+    const lines = [greetingLine(first, wealth.total, selected.length)];
+    for (const offer of selected) {
+      lines.push(offerLine(offer, book, institutions));
+    }
+    if (institutions.length === 0) {
       lines.push(`No institution has sent an offer that fits the ${client.household.name} record.`);
     }
     lines.push("The ranking is proprietary. It cannot be bought.");
@@ -93,11 +85,19 @@ export function answerQuestion(
     const classes = client.allocationTree
       .map((node) => `${node.label} ${Math.round(node.pct)}% (${formatUsd(node.value, true)})`)
       .join("; ");
-    return [
+    const lines = [
       `${client.household.name} in ${client.household.domicile}. ${client.household.principals}. Household value ${formatUsd(client.household.householdValue)}. Risk on file: ${client.household.risk.label}, ${client.household.risk.horizon}. ${client.household.risk.capacity}.`,
       classes ? `Allocation: ${classes}.` : "Allocation is not broken out on this record.",
-      `The household recommendation is ${book.household[0].title} (${book.household[0].matchPct}% match). ${book.household[0].reason}`,
-    ].join("\n\n");
+    ];
+    const householdOffer = selectClientOffers(book, institutionRefs(institutions)).find(
+      (offer) => offer.kind === "strategy" && offer.accountId === null,
+    );
+    if (householdOffer && householdOffer.kind === "strategy") {
+      lines.push(
+        `The household offer is ${householdOffer.recommendation.title} (${householdOffer.recommendation.matchPct}% match). ${householdOffer.recommendation.reason}`,
+      );
+    }
+    return lines.join("\n\n");
   }
 
   const largest = [...client.accounts].sort((a, b) => b.balance - a.balance)[0];
@@ -108,4 +108,28 @@ export function answerQuestion(
       : `${client.household.name} is the household on file.`,
     `Ask about offers, accounts, financials, or the household analysis. For example: what are my new offers.`,
   ].join("\n\n");
+}
+
+function institutionRefs(institutions: OfferMatch[]): InstitutionOfferRef[] {
+  return institutions.map((match) => ({
+    id: match.institution.id,
+    title: match.institution.offer.title,
+    rank: match.institution.offer.rank,
+  }));
+}
+
+function offerLine(offer: SurfacedOffer, book: OfferBook, institutions: OfferMatch[]): string {
+  if (offer.kind === "institution") {
+    const match = institutions.find((item) => item.institution.id === offer.institutionId);
+    const name = match?.institution.name ?? offer.title;
+    const reason = match?.fitReason ? ` ${match.fitReason}` : "";
+    return `${name} — ${offer.title}.${reason}`;
+  }
+  const account = book.accounts.find((item) => item.accountId === offer.accountId);
+  const where = account
+    ? `${account.accountName} at ${account.custodian} (${formatUsd(account.balance, true)})`
+    : "Household";
+  const prefix = offer.extra ? "More — " : "";
+  const { title, matchPct, reason } = offer.recommendation;
+  return `${prefix}${where}: ${title}, ${matchPct}% match. ${reason}`;
 }

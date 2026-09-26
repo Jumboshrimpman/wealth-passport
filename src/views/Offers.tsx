@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 import { formatUsd } from "../../shared/format.ts";
-import { buildOfferBook, defaultFit, type Recommendation } from "../../shared/marketplace.ts";
+import {
+  buildOfferBook,
+  defaultFit,
+  selectClientOffers,
+  type Recommendation,
+  type SurfacedOffer,
+} from "../../shared/marketplace.ts";
 import type { OfferMatch } from "../../shared/match.ts";
 import type { ClientPassport } from "../../shared/types.ts";
 import { useClient } from "../context/ClientContext";
@@ -40,30 +46,44 @@ function offerRowKey(passport: ClientPassport, match: OfferMatch): string {
   return "household";
 }
 
+interface OfferTableRow {
+  key: string;
+  name: string;
+  meta: string;
+  strategies: Recommendation[];
+  institutionTitles: string[];
+  sortScore: number;
+}
+
 export function Offers() {
   const { passport } = useClient();
   const { profile } = useDemo();
   const { eligible } = useOffers();
   const fit = profile && profile.clientId === passport.id ? profile.fit : defaultFit(passport);
   const book = useMemo(() => buildOfferBook(passport, fit), [fit, passport]);
-  const offersByRow = useMemo(() => {
-    const grouped = new Map<string, string[]>();
-    for (const match of eligible) {
-      const key = offerRowKey(passport, match);
-      const titles = grouped.get(key) ?? [];
-      titles.push(match.institution.offer.title);
-      grouped.set(key, titles);
-    }
-    return grouped;
-  }, [eligible, passport]);
+  const selected = useMemo(
+    () =>
+      selectClientOffers(
+        book,
+        eligible.map((match) => ({
+          id: match.institution.id,
+          title: match.institution.offer.title,
+          rank: match.institution.offer.rank,
+        })),
+      ),
+    [book, eligible],
+  );
+  const rows = useMemo(
+    () => offerRows(passport, book, selected, eligible),
+    [book, eligible, passport, selected],
+  );
 
   return (
     <div className="offer-page">
       <h1>Offers</h1>
       <p className="lede-quiet">
-        A new strategy for each account {passport.household.clientFirstName} already holds, and one
-        for the household. Match and institution offers sit on the same line. This ranking is
-        proprietary. It cannot be bought.
+        The strongest offers for {passport.household.clientFirstName}, at most three. Match and
+        institution offers sit on the same line. This ranking is proprietary. It cannot be bought.
       </p>
       <div className="offers-scroll">
         <table className="offers-table">
@@ -75,21 +95,15 @@ export function Offers() {
             </tr>
           </thead>
           <tbody>
-            {book.accounts.map((account) => (
+            {rows.map((row) => (
               <OfferRow
-                key={account.accountId}
-                name={account.accountName}
-                meta={`${account.custodian} · ${formatUsd(account.balance, true)}`}
-                recommendation={account.recommendations[0]}
-                offers={offersByRow.get(account.accountId) ?? []}
+                key={row.key}
+                name={row.name}
+                meta={row.meta}
+                strategies={row.strategies}
+                offers={row.institutionTitles}
               />
             ))}
-            <OfferRow
-              name="Household"
-              meta="Counted together at one bank"
-              recommendation={book.household[0]}
-              offers={offersByRow.get("household") ?? []}
-            />
           </tbody>
         </table>
       </div>
@@ -97,18 +111,73 @@ export function Offers() {
   );
 }
 
+function offerRows(
+  passport: ClientPassport,
+  book: ReturnType<typeof buildOfferBook>,
+  selected: SurfacedOffer[],
+  eligible: OfferMatch[],
+): OfferTableRow[] {
+  const byKey = new Map<string, OfferTableRow>();
+
+  function ensure(key: string): OfferTableRow {
+    const existing = byKey.get(key);
+    if (existing) return existing;
+    if (key === "household") {
+      const row: OfferTableRow = {
+        key,
+        name: "Household",
+        meta: "Counted together at one bank",
+        strategies: [],
+        institutionTitles: [],
+        sortScore: 0,
+      };
+      byKey.set(key, row);
+      return row;
+    }
+    const account = book.accounts.find((item) => item.accountId === key);
+    const row: OfferTableRow = {
+      key,
+      name: account?.accountName ?? "Account",
+      meta: account ? `${account.custodian} · ${formatUsd(account.balance, true)}` : "",
+      strategies: [],
+      institutionTitles: [],
+      sortScore: 0,
+    };
+    byKey.set(key, row);
+    return row;
+  }
+
+  for (const offer of selected) {
+    if (offer.kind !== "strategy") continue;
+    const row = ensure(offer.accountId ?? "household");
+    row.strategies.push(offer.recommendation);
+    row.sortScore = Math.max(row.sortScore, offer.score);
+  }
+
+  for (const offer of selected) {
+    if (offer.kind !== "institution") continue;
+    const match = eligible.find((item) => item.institution.id === offer.institutionId);
+    const row = ensure(match ? offerRowKey(passport, match) : "household");
+    row.institutionTitles.push(offer.title);
+    row.sortScore = Math.max(row.sortScore, offer.score);
+  }
+
+  return [...byKey.values()].sort((a, b) => b.sortScore - a.sortScore || a.name.localeCompare(b.name));
+}
+
 function OfferRow({
   name,
   meta,
-  recommendation,
+  strategies,
   offers,
 }: {
   name: string;
   meta: string;
-  recommendation: Recommendation;
+  strategies: Recommendation[];
   offers: string[];
 }) {
   const offerText = offers.join(" · ");
+  const lead = strategies[0];
   return (
     <tr>
       <th scope="row">
@@ -116,20 +185,27 @@ function OfferRow({
         <span className="offer-meta">{meta}</span>
       </th>
       <td>
-        <p className="strategy-shift">
-          <span className="strategy-now">{recommendation.currentStrategy}</span>
-          <span className="strategy-arrow" aria-hidden="true">
-            →
-          </span>
-          <span className="strategy-next">{recommendation.nextStrategy}</span>
-        </p>
-        <p className="strategy-reason">{recommendation.reason}</p>
+        {strategies.map((recommendation, index) => (
+          <div key={recommendation.id} className="strategy-block">
+            {index > 0 ? <p className="strategy-more">More</p> : null}
+            <p className="strategy-shift">
+              <span className="strategy-now">{recommendation.currentStrategy}</span>
+              <span className="strategy-arrow" aria-hidden="true">
+                →
+              </span>
+              <span className="strategy-next">{recommendation.nextStrategy}</span>
+            </p>
+            <p className="strategy-reason">{recommendation.reason}</p>
+          </div>
+        ))}
       </td>
       <td>
         <p className="match-line">
-          <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
-            {recommendation.matchPct}% match
-          </span>
+          {lead ? (
+            <span className="match-pct" style={{ color: matchColor(lead.matchPct) }}>
+              {lead.matchPct}% match
+            </span>
+          ) : null}
           <span className="offer-names">{offerText}</span>
         </p>
       </td>

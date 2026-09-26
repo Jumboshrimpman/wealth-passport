@@ -649,8 +649,130 @@ export function buildOfferBook(client: ClientRecord, fit: FitInterview): OfferBo
   };
 }
 
-export function countNewOffers(book: OfferBook, institutionOffers: number): number {
-  return book.accounts.length + 1 + Math.max(0, institutionOffers);
+/**
+ * Client-facing maximum. One offer is one strategy (an account lead, the
+ * household lead, or a “More” extra) or one institution offer. The stored
+ * book and the admin match list stay complete; only what a client is shown
+ * is capped.
+ */
+export const MAX_OFFERS_PER_CLIENT = 3;
+
+export interface InstitutionOfferRef {
+  id: string;
+  title: string;
+  /** 1 is the strongest desk. A higher number ranks lower. */
+  rank: number;
+}
+
+export type SurfacedOffer =
+  | {
+      kind: "strategy";
+      id: string;
+      score: number;
+      /** Null is the household idea. */
+      accountId: string | null;
+      recommendation: Recommendation;
+      /** A “More” extra. Extras fill a slot only after every primary is in. */
+      extra: boolean;
+    }
+  | {
+      kind: "institution";
+      id: string;
+      score: number;
+      institutionId: string;
+      title: string;
+      rank: number;
+    };
+
+/**
+ * Rank 1 scores 92: under a focused account (96) and a household lead (93),
+ * above an ordinary account lead (about 89). Each worse rank loses 4 points,
+ * so a lower desk does not push out a stronger strategy.
+ */
+export function institutionOfferScore(rank: number): number {
+  const place = Number.isFinite(rank) && rank >= 1 ? Math.round(rank) : 99;
+  return 92 - (place - 1) * 4;
+}
+
+function byScore(a: SurfacedOffer, b: SurfacedOffer): number {
+  return b.score - a.score || a.id.localeCompare(b.id);
+}
+
+/**
+ * The offers one client may see. Primaries compete first: the lead strategy
+ * on each account, the lead household idea, and every eligible institution
+ * offer. “More” extras are used only when fewer than three primaries exist.
+ * Highest score wins. Ties break on id.
+ */
+export function selectClientOffers(
+  book: OfferBook,
+  institutions: readonly InstitutionOfferRef[],
+): SurfacedOffer[] {
+  const primaries: SurfacedOffer[] = [];
+  for (const account of book.accounts) {
+    const lead = account.recommendations[0];
+    primaries.push({
+      kind: "strategy",
+      id: lead.id,
+      score: lead.matchPct,
+      accountId: account.accountId,
+      recommendation: lead,
+      extra: false,
+    });
+  }
+  const householdLead = book.household[0];
+  primaries.push({
+    kind: "strategy",
+    id: householdLead.id,
+    score: householdLead.matchPct,
+    accountId: null,
+    recommendation: householdLead,
+    extra: false,
+  });
+  for (const institution of institutions) {
+    primaries.push({
+      kind: "institution",
+      id: institution.id,
+      score: institutionOfferScore(institution.rank),
+      institutionId: institution.id,
+      title: institution.title,
+      rank: institution.rank,
+    });
+  }
+
+  const selected = [...primaries].sort(byScore).slice(0, MAX_OFFERS_PER_CLIENT);
+  if (selected.length >= MAX_OFFERS_PER_CLIENT) return selected;
+
+  const extras: SurfacedOffer[] = [];
+  for (const account of book.accounts) {
+    for (const recommendation of account.recommendations.slice(1)) {
+      extras.push({
+        kind: "strategy",
+        id: recommendation.id,
+        score: recommendation.matchPct,
+        accountId: account.accountId,
+        recommendation,
+        extra: true,
+      });
+    }
+  }
+  for (const recommendation of book.household.slice(1)) {
+    extras.push({
+      kind: "strategy",
+      id: recommendation.id,
+      score: recommendation.matchPct,
+      accountId: null,
+      recommendation,
+      extra: true,
+    });
+  }
+  extras.sort(byScore);
+  return [...selected, ...extras.slice(0, MAX_OFFERS_PER_CLIENT - selected.length)];
+}
+
+/** How many offers the client actually sees. Never more than MAX_OFFERS_PER_CLIENT. */
+export function countNewOffers(book: OfferBook, institutions: readonly InstitutionOfferRef[]): number {
+  return selectClientOffers(book, institutions).length;
 }
 
 export function greetingLine(firstName: string, netWorth: number, offers: number): string {
