@@ -1,5 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  acceptChoicesFor,
+  acceptOnRow,
+  choicePrice,
+  clientAgreementLines,
+  listsAfterAccept,
+  rowCanAccept,
+  schwabLpoaLines,
+  type AcceptableChoice,
+  type RowAcceptance,
+} from "../../shared/acceptOffer.ts";
+import { formatUsd } from "../../shared/format.ts";
+import {
+  allInFeeLabel,
   buildOfferBoard,
   defaultFit,
   revealedItems,
@@ -11,6 +24,7 @@ import {
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 import { useOffers } from "../context/OfferContext";
+import { readAcceptedOffers, writeAcceptedOffers } from "../offers/acceptedOffers";
 
 /** Darker green is a higher match. Every step stays readable on white. */
 function matchColor(pct: number): string {
@@ -37,23 +51,36 @@ export function Offers() {
     [eligible, fit, passport],
   );
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [picking, setPicking] = useState<string | null>(null);
+  const [signing, setSigning] = useState<{ rowKey: string; choice: AcceptableChoice } | null>(null);
+  const [accepted, setAccepted] = useState<Record<string, RowAcceptance>>(() => readAcceptedOffers(passport.id));
 
   useEffect(() => {
     setOpen({});
+    setPicking(null);
+    setSigning(null);
+    setAccepted(readAcceptedOffers(passport.id));
   }, [passport.id]);
 
-  function expand(key: string) {
-    setOpen((current) => ({ ...current, [key]: true }));
+  function toggle(key: string) {
+    setOpen((current) => ({ ...current, [key]: !current[key] }));
+  }
+
+  function accept(rowKey: string, choice: AcceptableChoice) {
+    const matchesOpen = Boolean(open[`${rowKey}:matches`]);
+    const offersOpen = Boolean(open[`${rowKey}:offers`]);
+    setAccepted((current) => {
+      const next = acceptOnRow(current, rowKey, choice, { matchesOpen, offersOpen });
+      writeAcceptedOffers(passport.id, next);
+      return next;
+    });
+    setPicking(null);
   }
 
   return (
     <div className="offer-page">
-      <h1>Offers</h1>
-      <p className="lede-quiet">
-        Each account, and the household on its own, has two lists. Algorithmic match is our ranking
-        of the next strategy. Top offers are companies bidding their best rates on this profile.
-        Both lists open on the top result.
-      </p>
+      <h1>Pitches</h1>
+      <p className="lede-quiet offer-lede">Each account opens on its top basic strategy and top pitch.</p>
       <div className="offers-scroll">
         <table className="offers-table">
           <thead>
@@ -61,11 +88,14 @@ export function Offers() {
               <th scope="col">Account</th>
               <th scope="col">
                 <span className="col-title">Algorithmic match</span>
-                <span className="col-note">Our ranking</span>
+                <span className="col-note">Basic managed strategies</span>
               </th>
               <th scope="col">
-                <span className="col-title">Top offers</span>
-                <span className="col-note">Companies bidding</span>
+                <span className="col-title">Pitches</span>
+                <span className="col-note">Customized strategy pitches</span>
+              </th>
+              <th scope="col">
+                <span className="col-title">Accept</span>
               </th>
             </tr>
           </thead>
@@ -76,12 +106,27 @@ export function Offers() {
                 row={row}
                 matchesOpen={Boolean(open[`${row.key}:matches`])}
                 offersOpen={Boolean(open[`${row.key}:offers`])}
-                onExpand={expand}
+                onToggle={toggle}
+                accepted={accepted[row.key] ?? null}
+                picking={picking === row.key}
+                onStartPick={() => setPicking(row.key)}
+                onCancelPick={() => setPicking(null)}
+                onChoose={(choice) => setSigning({ rowKey: row.key, choice })}
               />
             ))}
           </tbody>
         </table>
       </div>
+      {signing ? (
+        <SignModal
+          choice={signing.choice}
+          onCancel={() => setSigning(null)}
+          onSign={() => {
+            accept(signing.rowKey, signing.choice);
+            setSigning(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -90,80 +135,294 @@ function OfferRow({
   row,
   matchesOpen,
   offersOpen,
-  onExpand,
+  onToggle,
+  accepted,
+  picking,
+  onStartPick,
+  onCancelPick,
+  onChoose,
 }: {
   row: OfferBoardRow;
   matchesOpen: boolean;
   offersOpen: boolean;
-  onExpand: (key: string) => void;
+  onToggle: (key: string) => void;
+  accepted: RowAcceptance | null;
+  picking: boolean;
+  onStartPick: () => void;
+  onCancelPick: () => void;
+  onChoose: (choice: AcceptableChoice) => void;
 }) {
-  const matches = revealedItems(row.algorithmic, matchesOpen);
-  const offers = revealedItems(row.offers, offersOpen);
-  const matchLabel = revealLabel("matches", row.algorithmic.length, matchesOpen);
-  const offerLabel = revealLabel("offers", row.offers.length, offersOpen);
+  const shown = accepted ? listsAfterAccept(row, accepted) : null;
+  const matches = shown ? shown.algorithmic : revealedItems(row.algorithmic, matchesOpen);
+  const offers = shown ? shown.offers : revealedItems(row.offers, offersOpen);
+  const matchLabel = accepted ? null : revealLabel("matches", row.algorithmic.length, matchesOpen);
+  const offerLabel = accepted ? null : revealLabel("offers", row.offers.length, offersOpen);
+  const choices = acceptChoicesFor(row, matchesOpen, offersOpen);
   return (
-    <tr>
+    <tr className={accepted ? "is-accepted" : undefined}>
       <th scope="row">
         <span className="offer-account">{row.accountName}</span>
         <span className="offer-meta">{row.meta}</span>
+        {row.householdMinimum != null ? (
+          <span className="offer-min">
+            Household minimum {formatUsd(row.householdMinimum, true)}
+            {row.householdMinimumMet ? "" : " · not cleared"}
+          </span>
+        ) : null}
       </th>
       <td>
         {matches.map((recommendation, index) => (
-          <AlgorithmicMatch key={recommendation.id} recommendation={recommendation} rank={index + 1} />
+          <AlgorithmicMatch
+            key={recommendation.id}
+            recommendation={recommendation}
+            rank={index + 1}
+            compact={Boolean(accepted)}
+            chosen={accepted?.choiceId === `match:${recommendation.id}`}
+          />
         ))}
         {matchLabel ? (
-          <button type="button" className="reveal-next" aria-expanded={false} onClick={() => onExpand(`${row.key}:matches`)}>
+          <button
+            type="button"
+            className="reveal-next"
+            aria-expanded={matchesOpen}
+            onClick={() => onToggle(`${row.key}:matches`)}
+          >
             {matchLabel}
           </button>
         ) : null}
       </td>
       <td className="offer-lane">
         {offers.map((offer, index) => (
-          <BidBlock key={offer.id} offer={offer} rank={index + 1} />
+          <BidBlock
+            key={offer.id}
+            offer={offer}
+            rank={index + 1}
+            compact={Boolean(accepted)}
+            chosen={accepted?.choiceId === `bid:${offer.id}`}
+          />
         ))}
         {offerLabel ? (
-          <button type="button" className="reveal-next" aria-expanded={false} onClick={() => onExpand(`${row.key}:offers`)}>
+          <button
+            type="button"
+            className="reveal-next"
+            aria-expanded={offersOpen}
+            onClick={() => onToggle(`${row.key}:offers`)}
+          >
             {offerLabel}
           </button>
         ) : null}
+      </td>
+      <td className="accept-lane">
+        <AcceptCell
+          canAccept={rowCanAccept(row)}
+          accepted={accepted}
+          picking={picking}
+          choices={choices}
+          onStartPick={onStartPick}
+          onCancelPick={onCancelPick}
+          onChoose={onChoose}
+        />
       </td>
     </tr>
   );
 }
 
-function AlgorithmicMatch({ recommendation, rank }: { recommendation: Recommendation; rank: number }) {
+function AcceptCell({
+  canAccept,
+  accepted,
+  picking,
+  choices,
+  onStartPick,
+  onCancelPick,
+  onChoose,
+}: {
+  canAccept: boolean;
+  accepted: RowAcceptance | null;
+  picking: boolean;
+  choices: AcceptableChoice[];
+  onStartPick: () => void;
+  onCancelPick: () => void;
+  onChoose: (choice: AcceptableChoice) => void;
+}) {
+  if (!canAccept) return null;
+  if (accepted) {
+    return (
+      <div className="accepted-offer" role="status">
+        <p className="accepted-kicker">Accepted</p>
+        <p className="accepted-copy">{accepted.confirmation}</p>
+      </div>
+    );
+  }
+  if (!picking) {
+    return (
+      <button type="button" className="text-button" aria-expanded={false} onClick={onStartPick}>
+        Accept
+      </button>
+    );
+  }
   return (
-    <div className="lane-block">
-      {rank > 1 ? <p className="rank-num">{rank}</p> : null}
-      <p className="strategy-shift">
-        <span className="strategy-now">{recommendation.currentStrategy}</span>
-        <span className="strategy-arrow" aria-hidden="true">
-          →
-        </span>
-        <span className="strategy-next">{recommendation.nextStrategy}</span>
-      </p>
-      <p className="match-line">
-        <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
-          {recommendation.matchPct}% match
-        </span>
-      </p>
-      <p className="strategy-reason">{recommendation.reason}</p>
+    <div className="accept-picker">
+      <p className="accept-picker-label">Choose one</p>
+      <div role="listbox" aria-label="Choose one">
+        {choices.map((choice) => {
+          const price = choicePrice(choice);
+          return (
+            <button key={choice.id} type="button" className="accept-choice" onClick={() => onChoose(choice)}>
+              <span className="accept-choice-strategy">{choice.strategy}</span>
+              <span className="accept-choice-meta">
+                {choice.party}
+                {price ? ` · ${price}` : ""}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" className="reveal-next" onClick={onCancelPick}>
+        Cancel
+      </button>
     </div>
   );
 }
 
-function BidBlock({ offer, rank }: { offer: BiddingOffer; rank: number }) {
+function SignModal({
+  choice,
+  onCancel,
+  onSign,
+}: {
+  choice: AcceptableChoice;
+  onCancel: () => void;
+  onSign: () => void;
+}) {
+  const [agreement, setAgreement] = useState(false);
+  const [lpoa, setLpoa] = useState(false);
+  const ready = agreement && lpoa;
   return (
-    <div className="lane-block">
+    <div className="accept-modal-backdrop" role="presentation" onClick={onCancel}>
+      <div
+        className="accept-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="accept-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="accept-modal-title">Sign with {choice.party}</h2>
+        <p className="accept-modal-kicker">Client agreement</p>
+        {clientAgreementLines(choice).map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        <label className="accept-modal-check">
+          <input type="checkbox" checked={agreement} onChange={(event) => setAgreement(event.target.checked)} />
+          <span>I agree to the client agreement with {choice.party}</span>
+        </label>
+        <p className="accept-modal-kicker">LPOA</p>
+        {schwabLpoaLines(choice).map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        <label className="accept-modal-check">
+          <input type="checkbox" checked={lpoa} onChange={(event) => setLpoa(event.target.checked)} />
+          <span>I agree to the limited power of attorney for a Schwab brokerage</span>
+        </label>
+        <div className="accept-modal-actions">
+          <button type="button" className="text-button" disabled={!ready} onClick={onSign}>
+            Sign
+          </button>
+          <button type="button" className="reveal-next" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AlgorithmicMatch({
+  recommendation,
+  rank,
+  compact = false,
+  chosen = false,
+}: {
+  recommendation: Recommendation;
+  rank: number;
+  compact?: boolean;
+  chosen?: boolean;
+}) {
+  const [details, setDetails] = useState(false);
+  const lead = rank === 1;
+  return (
+    <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
-      <p className="bid-name">{offer.bidder}</p>
-      <p className="bid-title">{offer.title}</p>
-      <p className="bid-terms">{offer.terms}</p>
-      <p className="match-line">
-        <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
-          {offer.matchPct}% match
-        </span>
-      </p>
+      {chosen ? <p className="accepted-mark">Accepted</p> : null}
+      <p className="proposed-name">{recommendation.nextStrategy}</p>
+      <p className="all-in-fee">{allInFeeLabel(recommendation.allInBps)}</p>
+      {compact || recommendation.strategyMinimum == null ? null : (
+        <p className="min-line">Strategy minimum {formatUsd(recommendation.strategyMinimum, true)}</p>
+      )}
+      {!compact && !lead ? (
+        <p className="strategy-from">
+          <span className="from-label">Currently</span> {recommendation.currentStrategy}
+        </p>
+      ) : null}
+      {compact || !lead || !details ? null : (
+        <>
+          <p className="strategy-from">
+            <span className="from-label">Currently</span> {recommendation.currentStrategy}
+          </p>
+          <p className="match-line">
+            <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
+              {recommendation.matchPct}% match
+            </span>
+          </p>
+          <p className="strategy-reason">{recommendation.reason}</p>
+        </>
+      )}
+      {compact || !lead ? null : (
+        <button type="button" className="reveal-next details-toggle" aria-expanded={details} onClick={() => setDetails((open) => !open)}>
+          {details ? "Hide" : "Details"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function BidBlock({
+  offer,
+  rank,
+  compact = false,
+  chosen = false,
+}: {
+  offer: BiddingOffer;
+  rank: number;
+  compact?: boolean;
+  chosen?: boolean;
+}) {
+  const [details, setDetails] = useState(false);
+  const lead = rank === 1;
+  return (
+    <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
+      {rank > 1 ? <p className="rank-num">{rank}</p> : null}
+      {chosen ? <p className="accepted-mark">Accepted</p> : null}
+      <p className="proposed-name">{offer.title}</p>
+      {compact ? null : <p className="bid-name">{offer.bidder}</p>}
+      <p className="all-in-fee">{offer.terms}</p>
+      {compact || offer.minimum == null ? null : (
+        <p className="min-line">Strategy minimum {formatUsd(offer.minimum, true)}</p>
+      )}
+      {!compact && !lead ? <p className="pitch-note">{offer.customization}</p> : null}
+      {compact || !lead || !details ? null : (
+        <>
+          <p className="pitch-note">{offer.customization}</p>
+          <p className="match-line">
+            <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
+              {offer.matchPct}% match
+            </span>
+          </p>
+        </>
+      )}
+      {compact || !lead ? null : (
+        <button type="button" className="reveal-next details-toggle" aria-expanded={details} onClick={() => setDetails((open) => !open)}>
+          {details ? "Hide" : "Details"}
+        </button>
+      )}
     </div>
   );
 }

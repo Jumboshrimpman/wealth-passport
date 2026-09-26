@@ -44,13 +44,13 @@ export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" 
         }}
       >
         <label className="sr-only" htmlFor={`ask-${variant}`}>
-          Ask about your offers, accounts, financials, or household
+          Ask about strategies, pitches, accounts, financials, or the household
         </label>
         <input
           id={`ask-${variant}`}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="What are my new offers?"
+          placeholder="Which strategies do I qualify for?"
           autoComplete="off"
         />
         <button type="submit">Send</button>

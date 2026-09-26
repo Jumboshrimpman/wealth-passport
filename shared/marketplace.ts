@@ -1,6 +1,6 @@
 import { formatUsd } from "./format.ts";
 import { matchInstitution } from "./match.ts";
-import { BID_TEMPLATES, type BidSleeve, type BidTemplate } from "./seed/bids.ts";
+import { BID_CUSTOMIZATION, BID_MINIMUM, BID_TEMPLATES, type BidSleeve, type BidTemplate } from "./seed/bids.ts";
 import { INSTITUTION_SEEDS } from "./seed/institutions.ts";
 import type { Account, ClientRecord, Institution } from "./types.ts";
 
@@ -34,6 +34,8 @@ export interface DemoProfile {
   kalshi: { connected: boolean; amount: number; label: string };
   other: { label: string; amount: number } | null;
   taxDocName: string | null;
+  /** True when the person enrolling marked that they are the financial advisor. */
+  isFinancialAdvisor: boolean;
   fit: FitInterview;
 }
 
@@ -76,6 +78,15 @@ export interface Recommendation {
   currentStrategy: string;
   /** New strategy being recommended. */
   nextStrategy: string;
+  /** All-in fee of the proposed strategy, in basis points. */
+  allInBps: number;
+  /** Strategy minimum in dollars. Null when this idea is not a strategy sleeve. */
+  strategyMinimum: number | null;
+}
+
+/** Visible label for an algorithmic match fee. Example: "all-in 28 bps". */
+export function allInFeeLabel(bps: number): string {
+  return `all-in ${bps} bps`;
 }
 
 export interface AccountOffers {
@@ -124,6 +135,40 @@ export function oneBankHouseholdMinimum(balances: number[]): number | null {
     if (consolidated >= tier && largest < tier) met = tier;
   }
   return met;
+}
+
+/**
+ * The household minimum to show. When the accounts clear a new one-bank tier, that tier is met.
+ * Otherwise the next tier in the same schedule is the one they have not cleared.
+ */
+export function householdMinimumFor(balances: number[]): { amount: number; met: boolean } | null {
+  const amounts = balances.filter((value) => Number.isFinite(value) && value > 0);
+  if (amounts.length < 2) return null;
+  const met = oneBankHouseholdMinimum(amounts);
+  if (met != null) return { amount: met, met: true };
+  const consolidated = amounts.reduce((sum, value) => sum + value, 0);
+  const next = HOUSEHOLD_TIERS.find((tier) => consolidated < tier);
+  return next == null ? null : { amount: next, met: false };
+}
+
+/** Sleeve floors taken from the strategy universe. These are not one-bank household tiers. */
+function sleeveStrategyMinimum(current: string): number {
+  switch (current) {
+    case "Equity strategy":
+      return 10_000_000;
+    case "Bond strategy":
+      return 10_000_000;
+    case "Blended strategy":
+      return 10_000_000;
+    case "Cash strategy":
+      return 1_000_000;
+    case "Private markets strategy":
+      return 40_000_000;
+    case "Real-assets strategy":
+      return 15_000_000;
+    default:
+      return 5_000_000;
+  }
 }
 
 function roundTo(value: number, step: number): number {
@@ -461,6 +506,41 @@ function strategyNow(account: Account, client: ClientRecord): string {
   }
 }
 
+/**
+ * All-in fee of the cheaper and in-kind successor versions of a current sleeve.
+ * A changed sleeve uses the risk-based schedule below instead.
+ */
+function sleeveAllInBps(current: string): { cheaper: number; sunset: number } {
+  switch (current) {
+    case "Equity strategy":
+      return { cheaper: 28, sunset: 32 };
+    case "Bond strategy":
+      return { cheaper: 22, sunset: 25 };
+    case "Blended strategy":
+      return { cheaper: 26, sunset: 30 };
+    case "Cash strategy":
+      return { cheaper: 8, sunset: 10 };
+    case "Private markets strategy":
+      return { cheaper: 85, sunset: 95 };
+    case "Real-assets strategy":
+      return { cheaper: 34, sunset: 38 };
+    default:
+      return { cheaper: 30, sunset: 34 };
+  }
+}
+
+/** All-in fee when the recommendation rebuilds the sleeve rather than discounting it. */
+function changedAllInBps(fit: FitInterview): number {
+  if (fit.risk === "aggressive") return 45;
+  if (fit.risk === "conservative") return 24;
+  return 32;
+}
+
+function proposedAllInBps(kind: "cheaper" | "sunset" | "change", current: string, fit: FitInterview): number {
+  if (kind === "change") return changedAllInBps(fit);
+  return sleeveAllInBps(current)[kind];
+}
+
 function strategyNext(kind: "cheaper" | "sunset" | "change", current: string, fit: FitInterview): string {
   if (kind === "sunset") return "In-kind successor strategy";
   if (kind === "change") {
@@ -492,6 +572,8 @@ function accountStrategies(
     matchPct: base,
     currentStrategy,
     nextStrategy: strategyNext("cheaper", currentStrategy, fit),
+    allInBps: proposedAllInBps("cheaper", currentStrategy, fit),
+    strategyMinimum: sleeveStrategyMinimum(currentStrategy),
     reason: `${names} sit on both sides of a move out of ${account.custodian}. An in-kind transfer would not create much tax, and a close strategy is ${bps} bps cheaper.`,
   };
   const sunset: Recommendation = {
@@ -500,6 +582,8 @@ function accountStrategies(
     matchPct: base,
     currentStrategy,
     nextStrategy: strategyNext("sunset", currentStrategy, fit),
+    allInBps: proposedAllInBps("sunset", currentStrategy, fit),
+    strategyMinimum: sleeveStrategyMinimum(currentStrategy),
     reason: `${account.custodian} is sunsetting ${account.name}. The replacement holds ${names}, so the switch stays in-kind and would not create much tax.`,
   };
   const change: Recommendation = {
@@ -508,6 +592,8 @@ function accountStrategies(
     matchPct: base,
     currentStrategy,
     nextStrategy: strategyNext("change", currentStrategy, fit),
+    allInBps: proposedAllInBps("change", currentStrategy, fit),
+    strategyMinimum: sleeveStrategyMinimum(currentStrategy),
     reason: `You wanted a change in ${account.name}. ${names} overlap the proposed book, so switching would not create much tax.`,
   };
   const ordered =
@@ -553,6 +639,8 @@ function combineIdea(client: ClientRecord): Recommendation {
       matchPct: 90,
       currentStrategy,
       nextStrategy,
+      allInBps: 18,
+      strategyMinimum: null,
       reason: `${client.household.name} already has ${formatUsd(client.household.investable, true)} investable. A household minimum is counted at one bank. There are not two accounts here to consolidate.`,
     };
   }
@@ -575,6 +663,8 @@ function combineIdea(client: ClientRecord): Recommendation {
     matchPct: 93,
     currentStrategy,
     nextStrategy,
+    allInBps: 18,
+    strategyMinimum: null,
     reason,
   };
 }
@@ -591,6 +681,9 @@ function programIdea(client: ClientRecord): Recommendation {
     matchPct: 90,
     currentStrategy: "Invested book without a credit line",
     nextStrategy: "Securities-based line",
+    // Quoted all-in spread on the recommended line. It is not an asset-management wrap.
+    allInBps: 165,
+    strategyMinimum: null,
     reason: `${formatUsd(sum || client.household.investable, true)} at ${host?.custodian ?? "the custodian"} already qualifies ${client.household.name} for a securities-based line. Drawing on it would cover spending without selling ${ticker ?? "the equity"}, so that unrealized gain is not taxed this year.`,
   };
 }
@@ -605,6 +698,8 @@ function taxLocation(client: ClientRecord, fit: FitInterview): Recommendation {
       matchPct: 84,
       currentStrategy: "A separate fee at each custodian",
       nextStrategy: "One household fee schedule",
+      allInBps: 16,
+      strategyMinimum: null,
       reason: `${client.household.name} already holds ${formatUsd(client.household.investable, true)} investable. One household fee schedule would cost less than paying each custodian separately.`,
     };
   }
@@ -618,6 +713,8 @@ function taxLocation(client: ClientRecord, fit: FitInterview): Recommendation {
     matchPct: 86,
     currentStrategy: "Bonds and growth mixed across accounts",
     nextStrategy: title,
+    allInBps: 20,
+    strategyMinimum: null,
     reason: `${qualified.name} can hold the bonds${bonds > 0 ? ` (${formatUsd(bonds, true)})` : ""} and ${taxable.name} can keep ${ticker}${stocks > 0 ? ` (${formatUsd(stocks, true)})` : ""}. That shelters the coupon and leaves the growth in the taxable account.`,
   };
 }
@@ -662,6 +759,10 @@ export interface BiddingOffer {
   bidder: string;
   title: string;
   terms: string;
+  /** What this manager will tailor on the pitch. */
+  customization: string;
+  /** Strategy minimum in dollars. Null when the pitch is not priced as a strategy sleeve. */
+  minimum: number | null;
   matchPct: number;
 }
 
@@ -670,6 +771,12 @@ export interface OfferBoardRow {
   key: string;
   accountName: string;
   meta: string;
+  /**
+   * One-bank household minimum, on the household row only.
+   * `householdMinimumMet` is false when combining the accounts does not clear that tier.
+   */
+  householdMinimum: number | null;
+  householdMinimumMet: boolean;
   /** Best algorithmic match first. Length 0–3. */
   algorithmic: Recommendation[];
   /** Best company bid first. Length 0–3. */
@@ -699,17 +806,19 @@ export function revealedItems<T>(ranked: readonly T[], expanded: boolean): reado
   return expanded ? ranked : ranked.slice(0, 1);
 }
 
-/** Label for the control that reveals ranks 2 and 3. Null when there is nothing further to show. */
+/**
+ * Collapsed lists offer “Show next 2”. Expanded lists offer “Show less”.
+ * Null when the list has nothing past rank 1.
+ */
 export function revealLabel(
-  kind: "matches" | "offers",
+  _kind: "matches" | "offers",
   rankedLength: number,
   expanded: boolean,
 ): string | null {
-  if (expanded || rankedLength <= 1) return null;
+  if (rankedLength <= 1) return null;
+  if (expanded) return "Show less";
   const hidden = rankedLength - 1;
-  if (hidden === 1) return kind === "offers" ? "Show me the next offer" : "Show me the next match";
-  const noun = kind === "offers" ? "offers" : "matches";
-  return `Show me the next ${hidden} ${noun}`;
+  return hidden === 1 ? "Show next" : `Show next ${hidden}`;
 }
 
 function fixedIncome(client: ClientRecord, accountId: string): number {
@@ -743,6 +852,8 @@ function toBiddingOffer(template: BidTemplate): BiddingOffer {
     bidder: template.bidder,
     title: template.title,
     terms: template.terms,
+    customization: BID_CUSTOMIZATION[template.id] ?? "How the sleeve is built",
+    minimum: BID_MINIMUM[template.id] ?? null,
     matchPct: template.matchPct,
   };
 }
@@ -765,9 +876,10 @@ function bidsFor(
 }
 
 /**
- * One row per account, then the household. Algorithmic matches are WealthPass’s
- * own ranking. Top offers are companies bidding rates on that row. Each list
- * keeps at most three, highest match first.
+ * One row per account, then the household. Algorithmic match is WealthPass’s
+ * ranking of basic managed strategies. Pitches are customized strategy pitches:
+ * a manager’s customizable solution at a unique price. Each list keeps at most
+ * three, highest match first, and opens on rank 1.
  */
 export function buildOfferBoard(
   client: ClientRecord,
@@ -784,14 +896,19 @@ export function buildOfferBoard(
       key: account.accountId,
       accountName: account.accountName,
       meta: `${account.custodian} · ${formatUsd(account.balance, true)}`,
+      householdMinimum: null,
+      householdMinimumMet: false,
       algorithmic: capByMatch(account.recommendations, MAX_ALGORITHMIC_MATCHES),
       offers: bidsFor(client, source, eligibleIds),
     };
   });
+  const householdMinimum = householdMinimumFor(client.accounts.map((account) => account.balance));
   rows.push({
     key: "household",
     accountName: "Household",
     meta: "Counted together at one bank",
+    householdMinimum: householdMinimum?.amount ?? null,
+    householdMinimumMet: householdMinimum?.met ?? false,
     algorithmic: capByMatch(book.household, MAX_ALGORITHMIC_MATCHES),
     offers: bidsFor(client, null, eligibleIds),
   });
@@ -804,6 +921,6 @@ export function countNewOffers(board: OfferBoard): number {
 }
 
 export function greetingLine(firstName: string, netWorth: number, offers: number): string {
-  const noun = offers === 1 ? "offer" : "offers";
+  const noun = offers === 1 ? "pitch" : "pitches";
   return `Hi ${firstName}, your net worth is ${formatUsd(netWorth, true)} today, we have ${offers} new ${noun} for you today.`;
 }

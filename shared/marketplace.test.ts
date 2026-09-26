@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  allInFeeLabel,
   buildOfferBoard,
   buildOfferBook,
   capByMatch,
@@ -9,6 +10,7 @@ import {
   describeWealth,
   MAX_ALGORITHMIC_MATCHES,
   MAX_TOP_OFFERS,
+  householdMinimumFor,
   oneBankHouseholdMinimum,
   revealedItems,
   revealLabel,
@@ -41,6 +43,7 @@ function sampleProfile(clientId: string): DemoProfile {
     kalshi: { connected: true, amount: kalshi.amount, label: kalshi.label },
     other: { label: "Art", amount: 500_000 },
     taxDocName: "2025-return.pdf",
+    isFinancialAdvisor: false,
     fit: { ...defaultFit(client), motive: "cheaper", focusAccountIds: [bank.accounts[0]?.id ?? ""] },
   };
 }
@@ -122,6 +125,8 @@ test("one-bank household minimum is not a threshold a single account already mee
   assert.equal(oneBankHouseholdMinimum([50_000_000, 40_000_000]), null);
   assert.equal(oneBankHouseholdMinimum([84_200_000, 31_400_000]), 100_000_000);
   assert.equal(oneBankHouseholdMinimum([40_000_000, 15_000_000]), 50_000_000);
+  assert.deepEqual(householdMinimumFor([84_200_000, 31_400_000]), { amount: 100_000_000, met: true });
+  assert.deepEqual(householdMinimumFor([50_000_000, 40_000_000]), { amount: 100_000_000, met: false });
 
   const okafor = CLIENT_SEEDS.find((row) => row.id === "okafor-trust");
   if (!okafor) throw new Error("okafor missing");
@@ -182,13 +187,14 @@ test("each account and the household keep three algorithmic matches and three bi
   assert.deepEqual(revealedItems(["one", "two", "three"], true), ["one", "two", "three"]);
   assert.deepEqual(revealedItems(["only"], false), ["only"]);
   assert.deepEqual(revealedItems([], false), []);
-  assert.equal(revealLabel("offers", 3, false), "Show me the next 2 offers");
-  assert.equal(revealLabel("matches", 3, false), "Show me the next 2 matches");
-  assert.equal(revealLabel("offers", 2, false), "Show me the next offer");
-  assert.equal(revealLabel("matches", 2, false), "Show me the next match");
+  assert.equal(revealLabel("offers", 3, false), "Show next 2");
+  assert.equal(revealLabel("matches", 3, false), "Show next 2");
+  assert.equal(revealLabel("offers", 2, false), "Show next");
+  assert.equal(revealLabel("matches", 2, false), "Show next");
   assert.equal(revealLabel("offers", 1, false), null);
   assert.equal(revealLabel("offers", 0, false), null);
-  assert.equal(revealLabel("offers", 3, true), null);
+  assert.equal(revealLabel("offers", 3, true), "Show less");
+  assert.equal(revealLabel("matches", 3, true), "Show less");
 
   const elena = CLIENT_SEEDS.find((row) => row.id === "elena-whitmore");
   if (!elena) throw new Error("elena missing");
@@ -202,16 +208,32 @@ test("each account and the household keep three algorithmic matches and three bi
   assert.ok(merrill && household && privateRow);
   assert.equal(merrill.algorithmic.length, 3);
   assert.equal(merrill.algorithmic[0].id, "ml-pw-cheaper");
+  assert.equal(merrill.algorithmic[0].currentStrategy, "Equity strategy");
+  assert.equal(merrill.algorithmic[0].nextStrategy, "Lower-fee equity strategy");
+  assert.equal(merrill.algorithmic[0].allInBps, 28);
+  assert.equal(allInFeeLabel(merrill.algorithmic[0].allInBps), "all-in 28 bps");
+  assert.equal(merrill.algorithmic[0].strategyMinimum, 10_000_000);
+  assert.equal(merrill.householdMinimum, null);
   assert.ok(merrill.algorithmic[0].matchPct > merrill.algorithmic[1].matchPct);
+  assert.ok(merrill.algorithmic.every((item) => item.allInBps > 0));
+  assert.equal(merrill.offers[0].terms, "all-in 38 bps");
+  assert.match(merrill.offers[0].customization, /State preference/);
+  assert.equal(merrill.offers[0].minimum, 25_000_000);
+  assert.equal(merrill.offers[1].minimum, 10_000_000);
   assert.deepEqual(
     merrill.offers.map((offer) => offer.id),
     ["meridian", "harbor-lane", "northbridge"],
   );
   assert.equal(merrill.offers.some((offer) => offer.id === "field-co" || offer.id === "lark-index"), false);
   assert.equal(household.algorithmic[0].id, "household-combine");
+  assert.equal(household.algorithmic[0].strategyMinimum, null);
+  assert.equal(household.householdMinimum, 100_000_000);
+  assert.equal(household.householdMinimumMet, true);
   assert.equal(household.offers[0].id, "first-atlantic");
+  assert.equal(household.offers[0].minimum, null);
   assert.equal(household.offers.length, 3);
   assert.equal(privateRow.offers[0].id, "oakridge");
+  assert.equal(privateRow.offers[0].minimum, 40_000_000);
   assert.equal(revealedItems(merrill.offers, false).length, 1);
   assert.equal(revealedItems(merrill.algorithmic, false).length, 1);
 
@@ -228,6 +250,16 @@ test("each account and the household keep three algorithmic matches and three bi
       assert.ok(row.algorithmic.length <= MAX_ALGORITHMIC_MATCHES);
       assert.ok(row.algorithmic.length >= 1);
       assert.ok(row.offers.length <= MAX_TOP_OFFERS);
+      for (const match of row.algorithmic) {
+        assert.equal(match.nextStrategy.trim().length > 0, true);
+        assert.notEqual(match.currentStrategy, match.nextStrategy);
+        assert.equal(Number.isInteger(match.allInBps), true);
+        assert.ok(match.allInBps >= 8 && match.allInBps <= 200);
+        assert.equal(allInFeeLabel(match.allInBps), `all-in ${match.allInBps} bps`);
+      }
+      for (const offer of row.offers) {
+        assert.equal(offer.terms.trim().length > 0, true);
+      }
       const matchScores = row.algorithmic.map((item) => item.matchPct);
       const bidScores = row.offers.map((item) => item.matchPct);
       assert.deepEqual(matchScores, [...matchScores].sort((a, b) => b - a));

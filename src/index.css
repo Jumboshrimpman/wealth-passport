@@ -1499,6 +1499,7 @@ textarea {
 }
 
 .offer-page h1,
+.strategies-page h1,
 .financials-page h1,
 .settings-page h1 {
   font-size: clamp(2.2rem, 4vw, 3.2rem);
@@ -1512,7 +1513,7 @@ textarea {
 
 .offers-table {
   width: 100%;
-  min-width: 46rem;
+  min-width: 58rem;
   border-collapse: collapse;
 }
 
@@ -1541,58 +1542,129 @@ textarea {
 }
 
 .col-title {
-  color: #161616;
+  color: #111;
   font-size: 0.95rem;
+  font-weight: 560;
 }
 
 .col-note {
-  margin-top: 0.2rem;
-  color: #8a8a8a;
-  font-size: 0.75rem;
+  margin-top: 0.18rem;
+  color: #161616;
+  font-size: 0.86rem;
+  font-weight: 400;
+  line-height: 1.3;
 }
 
-.offers-table td.offer-lane {
+.offer-lede {
+  max-width: 40rem;
+}
+
+.offers-table td.offer-lane,
+.offers-table td.accept-lane {
   border-left: 1px solid #f0f0f0;
   padding-left: 1.15rem;
 }
 
-.offer-account,
-.strategy-next {
+.offers-table td.accept-lane {
+  vertical-align: top;
+  width: 16rem;
+  min-width: 14rem;
+}
+
+.offer-account {
   display: block;
   color: #161616;
 }
 
+.offer-min {
+  display: block;
+  margin-top: 0.2rem;
+  color: #8a8a8a;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.lane-block p {
+  margin: 0;
+}
+
 .offer-meta,
-.strategy-now,
-.strategy-reason {
+.strategy-reason,
+.strategy-from {
   display: block;
   color: #8a8a8a;
   font-size: 0.84rem;
 }
 
-.strategy-shift {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 0.45rem;
-  margin: 0;
+.proposed-kicker,
+.from-label {
+  color: #8a8a8a;
 }
 
-.strategy-now,
-.strategy-next,
-.strategy-arrow {
-  display: inline;
-  font-size: 1rem;
+.proposed-kicker {
+  font-size: 0.75rem;
 }
 
-.strategy-arrow {
-  color: #c4c4c4;
+.lane-block .proposed-name {
+  margin-top: 0.08rem;
+  color: #161616;
+  font-size: 1.08rem;
+  font-weight: 560;
+  line-height: 1.25;
 }
 
-.strategy-reason {
-  margin: 0.35rem 0 0;
-  max-width: 36rem;
-  line-height: 1.45;
+.lane-block .all-in-fee,
+.lane-block .bid-rate {
+  margin-top: 0.16rem;
+  color: #161616;
+  font-size: 0.98rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.lane-block .pitch-fact {
+  margin-top: 0.28rem;
+  color: #161616;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.lane-block .pitch-label {
+  margin-right: 0.35rem;
+  color: #3a3a3a;
+  font-size: 0.84rem;
+  font-weight: 560;
+}
+
+.lane-block .pitch-price {
+  margin-top: 0.16rem;
+}
+
+.lane-block .pitch-price .pitch-value {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.lane-block .min-line {
+  margin-top: 0.12rem;
+  color: #161616;
+  font-size: 0.9rem;
+}
+
+.lane-block .strategy-from {
+  margin-top: 0.16rem;
+}
+
+.from-label {
+  margin-right: 0.35rem;
+}
+
+.lane-block .strategy-reason {
+  margin-top: 0.35rem;
+  max-width: 32rem;
+  color: #6a6a6a;
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .lane-block + .lane-block {
@@ -1601,36 +1673,201 @@ textarea {
   border-top: 1px solid #f4f4f4;
 }
 
-.rank-num {
-  margin: 0 0 0.25rem;
+.offers-table tr.is-accepted th,
+.offers-table tr.is-accepted td {
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.lane-block.is-compact + .lane-block.is-compact {
+  margin-top: 0.45rem;
+  padding-top: 0.4rem;
+}
+
+.lane-block.is-chosen {
+  margin-left: 0;
+  padding-left: 0.65rem;
+  border-left: 2px solid #111;
+}
+
+.lane-block .accepted-mark {
+  margin: 0 0 0.15rem;
+  color: #111;
+  font-size: 0.75rem;
+  font-weight: 560;
+}
+
+.lane-block .rank-num {
+  margin-bottom: 0.25rem;
   color: #8a8a8a;
   font-size: 0.72rem;
   letter-spacing: 0.06em;
 }
 
-.bid-name {
-  margin: 0;
-  color: #161616;
+.lane-block .bid-name {
+  margin-top: 0.1rem;
+  color: #8a8a8a;
+  font-size: 0.84rem;
 }
 
-.bid-title,
-.bid-terms {
-  margin: 0.2rem 0 0;
+.lane-block .pitch-note {
+  margin-top: 0.28rem;
+  color: #6a6a6a;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.lane-block .bid-title {
+  margin-top: 0.12rem;
   color: #5e5e5e;
   font-size: 0.92rem;
 }
 
+.accept-lane p {
+  margin: 0;
+}
+
+.accept-picker-label,
+.accepted-kicker {
+  color: #111;
+  font-size: 0.75rem;
+  font-weight: 560;
+}
+
+.accept-lane .accepted-copy {
+  margin-top: 0.35rem;
+  color: #111;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.accept-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.accept-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0;
+  border: 0;
+  border-bottom: 1px solid #f0f0f0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: #111;
+}
+
+.accept-choice-strategy {
+  color: #111;
+  font-size: 0.95rem;
+  font-weight: 560;
+  line-height: 1.3;
+}
+
+.accept-choice-meta {
+  margin-top: 0.12rem;
+  color: #161616;
+  font-size: 0.84rem;
+}
+
+.accept-picker .reveal-next {
+  margin-top: 0.55rem;
+}
+
+.accept-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(17, 17, 17, 0.28);
+}
+
+.accept-modal {
+  width: min(32rem, 100%);
+  max-height: min(40rem, calc(100dvh - 3rem));
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  padding: 1.4rem 1.35rem 1.2rem;
+}
+
+.accept-modal h2 {
+  margin: 0 0 0.9rem;
+  color: #111;
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+.accept-modal p {
+  margin: 0 0 0.45rem;
+  color: #161616;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.accept-modal .accept-modal-kicker {
+  margin: 0.9rem 0 0.35rem;
+  color: #111;
+  font-size: 0.75rem;
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.accept-modal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0.35rem 0 0.8rem;
+  color: #111;
+  cursor: pointer;
+}
+
+.accept-modal-check input {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.15rem;
+  accent-color: #111;
+  flex: none;
+}
+
+.accept-modal-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  margin-top: 0.4rem;
+}
+
+.accept-modal-actions .reveal-next {
+  margin-top: 0;
+}
+
 .reveal-next {
-  margin: 0.75rem 0 0;
+  margin: 0.55rem 0 0;
   padding: 0;
   border: 0;
   background: transparent;
-  color: #1e7546;
+  color: #17683d;
   font: inherit;
   font-size: 0.84rem;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 0.16rem;
+}
+
+.reveal-next.details-toggle {
+  margin-top: 0.35rem;
+  color: #8a8a8a;
+  font-size: 0.8rem;
 }
 
 .match-line {
@@ -1641,9 +1878,125 @@ textarea {
   white-space: nowrap;
 }
 
+.lane-block .match-line {
+  margin-top: 0.35rem;
+}
+
 .match-pct {
   font-variant-numeric: tabular-nums;
   font-size: 0.92rem;
+}
+
+.strategy-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  margin-top: 1.6rem;
+}
+
+.strategy-search input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #111;
+  background: transparent;
+  padding: 0.55rem 0;
+  font: inherit;
+  font-size: 1.05rem;
+  color: #111;
+  outline: none;
+}
+
+.strategy-eligible {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  max-width: 36rem;
+  color: #111;
+  cursor: pointer;
+}
+
+.strategy-eligible input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.18rem;
+  accent-color: #111;
+  flex: none;
+}
+
+.strategy-eligible-label {
+  display: block;
+  color: #111;
+  font-weight: 560;
+}
+
+.strategy-eligible-help {
+  display: block;
+  margin-top: 0.15rem;
+  color: #5e5e5e;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.strategy-count {
+  margin: 1.35rem 0 0.2rem;
+  color: #8a8a8a;
+  font-size: 0.84rem;
+}
+
+.strategy-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.strategy-list li {
+  padding: 1.05rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.strategy-list p {
+  margin: 0;
+}
+
+.strategy-name {
+  color: #111;
+  font-size: 1.12rem;
+  font-weight: 560;
+}
+
+.strategy-line {
+  margin-top: 0.16rem;
+  color: #161616;
+  font-size: 0.92rem;
+}
+
+.strategy-fee {
+  margin-top: 0.2rem;
+  color: #111;
+  font-size: 0.98rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.strategy-summary {
+  margin-top: 0.4rem;
+  max-width: 40rem;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.strategy-fit {
+  margin-top: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.strategy-fit.meets {
+  color: #0b4f2a;
+}
+
+.strategy-fit.above {
+  color: #8a8a8a;
 }
 
 .offer-names:empty {
@@ -1673,12 +2026,44 @@ textarea {
   display: block;
 }
 
+.advisor-mark {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin: 1.35rem 0 0.2rem;
+  max-width: 34rem;
+  color: #111;
+  cursor: pointer;
+}
+
+.advisor-mark input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.2rem;
+  accent-color: #111;
+  flex: none;
+}
+
+.enroll-flow .advisor-mark-label {
+  display: block;
+  color: #111;
+  font-weight: 560;
+}
+
+.enroll-flow .advisor-mark-help {
+  display: block;
+  margin-top: 0.15rem;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .fork-options {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 1.6rem;
-  margin-top: 2rem;
+  margin-top: 1.6rem;
 }
 
 .fork-options button {
@@ -1707,6 +2092,56 @@ textarea {
   padding: 0.5rem 0;
   border-top: 1px solid #f2f2f2;
   color: #5e5e5e;
+}
+
+.agent-needs-you {
+  margin: 0.4rem 0 0.2rem;
+  padding: 1rem 1.15rem 1.05rem;
+  max-width: 34rem;
+  background: #f3f3f3;
+  border-left: 3px solid #111;
+}
+
+.enroll-flow .agent-needs-kicker,
+.enroll-flow .agent-needs-prompt,
+.enroll-flow .agent-needs-note {
+  color: #111;
+  max-width: none;
+}
+
+.enroll-flow .agent-needs-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.enroll-flow .agent-needs-prompt {
+  margin: 0;
+  font-size: 1.28rem;
+  font-weight: 560;
+  line-height: 1.3;
+}
+
+.enroll-flow .agent-needs-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.98rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.choices.agent-pause-choices {
+  margin-top: 0.6rem;
+}
+
+.choices.agent-pause-choices button {
+  color: #111;
+  font-size: 1.05rem;
+}
+
+.choices.agent-pause-choices button.is-on {
+  font-weight: 560;
 }
 
 .offer-line {
@@ -1973,7 +2408,7 @@ textarea {
   }
 
   .offers-table {
-    min-width: 40rem;
+    min-width: 52rem;
   }
 
   .record-list button {

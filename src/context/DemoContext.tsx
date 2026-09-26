@@ -17,7 +17,7 @@ function readProfile(): DemoProfile | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DemoProfile;
     if (!parsed || typeof parsed.clientId !== "string" || !parsed.fit) return null;
-    return parsed;
+    return { ...parsed, isFinancialAdvisor: parsed.isFinancialAdvisor === true };
   } catch {
     return null;
   }

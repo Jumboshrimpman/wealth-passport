@@ -60,6 +60,35 @@ const MOTIVES: { id: MotiveChoice; label: string }[] = [
   { id: "cheaper", label: "I want something cheaper" },
 ];
 
+function AdvisorMark({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="advisor-mark">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>
+        <span className="advisor-mark-label">I am the financial advisor</span>
+        <span className="advisor-mark-help">Mark this if you are enrolling for a client, not as the client. Demo only.</span>
+      </span>
+    </label>
+  );
+}
+
+/** A log line that stops the agent until the person answers. */
+function agentPausePrompt(line: string): string | null {
+  const match = /^Paused\.\s+(.+)$/.exec(line.trim());
+  return match?.[1] ?? null;
+}
+
+function splitAgentLines(lines: string[]): { status: string[]; prompts: string[] } {
+  const status: string[] = [];
+  const prompts: string[] = [];
+  for (const line of lines) {
+    const prompt = agentPausePrompt(line);
+    if (prompt) prompts.push(prompt);
+    else status.push(line);
+  }
+  return { status, prompts };
+}
+
 export function Enroll() {
   const { passport, selectClient } = useClient();
   const { saveProfile } = useDemo();
@@ -81,6 +110,7 @@ export function Enroll() {
   const [balance, setBalance] = useState<BalanceChoice | null>(null);
   const [motive, setMotive] = useState<MotiveChoice | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
+  const [isFinancialAdvisor, setIsFinancialAdvisor] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -144,6 +174,7 @@ export function Enroll() {
     balance: BalanceChoice;
     motive: MotiveChoice;
     focus: string[];
+    isFinancialAdvisor: boolean;
   }) {
     if (input.focus.length === 0) return;
     const profile: DemoProfile = {
@@ -163,6 +194,7 @@ export function Enroll() {
         : { connected: false, amount: 0, label: "" },
       other: input.other,
       taxDocName: input.taxDocName,
+      isFinancialAdvisor: input.isFinancialAdvisor,
       fit: {
         risk: input.risk,
         balance: input.balance,
@@ -191,6 +223,7 @@ export function Enroll() {
       balance,
       motive,
       focus,
+      isFinancialAdvisor,
     });
   }
 
@@ -261,6 +294,7 @@ export function Enroll() {
       balance: "balanced",
       motive: "change",
       focus: largest ? [largest.id] : [],
+      isFinancialAdvisor,
     });
   }
 
@@ -274,6 +308,7 @@ export function Enroll() {
           <section>
             <h1>How do you want to enroll?</h1>
             <p>Either way stays in this demo. Nothing is sent to a bank, a model, or an advisor.</p>
+            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
             <div className="fork-options">
               <div>
                 <button type="button" onClick={() => setStep("agent")}>
@@ -298,6 +333,7 @@ export function Enroll() {
           <section>
             <h1>Which agent should run this?</h1>
             <p>Demo only. Neither product is connected.</p>
+            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
             <div className="choices">
               {AGENTS.map((option) => (
                 <button
@@ -317,30 +353,17 @@ export function Enroll() {
         ) : null}
 
         {step === "agent-run" ? (
-          <section>
-            <h1>Your agent is enrolling.</h1>
-            <p>It stops when it needs a person.</p>
-            <ul className="agent-log">
-              {agentLines.map((line, index) => (
-                <li key={`${index}-${line}`}>{line}</li>
-              ))}
-            </ul>
-          </section>
+          <AgentRun lines={agentLines} />
         ) : null}
 
         {step === "agent-pause" ? (
           <section>
             <h1>Your agent paused.</h1>
-            <p>
-              {agent === "anthropic" ? "The Anthropic RIA dashboard" : "ChatGPT Finance"} has the
-              connections. This answer has to come from you. Demo only.
-            </p>
-            <ul className="agent-log">
-              {agentLines.map((line, index) => (
-                <li key={`${index}-${line}`}>{line}</li>
-              ))}
-            </ul>
-            <div className="choices" role="listbox" aria-label="How do you take risk?">
+            <AgentPausePrompts
+              lines={agentLines}
+              waiting={agent === "anthropic" ? "The Anthropic RIA dashboard" : "ChatGPT Finance"}
+            />
+            <div className="choices agent-pause-choices" role="listbox" aria-label="How do you take risk?">
               {RISKS.map((option) => (
                 <button
                   key={option.id}
@@ -356,6 +379,7 @@ export function Enroll() {
             <button type="button" className="text-button" disabled={!risk} onClick={() => risk && answerRisk(risk)}>
               Continue
             </button>
+            <AgentStatusLog lines={agentLines} />
           </section>
         ) : null}
 
@@ -363,6 +387,7 @@ export function Enroll() {
           <section>
             <h1>Connect a bank or a balance sheet.</h1>
             <p>Simulated. Nothing leaves this demo, and we only ask for what this pull does not return.</p>
+            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
             <div className="public-actions">
               <button type="button" disabled={busy} onClick={() => void connectBank("plaid")}>
                 Plaid
@@ -576,6 +601,45 @@ export function Enroll() {
       </main>
       <LegalFooter />
     </div>
+  );
+}
+
+function AgentRun({ lines }: { lines: string[] }) {
+  return (
+    <section>
+      <h1>Your agent is enrolling.</h1>
+      <p>It stops when it needs a person.</p>
+      <AgentPausePrompts lines={lines} />
+      <AgentStatusLog lines={lines} />
+    </section>
+  );
+}
+
+function AgentPausePrompts({ lines, waiting }: { lines: string[]; waiting?: string }) {
+  const { prompts } = splitAgentLines(lines);
+  if (prompts.length === 0) return null;
+  return (
+    <>
+      {prompts.map((prompt) => (
+        <div key={prompt} className="agent-needs-you" role="status">
+          <p className="agent-needs-kicker">Needs your answer</p>
+          <p className="agent-needs-prompt">{prompt}</p>
+          {waiting ? <p className="agent-needs-note">{waiting} is waiting. Demo only.</p> : null}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function AgentStatusLog({ lines }: { lines: string[] }) {
+  const { status } = splitAgentLines(lines);
+  if (status.length === 0) return null;
+  return (
+    <ul className="agent-log">
+      {status.map((line, index) => (
+        <li key={`${index}-${line}`}>{line}</li>
+      ))}
+    </ul>
   );
 }
 
