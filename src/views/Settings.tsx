@@ -3,11 +3,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { hasClerkKey, usePortalAccess } from "../auth/access";
 import { useClient } from "../context/ClientContext";
+import { useDemo } from "../context/DemoContext";
 
 const ALERT_KEY = "wealthpass-offer-alerts";
 
 export function Settings() {
   const { passport } = useClient();
+  const { profile } = useDemo();
+  const enrolledHere = profile && profile.clientId === passport.id ? profile : null;
   const navigate = useNavigate();
   const { clearDemo } = usePortalAccess();
   const [alerts, setAlerts] = useState(() => {
@@ -43,6 +46,12 @@ export function Settings() {
           </dd>
         </div>
         <EmailRow />
+        {enrolledHere ? (
+          <div>
+            <dt>Enrollment</dt>
+            <dd>{enrolledHere.isFinancialAdvisor ? "Financial advisor" : "Client"}</dd>
+          </div>
+        ) : null}
       </dl>
       <label className="alert-toggle">
         <input type="checkbox" checked={alerts} onChange={toggleAlerts} />

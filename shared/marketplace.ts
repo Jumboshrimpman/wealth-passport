@@ -1,6 +1,6 @@
 import { formatUsd } from "./format.ts";
 import { matchInstitution } from "./match.ts";
-import { BID_CUSTOMIZATION, BID_TEMPLATES, type BidSleeve, type BidTemplate } from "./seed/bids.ts";
+import { BID_CUSTOMIZATION, BID_MINIMUM, BID_TEMPLATES, type BidSleeve, type BidTemplate } from "./seed/bids.ts";
 import { INSTITUTION_SEEDS } from "./seed/institutions.ts";
 import type { Account, ClientRecord, Institution } from "./types.ts";
 
@@ -34,6 +34,8 @@ export interface DemoProfile {
   kalshi: { connected: boolean; amount: number; label: string };
   other: { label: string; amount: number } | null;
   taxDocName: string | null;
+  /** True when the person enrolling marked that they are the financial advisor. */
+  isFinancialAdvisor: boolean;
   fit: FitInterview;
 }
 
@@ -78,6 +80,8 @@ export interface Recommendation {
   nextStrategy: string;
   /** All-in fee of the proposed strategy, in basis points. */
   allInBps: number;
+  /** Strategy minimum in dollars. Null when this idea is not a strategy sleeve. */
+  strategyMinimum: number | null;
 }
 
 /** Visible label for an algorithmic match fee. Example: "all-in 28 bps". */
@@ -131,6 +135,40 @@ export function oneBankHouseholdMinimum(balances: number[]): number | null {
     if (consolidated >= tier && largest < tier) met = tier;
   }
   return met;
+}
+
+/**
+ * The household minimum to show. When the accounts clear a new one-bank tier, that tier is met.
+ * Otherwise the next tier in the same schedule is the one they have not cleared.
+ */
+export function householdMinimumFor(balances: number[]): { amount: number; met: boolean } | null {
+  const amounts = balances.filter((value) => Number.isFinite(value) && value > 0);
+  if (amounts.length < 2) return null;
+  const met = oneBankHouseholdMinimum(amounts);
+  if (met != null) return { amount: met, met: true };
+  const consolidated = amounts.reduce((sum, value) => sum + value, 0);
+  const next = HOUSEHOLD_TIERS.find((tier) => consolidated < tier);
+  return next == null ? null : { amount: next, met: false };
+}
+
+/** Sleeve floors taken from the strategy universe. These are not one-bank household tiers. */
+function sleeveStrategyMinimum(current: string): number {
+  switch (current) {
+    case "Equity strategy":
+      return 10_000_000;
+    case "Bond strategy":
+      return 10_000_000;
+    case "Blended strategy":
+      return 10_000_000;
+    case "Cash strategy":
+      return 1_000_000;
+    case "Private markets strategy":
+      return 40_000_000;
+    case "Real-assets strategy":
+      return 15_000_000;
+    default:
+      return 5_000_000;
+  }
 }
 
 function roundTo(value: number, step: number): number {
@@ -535,6 +573,7 @@ function accountStrategies(
     currentStrategy,
     nextStrategy: strategyNext("cheaper", currentStrategy, fit),
     allInBps: proposedAllInBps("cheaper", currentStrategy, fit),
+    strategyMinimum: sleeveStrategyMinimum(currentStrategy),
     reason: `${names} sit on both sides of a move out of ${account.custodian}. An in-kind transfer would not create much tax, and a close strategy is ${bps} bps cheaper.`,
   };
   const sunset: Recommendation = {
@@ -544,6 +583,7 @@ function accountStrategies(
     currentStrategy,
     nextStrategy: strategyNext("sunset", currentStrategy, fit),
     allInBps: proposedAllInBps("sunset", currentStrategy, fit),
+    strategyMinimum: sleeveStrategyMinimum(currentStrategy),
     reason: `${account.custodian} is sunsetting ${account.name}. The replacement holds ${names}, so the switch stays in-kind and would not create much tax.`,
   };
   const change: Recommendation = {
@@ -553,6 +593,7 @@ function accountStrategies(
     currentStrategy,
     nextStrategy: strategyNext("change", currentStrategy, fit),
     allInBps: proposedAllInBps("change", currentStrategy, fit),
+    strategyMinimum: sleeveStrategyMinimum(currentStrategy),
     reason: `You wanted a change in ${account.name}. ${names} overlap the proposed book, so switching would not create much tax.`,
   };
   const ordered =
@@ -599,6 +640,7 @@ function combineIdea(client: ClientRecord): Recommendation {
       currentStrategy,
       nextStrategy,
       allInBps: 18,
+      strategyMinimum: null,
       reason: `${client.household.name} already has ${formatUsd(client.household.investable, true)} investable. A household minimum is counted at one bank. There are not two accounts here to consolidate.`,
     };
   }
@@ -622,6 +664,7 @@ function combineIdea(client: ClientRecord): Recommendation {
     currentStrategy,
     nextStrategy,
     allInBps: 18,
+    strategyMinimum: null,
     reason,
   };
 }
@@ -640,6 +683,7 @@ function programIdea(client: ClientRecord): Recommendation {
     nextStrategy: "Securities-based line",
     // Quoted all-in spread on the recommended line. It is not an asset-management wrap.
     allInBps: 165,
+    strategyMinimum: null,
     reason: `${formatUsd(sum || client.household.investable, true)} at ${host?.custodian ?? "the custodian"} already qualifies ${client.household.name} for a securities-based line. Drawing on it would cover spending without selling ${ticker ?? "the equity"}, so that unrealized gain is not taxed this year.`,
   };
 }
@@ -655,6 +699,7 @@ function taxLocation(client: ClientRecord, fit: FitInterview): Recommendation {
       currentStrategy: "A separate fee at each custodian",
       nextStrategy: "One household fee schedule",
       allInBps: 16,
+      strategyMinimum: null,
       reason: `${client.household.name} already holds ${formatUsd(client.household.investable, true)} investable. One household fee schedule would cost less than paying each custodian separately.`,
     };
   }
@@ -669,6 +714,7 @@ function taxLocation(client: ClientRecord, fit: FitInterview): Recommendation {
     currentStrategy: "Bonds and growth mixed across accounts",
     nextStrategy: title,
     allInBps: 20,
+    strategyMinimum: null,
     reason: `${qualified.name} can hold the bonds${bonds > 0 ? ` (${formatUsd(bonds, true)})` : ""} and ${taxable.name} can keep ${ticker}${stocks > 0 ? ` (${formatUsd(stocks, true)})` : ""}. That shelters the coupon and leaves the growth in the taxable account.`,
   };
 }
@@ -715,6 +761,8 @@ export interface BiddingOffer {
   terms: string;
   /** What this manager will tailor on the pitch. */
   customization: string;
+  /** Strategy minimum in dollars. Null when the pitch is not priced as a strategy sleeve. */
+  minimum: number | null;
   matchPct: number;
 }
 
@@ -723,6 +771,12 @@ export interface OfferBoardRow {
   key: string;
   accountName: string;
   meta: string;
+  /**
+   * One-bank household minimum, on the household row only.
+   * `householdMinimumMet` is false when combining the accounts does not clear that tier.
+   */
+  householdMinimum: number | null;
+  householdMinimumMet: boolean;
   /** Best algorithmic match first. Length 0–3. */
   algorithmic: Recommendation[];
   /** Best company bid first. Length 0–3. */
@@ -799,6 +853,7 @@ function toBiddingOffer(template: BidTemplate): BiddingOffer {
     title: template.title,
     terms: template.terms,
     customization: BID_CUSTOMIZATION[template.id] ?? "How the sleeve is built",
+    minimum: BID_MINIMUM[template.id] ?? null,
     matchPct: template.matchPct,
   };
 }
@@ -841,14 +896,19 @@ export function buildOfferBoard(
       key: account.accountId,
       accountName: account.accountName,
       meta: `${account.custodian} · ${formatUsd(account.balance, true)}`,
+      householdMinimum: null,
+      householdMinimumMet: false,
       algorithmic: capByMatch(account.recommendations, MAX_ALGORITHMIC_MATCHES),
       offers: bidsFor(client, source, eligibleIds),
     };
   });
+  const householdMinimum = householdMinimumFor(client.accounts.map((account) => account.balance));
   rows.push({
     key: "household",
     accountName: "Household",
     meta: "Counted together at one bank",
+    householdMinimum: householdMinimum?.amount ?? null,
+    householdMinimumMet: householdMinimum?.met ?? false,
     algorithmic: capByMatch(book.household, MAX_ALGORITHMIC_MATCHES),
     offers: bidsFor(client, null, eligibleIds),
   });

@@ -4,6 +4,8 @@ import {
   ALGORITHMIC_PARTY,
   acceptChoicesFor,
   acceptanceConfirmation,
+  clientAgreementLines,
+  schwabLpoaLines,
   acceptOnRow,
   allInBpsFromTerms,
   listsAfterAccept,
@@ -12,6 +14,22 @@ import {
 } from "./acceptOffer.ts";
 import { buildOfferBoard, defaultFit, revealedItems } from "./marketplace.ts";
 import { CLIENT_SEEDS } from "./seed/index.ts";
+
+test("accepting opens a demo agreement and a Schwab LPOA before the row locks", () => {
+  const choice = {
+    party: "Meridian Global Asset Management",
+    strategy: "Tax-aware municipal SMA",
+    accountName: "Private Wealth brokerage",
+  };
+  const agreement = clientAgreementLines(choice).join(" ");
+  const lpoa = schwabLpoaLines(choice).join(" ");
+  assert.match(agreement, /Client agreement with Meridian Global Asset Management/);
+  assert.match(agreement, /Tax-aware municipal SMA/);
+  assert.match(agreement, /demo signature/);
+  assert.match(lpoa, /will set up a brokerage with Schwab to manage the assets/);
+  assert.match(lpoa, /Meridian Global Asset Management/);
+  assert.equal(lpoa.toLowerCase().includes(["paid", "placement"].join(" ")), false);
+});
 
 test("all-in bps parse only from an all-in fee line", () => {
   assert.equal(allInBpsFromTerms("all-in 38 bps"), 38);

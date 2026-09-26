@@ -1576,6 +1576,14 @@ textarea {
   color: #161616;
 }
 
+.offer-min {
+  display: block;
+  margin-top: 0.28rem;
+  color: #111;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
 .lane-block p {
   margin: 0;
 }
@@ -1635,6 +1643,12 @@ textarea {
 .lane-block .pitch-price .pitch-value {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+.lane-block .min-line {
+  margin-top: 0.12rem;
+  color: #161616;
+  font-size: 0.9rem;
 }
 
 .lane-block .strategy-from {
@@ -1757,6 +1771,76 @@ textarea {
 
 .accept-picker .reveal-next {
   margin-top: 0.55rem;
+}
+
+.accept-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(17, 17, 17, 0.28);
+}
+
+.accept-modal {
+  width: min(32rem, 100%);
+  max-height: min(40rem, calc(100dvh - 3rem));
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  padding: 1.4rem 1.35rem 1.2rem;
+}
+
+.accept-modal h2 {
+  margin: 0 0 0.9rem;
+  color: #111;
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+.accept-modal p {
+  margin: 0 0 0.45rem;
+  color: #161616;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.accept-modal .accept-modal-kicker {
+  margin: 0.9rem 0 0.35rem;
+  color: #111;
+  font-size: 0.75rem;
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.accept-modal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0.35rem 0 0.8rem;
+  color: #111;
+  cursor: pointer;
+}
+
+.accept-modal-check input {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.15rem;
+  accent-color: #111;
+  flex: none;
+}
+
+.accept-modal-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  margin-top: 0.4rem;
+}
+
+.accept-modal-actions .reveal-next {
+  margin-top: 0;
 }
 
 .reveal-next {
@@ -1928,12 +2012,44 @@ textarea {
   display: block;
 }
 
+.advisor-mark {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin: 1.35rem 0 0.2rem;
+  max-width: 34rem;
+  color: #111;
+  cursor: pointer;
+}
+
+.advisor-mark input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.2rem;
+  accent-color: #111;
+  flex: none;
+}
+
+.enroll-flow .advisor-mark-label {
+  display: block;
+  color: #111;
+  font-weight: 560;
+}
+
+.enroll-flow .advisor-mark-help {
+  display: block;
+  margin-top: 0.15rem;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .fork-options {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 1.6rem;
-  margin-top: 2rem;
+  margin-top: 1.6rem;
 }
 
 .fork-options button {

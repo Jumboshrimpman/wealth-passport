@@ -44,6 +44,34 @@ export const BID_CUSTOMIZATION: Record<string, string> = {
   halden: "Overlay budget and the household constraints",
 };
 
+/**
+ * Strategy minimums. Figures that already exist on the strategy universe stay
+ * on that product. A null means the pitch is not a strategy sleeve.
+ */
+export const BID_MINIMUM: Record<string, number | null> = {
+  meridian: 25_000_000,
+  "harbor-lane": 10_000_000,
+  northbridge: 15_000_000,
+  "field-co": 5_000_000,
+  "lark-index": 8_000_000,
+  "cedar-ira": 5_000_000,
+  "elm-custody": 5_000_000,
+  quince: 10_000_000,
+  plover: 5_000_000,
+  oakridge: 40_000_000,
+  lumen: 40_000_000,
+  sable: 50_000_000,
+  brindle: 100_000_000,
+  stillwater: 1_000_000,
+  kindred: 1_000_000,
+  rowan: 1_000_000,
+  wick: 1_000_000,
+  "first-atlantic": null,
+  pellham: null,
+  vesper: 25_000_000,
+  halden: 50_000_000,
+};
+
 export const BID_TEMPLATES: BidTemplate[] = [
   {
     id: "meridian",

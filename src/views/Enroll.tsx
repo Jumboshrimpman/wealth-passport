@@ -60,6 +60,18 @@ const MOTIVES: { id: MotiveChoice; label: string }[] = [
   { id: "cheaper", label: "I want something cheaper" },
 ];
 
+function AdvisorMark({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="advisor-mark">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>
+        <span className="advisor-mark-label">I am the financial advisor</span>
+        <span className="advisor-mark-help">Mark this if you are enrolling for a client, not as the client. Demo only.</span>
+      </span>
+    </label>
+  );
+}
+
 /** A log line that stops the agent until the person answers. */
 function agentPausePrompt(line: string): string | null {
   const match = /^Paused\.\s+(.+)$/.exec(line.trim());
@@ -98,6 +110,7 @@ export function Enroll() {
   const [balance, setBalance] = useState<BalanceChoice | null>(null);
   const [motive, setMotive] = useState<MotiveChoice | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
+  const [isFinancialAdvisor, setIsFinancialAdvisor] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -161,6 +174,7 @@ export function Enroll() {
     balance: BalanceChoice;
     motive: MotiveChoice;
     focus: string[];
+    isFinancialAdvisor: boolean;
   }) {
     if (input.focus.length === 0) return;
     const profile: DemoProfile = {
@@ -180,6 +194,7 @@ export function Enroll() {
         : { connected: false, amount: 0, label: "" },
       other: input.other,
       taxDocName: input.taxDocName,
+      isFinancialAdvisor: input.isFinancialAdvisor,
       fit: {
         risk: input.risk,
         balance: input.balance,
@@ -208,6 +223,7 @@ export function Enroll() {
       balance,
       motive,
       focus,
+      isFinancialAdvisor,
     });
   }
 
@@ -278,6 +294,7 @@ export function Enroll() {
       balance: "balanced",
       motive: "change",
       focus: largest ? [largest.id] : [],
+      isFinancialAdvisor,
     });
   }
 
@@ -291,6 +308,7 @@ export function Enroll() {
           <section>
             <h1>How do you want to enroll?</h1>
             <p>Either way stays in this demo. Nothing is sent to a bank, a model, or an advisor.</p>
+            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
             <div className="fork-options">
               <div>
                 <button type="button" onClick={() => setStep("agent")}>
@@ -315,6 +333,7 @@ export function Enroll() {
           <section>
             <h1>Which agent should run this?</h1>
             <p>Demo only. Neither product is connected.</p>
+            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
             <div className="choices">
               {AGENTS.map((option) => (
                 <button
@@ -368,6 +387,7 @@ export function Enroll() {
           <section>
             <h1>Connect a bank or a balance sheet.</h1>
             <p>Simulated. Nothing leaves this demo, and we only ask for what this pull does not return.</p>
+            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
             <div className="public-actions">
               <button type="button" disabled={busy} onClick={() => void connectBank("plaid")}>
                 Plaid

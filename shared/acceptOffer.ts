@@ -48,6 +48,28 @@ export function choicePrice(choice: Pick<AcceptableChoice, "allInBps" | "rateLab
   return rate ? rate : null;
 }
 
+/** Demo client agreement. Signing it in the product does not create a legal contract. */
+export function clientAgreementLines(
+  choice: Pick<AcceptableChoice, "party" | "strategy" | "accountName">,
+): string[] {
+  return [
+    `Client agreement with ${choice.party}.`,
+    `${choice.party} will manage ${choice.strategy} for ${choice.accountName}.`,
+    "This is a demo signature. It is not a legal contract.",
+  ];
+}
+
+/** Demo LPOA. The asset manager sets up a Schwab brokerage to manage the assets. */
+export function schwabLpoaLines(
+  choice: Pick<AcceptableChoice, "party" | "strategy" | "accountName">,
+): string[] {
+  return [
+    `Limited power of attorney. ${choice.party} will set up a brokerage with Schwab to manage the assets.`,
+    `The brokerage is for ${choice.strategy} on ${choice.accountName}.`,
+    "This demo LPOA is not a real authorization.",
+  ];
+}
+
 export function acceptanceConfirmation(
   choice: Pick<AcceptableChoice, "party" | "strategy" | "accountName" | "allInBps" | "rateLabel">,
 ): string {
