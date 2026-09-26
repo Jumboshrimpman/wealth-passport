@@ -752,17 +752,19 @@ export function revealedItems<T>(ranked: readonly T[], expanded: boolean): reado
   return expanded ? ranked : ranked.slice(0, 1);
 }
 
-/** Label for the control that reveals ranks 2 and 3. Null when there is nothing further to show. */
+/**
+ * Collapsed lists offer “Show next 2”. Expanded lists offer “Show less”.
+ * Null when the list has nothing past rank 1.
+ */
 export function revealLabel(
-  kind: "matches" | "offers",
+  _kind: "matches" | "offers",
   rankedLength: number,
   expanded: boolean,
 ): string | null {
-  if (expanded || rankedLength <= 1) return null;
+  if (rankedLength <= 1) return null;
+  if (expanded) return "Show less";
   const hidden = rankedLength - 1;
-  if (hidden === 1) return kind === "offers" ? "Show me the next pitch" : "Show me the next match";
-  const noun = kind === "offers" ? "pitches" : "matches";
-  return `Show me the next ${hidden} ${noun}`;
+  return hidden === 1 ? "Show next" : `Show next ${hidden}`;
 }
 
 function fixedIncome(client: ClientRecord, accountId: string): number {
@@ -819,9 +821,10 @@ function bidsFor(
 }
 
 /**
- * One row per account, then the household. Algorithmic matches are WealthPass’s
- * own ranking. Pitches are customizable solutions a manager offers at a unique
- * price. Each list keeps at most three, highest match first.
+ * One row per account, then the household. Algorithmic match is WealthPass’s
+ * ranking of basic managed strategies. Pitches are customized strategy pitches:
+ * a manager’s customizable solution at a unique price. Each list keeps at most
+ * three, highest match first, and opens on rank 1.
  */
 export function buildOfferBoard(
   client: ClientRecord,

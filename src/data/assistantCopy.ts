@@ -38,7 +38,7 @@ export function answerQuestion(
   if (intent === "offers") {
     const lines = [
       greetingLine(first, wealth.total, board.rows.filter((row) => row.offers.length > 0).length),
-      "Algorithmic match is the WealthPass ranking: the proposed strategy and its all-in fee. Pitches are customizable solutions a manager offers at a unique price. Each list opens on rank 1.",
+      "Algorithmic match is WealthPass’s ranking of basic managed strategies: the proposed strategy and its all-in fee. Pitches are customized strategy pitches, a manager’s customizable solution at a unique price. Each list opens on the top result.",
     ];
     for (const row of board.rows) {
       const algorithmic = row.algorithmic[0];
@@ -47,17 +47,17 @@ export function answerQuestion(
       const parts: string[] = [];
       if (algorithmic) {
         parts.push(
-          `Algorithmic match: proposed ${algorithmic.nextStrategy} (currently ${algorithmic.currentStrategy}), all-in ${algorithmic.allInBps} bps, ${algorithmic.matchPct}% match. ${algorithmic.reason}`,
+          `Basic managed strategy: proposed ${algorithmic.nextStrategy} (currently ${algorithmic.currentStrategy}), all-in ${algorithmic.allInBps} bps, ${algorithmic.matchPct}% match. ${algorithmic.reason}`,
         );
       }
       if (bid) {
         parts.push(
-          `Pitch: ${bid.bidder}, ${bid.title}. Customizable solution: ${bid.customization} Unique pricing: ${bid.terms}. ${bid.matchPct}% match.`,
+          `Customized strategy pitch: ${bid.bidder}, ${bid.title}. Customizable solution: ${bid.customization} Unique pricing: ${bid.terms}. ${bid.matchPct}% match.`,
         );
       }
       if (parts.length > 0) lines.push(`${where}. ${parts.join(" ")}`);
     }
-    lines.push("Ranks 2 and 3 stay on Pitches until you ask to see the next matches or the next pitches.");
+    lines.push("Ranks 2 and 3 stay hidden until you choose Show next 2. Show less closes them again.");
     lines.push("The algorithmic ranking is ours. It cannot be bought.");
     return lines.join("\n\n");
   }

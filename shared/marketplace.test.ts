@@ -183,13 +183,14 @@ test("each account and the household keep three algorithmic matches and three bi
   assert.deepEqual(revealedItems(["one", "two", "three"], true), ["one", "two", "three"]);
   assert.deepEqual(revealedItems(["only"], false), ["only"]);
   assert.deepEqual(revealedItems([], false), []);
-  assert.equal(revealLabel("offers", 3, false), "Show me the next 2 pitches");
-  assert.equal(revealLabel("matches", 3, false), "Show me the next 2 matches");
-  assert.equal(revealLabel("offers", 2, false), "Show me the next pitch");
-  assert.equal(revealLabel("matches", 2, false), "Show me the next match");
+  assert.equal(revealLabel("offers", 3, false), "Show next 2");
+  assert.equal(revealLabel("matches", 3, false), "Show next 2");
+  assert.equal(revealLabel("offers", 2, false), "Show next");
+  assert.equal(revealLabel("matches", 2, false), "Show next");
   assert.equal(revealLabel("offers", 1, false), null);
   assert.equal(revealLabel("offers", 0, false), null);
-  assert.equal(revealLabel("offers", 3, true), null);
+  assert.equal(revealLabel("offers", 3, true), "Show less");
+  assert.equal(revealLabel("matches", 3, true), "Show less");
 
   const elena = CLIENT_SEEDS.find((row) => row.id === "elena-whitmore");
   if (!elena) throw new Error("elena missing");

@@ -57,8 +57,8 @@ export function Offers() {
     setAccepted(readAcceptedOffers(passport.id));
   }, [passport.id]);
 
-  function expand(key: string) {
-    setOpen((current) => ({ ...current, [key]: true }));
+  function toggle(key: string) {
+    setOpen((current) => ({ ...current, [key]: !current[key] }));
   }
 
   function accept(rowKey: string, choice: AcceptableChoice) {
@@ -75,11 +75,10 @@ export function Offers() {
   return (
     <div className="offer-page">
       <h1>Pitches</h1>
-      <p className="lede-quiet">
-        Each account, and the household on its own, has two lists. Algorithmic match is the
-        WealthPass ranking: the proposed strategy and its all-in fee. Pitches are customizable
-        solutions a manager offers at a unique price. Both lists open on the top result. Accept one
-        choice on a row.
+      <p className="lede-quiet offer-lede">
+        Algorithmic match is WealthPass’s ranking of basic managed strategies. Pitches are customized
+        strategy pitches: a manager’s customizable solution at a unique price. Each list opens on the
+        top result.
       </p>
       <div className="offers-scroll">
         <table className="offers-table">
@@ -88,11 +87,11 @@ export function Offers() {
               <th scope="col">Account</th>
               <th scope="col">
                 <span className="col-title">Algorithmic match</span>
-                <span className="col-note">WealthPass ranking</span>
+                <span className="col-note">Basic managed strategies</span>
               </th>
               <th scope="col">
                 <span className="col-title">Pitches</span>
-                <span className="col-note">Customizable solutions with unique pricing</span>
+                <span className="col-note">Customized strategy pitches</span>
               </th>
               <th scope="col">
                 <span className="col-title">Accept</span>
@@ -106,7 +105,7 @@ export function Offers() {
                 row={row}
                 matchesOpen={Boolean(open[`${row.key}:matches`])}
                 offersOpen={Boolean(open[`${row.key}:offers`])}
-                onExpand={expand}
+                onToggle={toggle}
                 accepted={accepted[row.key] ?? null}
                 picking={picking === row.key}
                 onStartPick={() => setPicking(row.key)}
@@ -125,7 +124,7 @@ function OfferRow({
   row,
   matchesOpen,
   offersOpen,
-  onExpand,
+  onToggle,
   accepted,
   picking,
   onStartPick,
@@ -135,7 +134,7 @@ function OfferRow({
   row: OfferBoardRow;
   matchesOpen: boolean;
   offersOpen: boolean;
-  onExpand: (key: string) => void;
+  onToggle: (key: string) => void;
   accepted: RowAcceptance | null;
   picking: boolean;
   onStartPick: () => void;
@@ -165,7 +164,12 @@ function OfferRow({
           />
         ))}
         {matchLabel ? (
-          <button type="button" className="reveal-next" aria-expanded={false} onClick={() => onExpand(`${row.key}:matches`)}>
+          <button
+            type="button"
+            className="reveal-next"
+            aria-expanded={matchesOpen}
+            onClick={() => onToggle(`${row.key}:matches`)}
+          >
             {matchLabel}
           </button>
         ) : null}
@@ -181,7 +185,12 @@ function OfferRow({
           />
         ))}
         {offerLabel ? (
-          <button type="button" className="reveal-next" aria-expanded={false} onClick={() => onExpand(`${row.key}:offers`)}>
+          <button
+            type="button"
+            className="reveal-next"
+            aria-expanded={offersOpen}
+            onClick={() => onToggle(`${row.key}:offers`)}
+          >
             {offerLabel}
           </button>
         ) : null}
@@ -230,14 +239,14 @@ function AcceptCell({
   if (!picking) {
     return (
       <button type="button" className="text-button" aria-expanded={false} onClick={onStartPick}>
-        Accept pitch
+        Accept customized pitch
       </button>
     );
   }
   return (
     <div className="accept-picker">
       <p className="accept-picker-label">Choose one</p>
-      <div role="listbox" aria-label="Choose one pitch">
+      <div role="listbox" aria-label="Choose one customized pitch">
         {choices.map((choice) => {
           const price = choicePrice(choice);
           return (
@@ -273,7 +282,6 @@ function AlgorithmicMatch({
     <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
       {chosen ? <p className="accepted-mark">Accepted</p> : null}
-      {compact ? null : <p className="proposed-kicker">Proposed</p>}
       <p className="proposed-name">{recommendation.nextStrategy}</p>
       <p className="all-in-fee">{allInFeeLabel(recommendation.allInBps)}</p>
       {compact ? null : (
@@ -288,7 +296,7 @@ function AlgorithmicMatch({
           </span>
         </p>
       )}
-      {compact ? null : <p className="strategy-reason">{recommendation.reason}</p>}
+      {compact || rank > 1 ? null : <p className="strategy-reason">{recommendation.reason}</p>}
     </div>
   );
 }
@@ -314,7 +322,7 @@ function BidBlock({
         <span className="pitch-label">Customizable solution</span>
         <span className="pitch-value">{offer.customization}</span>
       </p>
-      <p className="pitch-fact">
+      <p className="pitch-fact pitch-price">
         <span className="pitch-label">Unique pricing</span>
         <span className="pitch-value">{offer.terms}</span>
       </p>
