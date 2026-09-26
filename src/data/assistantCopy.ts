@@ -35,7 +35,7 @@ export function answerQuestion(
   if (intent === "offers") {
     const lines = [
       greetingLine(first, wealth.total, board.rows.filter((row) => row.offers.length > 0).length),
-      "Algorithmic match is our ranking of the next strategy. Top offers are companies bidding their best rates. Each list opens on rank 1.",
+      "Algorithmic match names the proposed strategy and its all-in fee. Top offers are companies bidding their best rates. Each list opens on rank 1.",
     ];
     for (const row of board.rows) {
       const algorithmic = row.algorithmic[0];
@@ -44,7 +44,7 @@ export function answerQuestion(
       const parts: string[] = [];
       if (algorithmic) {
         parts.push(
-          `Algorithmic match: ${algorithmic.currentStrategy} → ${algorithmic.nextStrategy}, ${algorithmic.matchPct}% match. ${algorithmic.reason}`,
+          `Algorithmic match: proposed ${algorithmic.nextStrategy} (currently ${algorithmic.currentStrategy}), all-in ${algorithmic.allInBps} bps, ${algorithmic.matchPct}% match. ${algorithmic.reason}`,
         );
       }
       if (bid) {
@@ -96,7 +96,7 @@ export function answerQuestion(
     const algorithmic = household?.algorithmic[0];
     if (algorithmic) {
       lines.push(
-        `The algorithmic match for the household is ${algorithmic.title} (${algorithmic.matchPct}% match). ${algorithmic.reason}`,
+        `The algorithmic match for the household proposes ${algorithmic.nextStrategy} (currently ${algorithmic.currentStrategy}) at all-in ${algorithmic.allInBps} bps (${algorithmic.matchPct}% match). ${algorithmic.reason}`,
       );
     }
     return lines.join("\n\n");

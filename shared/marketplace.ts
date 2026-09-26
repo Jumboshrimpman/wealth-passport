@@ -76,6 +76,13 @@ export interface Recommendation {
   currentStrategy: string;
   /** New strategy being recommended. */
   nextStrategy: string;
+  /** All-in fee of the proposed strategy, in basis points. */
+  allInBps: number;
+}
+
+/** Visible label for an algorithmic match fee. Example: "all-in 28 bps". */
+export function allInFeeLabel(bps: number): string {
+  return `all-in ${bps} bps`;
 }
 
 export interface AccountOffers {
@@ -461,6 +468,41 @@ function strategyNow(account: Account, client: ClientRecord): string {
   }
 }
 
+/**
+ * All-in fee of the cheaper and in-kind successor versions of a current sleeve.
+ * A changed sleeve uses the risk-based schedule below instead.
+ */
+function sleeveAllInBps(current: string): { cheaper: number; sunset: number } {
+  switch (current) {
+    case "Equity strategy":
+      return { cheaper: 28, sunset: 32 };
+    case "Bond strategy":
+      return { cheaper: 22, sunset: 25 };
+    case "Blended strategy":
+      return { cheaper: 26, sunset: 30 };
+    case "Cash strategy":
+      return { cheaper: 8, sunset: 10 };
+    case "Private markets strategy":
+      return { cheaper: 85, sunset: 95 };
+    case "Real-assets strategy":
+      return { cheaper: 34, sunset: 38 };
+    default:
+      return { cheaper: 30, sunset: 34 };
+  }
+}
+
+/** All-in fee when the recommendation rebuilds the sleeve rather than discounting it. */
+function changedAllInBps(fit: FitInterview): number {
+  if (fit.risk === "aggressive") return 45;
+  if (fit.risk === "conservative") return 24;
+  return 32;
+}
+
+function proposedAllInBps(kind: "cheaper" | "sunset" | "change", current: string, fit: FitInterview): number {
+  if (kind === "change") return changedAllInBps(fit);
+  return sleeveAllInBps(current)[kind];
+}
+
 function strategyNext(kind: "cheaper" | "sunset" | "change", current: string, fit: FitInterview): string {
   if (kind === "sunset") return "In-kind successor strategy";
   if (kind === "change") {
@@ -492,6 +534,7 @@ function accountStrategies(
     matchPct: base,
     currentStrategy,
     nextStrategy: strategyNext("cheaper", currentStrategy, fit),
+    allInBps: proposedAllInBps("cheaper", currentStrategy, fit),
     reason: `${names} sit on both sides of a move out of ${account.custodian}. An in-kind transfer would not create much tax, and a close strategy is ${bps} bps cheaper.`,
   };
   const sunset: Recommendation = {
@@ -500,6 +543,7 @@ function accountStrategies(
     matchPct: base,
     currentStrategy,
     nextStrategy: strategyNext("sunset", currentStrategy, fit),
+    allInBps: proposedAllInBps("sunset", currentStrategy, fit),
     reason: `${account.custodian} is sunsetting ${account.name}. The replacement holds ${names}, so the switch stays in-kind and would not create much tax.`,
   };
   const change: Recommendation = {
@@ -508,6 +552,7 @@ function accountStrategies(
     matchPct: base,
     currentStrategy,
     nextStrategy: strategyNext("change", currentStrategy, fit),
+    allInBps: proposedAllInBps("change", currentStrategy, fit),
     reason: `You wanted a change in ${account.name}. ${names} overlap the proposed book, so switching would not create much tax.`,
   };
   const ordered =
@@ -553,6 +598,7 @@ function combineIdea(client: ClientRecord): Recommendation {
       matchPct: 90,
       currentStrategy,
       nextStrategy,
+      allInBps: 18,
       reason: `${client.household.name} already has ${formatUsd(client.household.investable, true)} investable. A household minimum is counted at one bank. There are not two accounts here to consolidate.`,
     };
   }
@@ -575,6 +621,7 @@ function combineIdea(client: ClientRecord): Recommendation {
     matchPct: 93,
     currentStrategy,
     nextStrategy,
+    allInBps: 18,
     reason,
   };
 }
@@ -591,6 +638,8 @@ function programIdea(client: ClientRecord): Recommendation {
     matchPct: 90,
     currentStrategy: "Invested book without a credit line",
     nextStrategy: "Securities-based line",
+    // Quoted all-in spread on the recommended line. It is not an asset-management wrap.
+    allInBps: 165,
     reason: `${formatUsd(sum || client.household.investable, true)} at ${host?.custodian ?? "the custodian"} already qualifies ${client.household.name} for a securities-based line. Drawing on it would cover spending without selling ${ticker ?? "the equity"}, so that unrealized gain is not taxed this year.`,
   };
 }
@@ -605,6 +654,7 @@ function taxLocation(client: ClientRecord, fit: FitInterview): Recommendation {
       matchPct: 84,
       currentStrategy: "A separate fee at each custodian",
       nextStrategy: "One household fee schedule",
+      allInBps: 16,
       reason: `${client.household.name} already holds ${formatUsd(client.household.investable, true)} investable. One household fee schedule would cost less than paying each custodian separately.`,
     };
   }
@@ -618,6 +668,7 @@ function taxLocation(client: ClientRecord, fit: FitInterview): Recommendation {
     matchPct: 86,
     currentStrategy: "Bonds and growth mixed across accounts",
     nextStrategy: title,
+    allInBps: 20,
     reason: `${qualified.name} can hold the bonds${bonds > 0 ? ` (${formatUsd(bonds, true)})` : ""} and ${taxable.name} can keep ${ticker}${stocks > 0 ? ` (${formatUsd(stocks, true)})` : ""}. That shelters the coupon and leaves the growth in the taxable account.`,
   };
 }

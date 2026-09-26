@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  allInFeeLabel,
   buildOfferBoard,
   buildOfferBook,
   capByMatch,
@@ -202,7 +203,13 @@ test("each account and the household keep three algorithmic matches and three bi
   assert.ok(merrill && household && privateRow);
   assert.equal(merrill.algorithmic.length, 3);
   assert.equal(merrill.algorithmic[0].id, "ml-pw-cheaper");
+  assert.equal(merrill.algorithmic[0].currentStrategy, "Equity strategy");
+  assert.equal(merrill.algorithmic[0].nextStrategy, "Lower-fee equity strategy");
+  assert.equal(merrill.algorithmic[0].allInBps, 28);
+  assert.equal(allInFeeLabel(merrill.algorithmic[0].allInBps), "all-in 28 bps");
   assert.ok(merrill.algorithmic[0].matchPct > merrill.algorithmic[1].matchPct);
+  assert.ok(merrill.algorithmic.every((item) => item.allInBps > 0));
+  assert.equal(merrill.offers[0].terms, "all-in 38 bps");
   assert.deepEqual(
     merrill.offers.map((offer) => offer.id),
     ["meridian", "harbor-lane", "northbridge"],
@@ -228,6 +235,16 @@ test("each account and the household keep three algorithmic matches and three bi
       assert.ok(row.algorithmic.length <= MAX_ALGORITHMIC_MATCHES);
       assert.ok(row.algorithmic.length >= 1);
       assert.ok(row.offers.length <= MAX_TOP_OFFERS);
+      for (const match of row.algorithmic) {
+        assert.equal(match.nextStrategy.trim().length > 0, true);
+        assert.notEqual(match.currentStrategy, match.nextStrategy);
+        assert.equal(Number.isInteger(match.allInBps), true);
+        assert.ok(match.allInBps >= 8 && match.allInBps <= 200);
+        assert.equal(allInFeeLabel(match.allInBps), `all-in ${match.allInBps} bps`);
+      }
+      for (const offer of row.offers) {
+        assert.equal(offer.terms.trim().length > 0, true);
+      }
       const matchScores = row.algorithmic.map((item) => item.matchPct);
       const bidScores = row.offers.map((item) => item.matchPct);
       assert.deepEqual(matchScores, [...matchScores].sort((a, b) => b - a));

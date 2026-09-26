@@ -1556,41 +1556,59 @@ textarea {
   padding-left: 1.15rem;
 }
 
-.offer-account,
-.strategy-next {
+.offer-account {
   display: block;
   color: #161616;
 }
 
+.lane-block p {
+  margin: 0;
+}
+
 .offer-meta,
-.strategy-now,
-.strategy-reason {
+.strategy-reason,
+.strategy-from {
   display: block;
   color: #8a8a8a;
   font-size: 0.84rem;
 }
 
-.strategy-shift {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 0.45rem;
-  margin: 0;
+.proposed-kicker,
+.from-label {
+  color: #8a8a8a;
 }
 
-.strategy-now,
-.strategy-next,
-.strategy-arrow {
-  display: inline;
-  font-size: 1rem;
+.proposed-kicker {
+  font-size: 0.75rem;
 }
 
-.strategy-arrow {
-  color: #c4c4c4;
+.lane-block .proposed-name {
+  margin-top: 0.08rem;
+  color: #161616;
+  font-size: 1.08rem;
+  font-weight: 560;
+  line-height: 1.25;
 }
 
-.strategy-reason {
-  margin: 0.35rem 0 0;
+.lane-block .all-in-fee,
+.lane-block .bid-rate {
+  margin-top: 0.16rem;
+  color: #161616;
+  font-size: 0.98rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.lane-block .strategy-from {
+  margin-top: 0.16rem;
+}
+
+.from-label {
+  margin-right: 0.35rem;
+}
+
+.lane-block .strategy-reason {
+  margin-top: 0.4rem;
   max-width: 36rem;
   line-height: 1.45;
 }
@@ -1601,8 +1619,8 @@ textarea {
   border-top: 1px solid #f4f4f4;
 }
 
-.rank-num {
-  margin: 0 0 0.25rem;
+.lane-block .rank-num {
+  margin-bottom: 0.25rem;
   color: #8a8a8a;
   font-size: 0.72rem;
   letter-spacing: 0.06em;
@@ -1613,9 +1631,8 @@ textarea {
   color: #161616;
 }
 
-.bid-title,
-.bid-terms {
-  margin: 0.2rem 0 0;
+.lane-block .bid-title {
+  margin-top: 0.12rem;
   color: #5e5e5e;
   font-size: 0.92rem;
 }
@@ -1639,6 +1656,10 @@ textarea {
   gap: 1.15rem;
   margin: 0;
   white-space: nowrap;
+}
+
+.lane-block .match-line {
+  margin-top: 0.35rem;
 }
 
 .match-pct {

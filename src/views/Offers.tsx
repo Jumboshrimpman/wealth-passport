@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  allInFeeLabel,
   buildOfferBoard,
   defaultFit,
   revealedItems,
@@ -50,9 +51,9 @@ export function Offers() {
     <div className="offer-page">
       <h1>Offers</h1>
       <p className="lede-quiet">
-        Each account, and the household on its own, has two lists. Algorithmic match is our ranking
-        of the next strategy. Top offers are companies bidding their best rates on this profile.
-        Both lists open on the top result.
+        Each account, and the household on its own, has two lists. Algorithmic match names the
+        proposed strategy and its all-in fee. Top offers are companies bidding their best rates on
+        this profile. Both lists open on the top result.
       </p>
       <div className="offers-scroll">
         <table className="offers-table">
@@ -135,12 +136,11 @@ function AlgorithmicMatch({ recommendation, rank }: { recommendation: Recommenda
   return (
     <div className="lane-block">
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
-      <p className="strategy-shift">
-        <span className="strategy-now">{recommendation.currentStrategy}</span>
-        <span className="strategy-arrow" aria-hidden="true">
-          →
-        </span>
-        <span className="strategy-next">{recommendation.nextStrategy}</span>
+      <p className="proposed-kicker">Proposed</p>
+      <p className="proposed-name">{recommendation.nextStrategy}</p>
+      <p className="all-in-fee">{allInFeeLabel(recommendation.allInBps)}</p>
+      <p className="strategy-from">
+        <span className="from-label">Currently</span> {recommendation.currentStrategy}
       </p>
       <p className="match-line">
         <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
@@ -158,7 +158,7 @@ function BidBlock({ offer, rank }: { offer: BiddingOffer; rank: number }) {
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
       <p className="bid-name">{offer.bidder}</p>
       <p className="bid-title">{offer.title}</p>
-      <p className="bid-terms">{offer.terms}</p>
+      <p className="bid-rate">{offer.terms}</p>
       <p className="match-line">
         <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
           {offer.matchPct}% match
