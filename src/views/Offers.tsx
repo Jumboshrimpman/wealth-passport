@@ -80,11 +80,7 @@ export function Offers() {
   return (
     <div className="offer-page">
       <h1>Pitches</h1>
-      <p className="lede-quiet offer-lede">
-        Algorithmic match is WealthPass’s ranking of basic managed strategies. Pitches are customized
-        strategy pitches: a manager’s customizable solution at a unique price. Each list opens on the
-        top result.
-      </p>
+      <p className="lede-quiet offer-lede">Each account opens on its top basic strategy and top pitch.</p>
       <div className="offers-scroll">
         <table className="offers-table">
           <thead>
@@ -260,14 +256,14 @@ function AcceptCell({
   if (!picking) {
     return (
       <button type="button" className="text-button" aria-expanded={false} onClick={onStartPick}>
-        Accept customized pitch
+        Accept
       </button>
     );
   }
   return (
     <div className="accept-picker">
       <p className="accept-picker-label">Choose one</p>
-      <div role="listbox" aria-label="Choose one customized pitch">
+      <div role="listbox" aria-label="Choose one">
         {choices.map((choice) => {
           const price = choicePrice(choice);
           return (
@@ -350,6 +346,8 @@ function AlgorithmicMatch({
   compact?: boolean;
   chosen?: boolean;
 }) {
+  const [details, setDetails] = useState(false);
+  const lead = rank === 1;
   return (
     <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
@@ -359,19 +357,29 @@ function AlgorithmicMatch({
       {compact || recommendation.strategyMinimum == null ? null : (
         <p className="min-line">Strategy minimum {formatUsd(recommendation.strategyMinimum, true)}</p>
       )}
-      {compact ? null : (
+      {!compact && !lead ? (
         <p className="strategy-from">
           <span className="from-label">Currently</span> {recommendation.currentStrategy}
         </p>
+      ) : null}
+      {compact || !lead || !details ? null : (
+        <>
+          <p className="strategy-from">
+            <span className="from-label">Currently</span> {recommendation.currentStrategy}
+          </p>
+          <p className="match-line">
+            <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
+              {recommendation.matchPct}% match
+            </span>
+          </p>
+          <p className="strategy-reason">{recommendation.reason}</p>
+        </>
       )}
-      {compact ? null : (
-        <p className="match-line">
-          <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
-            {recommendation.matchPct}% match
-          </span>
-        </p>
+      {compact || !lead ? null : (
+        <button type="button" className="reveal-next details-toggle" aria-expanded={details} onClick={() => setDetails((open) => !open)}>
+          {details ? "Hide" : "Details"}
+        </button>
       )}
-      {compact || rank > 1 ? null : <p className="strategy-reason">{recommendation.reason}</p>}
     </div>
   );
 }
@@ -387,29 +395,33 @@ function BidBlock({
   compact?: boolean;
   chosen?: boolean;
 }) {
+  const [details, setDetails] = useState(false);
+  const lead = rank === 1;
   return (
     <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
       {chosen ? <p className="accepted-mark">Accepted</p> : null}
-      <p className="bid-name">{offer.bidder}</p>
-      <p className="bid-title">{offer.title}</p>
-      <p className="pitch-fact">
-        <span className="pitch-label">Customizable solution</span>
-        <span className="pitch-value">{offer.customization}</span>
-      </p>
-      <p className="pitch-fact pitch-price">
-        <span className="pitch-label">Unique pricing</span>
-        <span className="pitch-value">{offer.terms}</span>
-      </p>
+      <p className="proposed-name">{offer.title}</p>
+      {compact ? null : <p className="bid-name">{offer.bidder}</p>}
+      <p className="all-in-fee">{offer.terms}</p>
       {compact || offer.minimum == null ? null : (
         <p className="min-line">Strategy minimum {formatUsd(offer.minimum, true)}</p>
       )}
-      {compact ? null : (
-        <p className="match-line">
-          <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
-            {offer.matchPct}% match
-          </span>
-        </p>
+      {!compact && !lead ? <p className="pitch-note">{offer.customization}</p> : null}
+      {compact || !lead || !details ? null : (
+        <>
+          <p className="pitch-note">{offer.customization}</p>
+          <p className="match-line">
+            <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
+              {offer.matchPct}% match
+            </span>
+          </p>
+        </>
+      )}
+      {compact || !lead ? null : (
+        <button type="button" className="reveal-next details-toggle" aria-expanded={details} onClick={() => setDetails((open) => !open)}>
+          {details ? "Hide" : "Details"}
+        </button>
       )}
     </div>
   );

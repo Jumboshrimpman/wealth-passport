@@ -1578,10 +1578,10 @@ textarea {
 
 .offer-min {
   display: block;
-  margin-top: 0.28rem;
-  color: #111;
-  font-size: 0.86rem;
-  font-weight: 500;
+  margin-top: 0.2rem;
+  color: #8a8a8a;
+  font-size: 0.8rem;
+  font-weight: 400;
 }
 
 .lane-block p {
@@ -1704,9 +1704,17 @@ textarea {
   letter-spacing: 0.06em;
 }
 
-.bid-name {
-  margin: 0;
-  color: #161616;
+.lane-block .bid-name {
+  margin-top: 0.1rem;
+  color: #8a8a8a;
+  font-size: 0.84rem;
+}
+
+.lane-block .pitch-note {
+  margin-top: 0.28rem;
+  color: #6a6a6a;
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .lane-block .bid-title {
@@ -1854,6 +1862,12 @@ textarea {
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 0.16rem;
+}
+
+.reveal-next.details-toggle {
+  margin-top: 0.35rem;
+  color: #8a8a8a;
+  font-size: 0.8rem;
 }
 
 .match-line {
