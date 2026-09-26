@@ -15,6 +15,7 @@ import { Institution } from "./views/Institution";
 import { Offers } from "./views/Offers";
 import { PublicHome } from "./views/PublicHome";
 import { Settings } from "./views/Settings";
+import { Strategies } from "./views/Strategies";
 import { SignInScreen } from "./views/SignInScreen";
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
                     <Route element={<PortalShell />}>
                       <Route path="/assistant" element={<Assistant />} />
                       <Route path="/offers" element={<Offers />} />
+                      <Route path="/strategies" element={<Strategies />} />
                       <Route path="/financials" element={<Financials />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/admin" element={<Admin />} />

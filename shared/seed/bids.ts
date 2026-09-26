@@ -19,6 +19,31 @@ export interface BidTemplate {
   institutionId?: string;
 }
 
+/** What the manager will tailor. Shown on the pitch, not buried in the terms. */
+export const BID_CUSTOMIZATION: Record<string, string> = {
+  meridian: "State preference, duration, and which lots to harvest",
+  "harbor-lane": "Sector bands, single-name caps, and tax-lot rules",
+  northbridge: "Harvest threshold and which names stay off limits",
+  "field-co": "Benchmark, factor tilts, and excluded holdings",
+  "lark-index": "Index family and the tracking range",
+  "cedar-ira": "Share class and the fee schedule inside the IRA",
+  "elm-custody": "Delivery method and which lots move in kind",
+  quince: "Duration target and credit limits inside the IRA",
+  plover: "Glide path and the equity share",
+  oakridge: "Vintage year, pacing, and co-invest rights",
+  lumen: "Commitment size and the call schedule",
+  sable: "Deal size and the information rights",
+  brindle: "Stage focus and the reserve for follow-ons",
+  stillwater: "Ladder length and the reinvestment rule",
+  kindred: "Insurance coverage and the sweep threshold",
+  rowan: "Fund share class and the liquidity window",
+  wick: "Tenor and the counterparty list",
+  "first-atlantic": "Advance rate, tenor, and which accounts are pledged",
+  pellham: "Breakpoint and which sleeves sit on the schedule",
+  vesper: "Which accounts consolidate and the service list",
+  halden: "Overlay budget and the household constraints",
+};
+
 export const BID_TEMPLATES: BidTemplate[] = [
   {
     id: "meridian",

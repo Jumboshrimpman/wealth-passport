@@ -1,6 +1,6 @@
 import { formatUsd } from "./format.ts";
 import { matchInstitution } from "./match.ts";
-import { BID_TEMPLATES, type BidSleeve, type BidTemplate } from "./seed/bids.ts";
+import { BID_CUSTOMIZATION, BID_TEMPLATES, type BidSleeve, type BidTemplate } from "./seed/bids.ts";
 import { INSTITUTION_SEEDS } from "./seed/institutions.ts";
 import type { Account, ClientRecord, Institution } from "./types.ts";
 
@@ -713,6 +713,8 @@ export interface BiddingOffer {
   bidder: string;
   title: string;
   terms: string;
+  /** What this manager will tailor on the pitch. */
+  customization: string;
   matchPct: number;
 }
 
@@ -758,8 +760,8 @@ export function revealLabel(
 ): string | null {
   if (expanded || rankedLength <= 1) return null;
   const hidden = rankedLength - 1;
-  if (hidden === 1) return kind === "offers" ? "Show me the next offer" : "Show me the next match";
-  const noun = kind === "offers" ? "offers" : "matches";
+  if (hidden === 1) return kind === "offers" ? "Show me the next pitch" : "Show me the next match";
+  const noun = kind === "offers" ? "pitches" : "matches";
   return `Show me the next ${hidden} ${noun}`;
 }
 
@@ -794,6 +796,7 @@ function toBiddingOffer(template: BidTemplate): BiddingOffer {
     bidder: template.bidder,
     title: template.title,
     terms: template.terms,
+    customization: BID_CUSTOMIZATION[template.id] ?? "How the sleeve is built",
     matchPct: template.matchPct,
   };
 }
@@ -817,8 +820,8 @@ function bidsFor(
 
 /**
  * One row per account, then the household. Algorithmic matches are WealthPass’s
- * own ranking. Top offers are companies bidding rates on that row. Each list
- * keeps at most three, highest match first.
+ * own ranking. Pitches are customizable solutions a manager offers at a unique
+ * price. Each list keeps at most three, highest match first.
  */
 export function buildOfferBoard(
   client: ClientRecord,
@@ -855,6 +858,6 @@ export function countNewOffers(board: OfferBoard): number {
 }
 
 export function greetingLine(firstName: string, netWorth: number, offers: number): string {
-  const noun = offers === 1 ? "offer" : "offers";
+  const noun = offers === 1 ? "pitch" : "pitches";
   return `Hi ${firstName}, your net worth is ${formatUsd(netWorth, true)} today, we have ${offers} new ${noun} for you today.`;
 }

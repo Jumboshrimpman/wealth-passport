@@ -74,11 +74,12 @@ export function Offers() {
 
   return (
     <div className="offer-page">
-      <h1>Offers</h1>
+      <h1>Pitches</h1>
       <p className="lede-quiet">
-        Each account, and the household on its own, has two lists. Algorithmic match names the
-        proposed strategy and its all-in fee. Top offers are companies bidding their best rates on
-        this profile. Both lists open on the top result. Accept one choice on a row.
+        Each account, and the household on its own, has two lists. Algorithmic match is the
+        WealthPass ranking: the proposed strategy and its all-in fee. Pitches are customizable
+        solutions a manager offers at a unique price. Both lists open on the top result. Accept one
+        choice on a row.
       </p>
       <div className="offers-scroll">
         <table className="offers-table">
@@ -87,11 +88,11 @@ export function Offers() {
               <th scope="col">Account</th>
               <th scope="col">
                 <span className="col-title">Algorithmic match</span>
-                <span className="col-note">Our ranking</span>
+                <span className="col-note">WealthPass ranking</span>
               </th>
               <th scope="col">
-                <span className="col-title">Top offers</span>
-                <span className="col-note">Companies bidding</span>
+                <span className="col-title">Pitches</span>
+                <span className="col-note">Customizable solutions with unique pricing</span>
               </th>
               <th scope="col">
                 <span className="col-title">Accept</span>
@@ -229,14 +230,14 @@ function AcceptCell({
   if (!picking) {
     return (
       <button type="button" className="text-button" aria-expanded={false} onClick={onStartPick}>
-        Accept offer
+        Accept pitch
       </button>
     );
   }
   return (
     <div className="accept-picker">
       <p className="accept-picker-label">Choose one</p>
-      <div role="listbox" aria-label="Choose one offer">
+      <div role="listbox" aria-label="Choose one pitch">
         {choices.map((choice) => {
           const price = choicePrice(choice);
           return (
@@ -309,7 +310,14 @@ function BidBlock({
       {chosen ? <p className="accepted-mark">Accepted</p> : null}
       <p className="bid-name">{offer.bidder}</p>
       <p className="bid-title">{offer.title}</p>
-      <p className="bid-rate">{offer.terms}</p>
+      <p className="pitch-fact">
+        <span className="pitch-label">Customizable solution</span>
+        <span className="pitch-value">{offer.customization}</span>
+      </p>
+      <p className="pitch-fact">
+        <span className="pitch-label">Unique pricing</span>
+        <span className="pitch-value">{offer.terms}</span>
+      </p>
       {compact ? null : (
         <p className="match-line">
           <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>

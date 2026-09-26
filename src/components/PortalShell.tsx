@@ -9,7 +9,8 @@ import { AssistantPanel } from "./AssistantPanel";
 
 const LINKS = [
   { to: "/assistant", label: "Assistant" },
-  { to: "/offers", label: "Offers" },
+  { to: "/offers", label: "Pitches" },
+  { to: "/strategies", label: "Strategies" },
   { to: "/financials", label: "Financials" },
   { to: "/settings", label: "Settings" },
 ];
@@ -21,7 +22,7 @@ export function PortalShell() {
   const chatHome = location.pathname === "/assistant";
   const showDock = !chatHome;
   const wide = location.pathname === "/admin" || location.pathname === "/institution";
-  const roomy = location.pathname === "/offers";
+  const roomy = location.pathname === "/offers" || location.pathname === "/strategies";
   const pinned = useRef<{ path: string; minimized: boolean } | null>(null);
 
   useEffect(() => {
@@ -30,7 +31,13 @@ export function PortalShell() {
       setMinimized(pinned.current.minimized);
       return;
     }
-    setMinimized(!(location.pathname === "/offers" || location.pathname === "/financials"));
+    setMinimized(
+      !(
+        location.pathname === "/offers" ||
+        location.pathname === "/financials" ||
+        location.pathname === "/strategies"
+      ),
+    );
   }, [location.pathname, setMinimized, showDock]);
 
   function minimize() {

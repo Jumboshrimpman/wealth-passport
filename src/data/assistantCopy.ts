@@ -1,17 +1,20 @@
 import { formatUsd } from "../../shared/format.ts";
 import { greetingLine, type OfferBoard, type WealthPicture } from "../../shared/marketplace.ts";
+import { browseStrategies, STRATEGY_UNIVERSE, strategyFeeLine } from "../../shared/strategies.ts";
 import type { ClientPassport } from "../../shared/types.ts";
 
 export const STARTER_PROMPTS = [
-  { id: "offers", label: "What are my new offers?" },
+  { id: "offers", label: "What are my new pitches?" },
+  { id: "strategies", label: "Which strategies do I qualify for?" },
   { id: "accounts", label: "How are my accounts set up?" },
   { id: "financials", label: "What's verified on my financials?" },
   { id: "household", label: "How does this household look?" },
 ] as const;
 
-function intentOf(input: string): "offers" | "accounts" | "financials" | "household" | "general" {
+function intentOf(input: string): "offers" | "strategies" | "accounts" | "financials" | "household" | "general" {
   const text = input.toLowerCase();
-  if (/(offer|recommend|strateg|match|cheaper|sunset)/.test(text)) return "offers";
+  if (/(pitch|offer|recommend|match|cheaper|sunset|algorithm)/.test(text)) return "offers";
+  if (/(strateg|eligib|qualif|universe|minimum)/.test(text)) return "strategies";
   if (/(account|balance|custodian|brokerage|ira)/.test(text)) return "accounts";
   if (/(financial|verified|pending|net worth|wealth|tax|plaid|kubera|coinbase|fundrise|kalshi)/.test(text)) {
     return "financials";
@@ -35,7 +38,7 @@ export function answerQuestion(
   if (intent === "offers") {
     const lines = [
       greetingLine(first, wealth.total, board.rows.filter((row) => row.offers.length > 0).length),
-      "Algorithmic match names the proposed strategy and its all-in fee. Top offers are companies bidding their best rates. Each list opens on rank 1.",
+      "Algorithmic match is the WealthPass ranking: the proposed strategy and its all-in fee. Pitches are customizable solutions a manager offers at a unique price. Each list opens on rank 1.",
     ];
     for (const row of board.rows) {
       const algorithmic = row.algorithmic[0];
@@ -48,12 +51,33 @@ export function answerQuestion(
         );
       }
       if (bid) {
-        parts.push(`Top offer: ${bid.bidder}, ${bid.title}, ${bid.terms}, ${bid.matchPct}% match.`);
+        parts.push(
+          `Pitch: ${bid.bidder}, ${bid.title}. Customizable solution: ${bid.customization} Unique pricing: ${bid.terms}. ${bid.matchPct}% match.`,
+        );
       }
       if (parts.length > 0) lines.push(`${where}. ${parts.join(" ")}`);
     }
-    lines.push("Ranks 2 and 3 stay on the Offers page until you ask to see the next matches or the next offers.");
+    lines.push("Ranks 2 and 3 stay on Pitches until you ask to see the next matches or the next pitches.");
     lines.push("The algorithmic ranking is ours. It cannot be bought.");
+    return lines.join("\n\n");
+  }
+
+  if (intent === "strategies") {
+    const investable = client.household.investable;
+    const eligible = browseStrategies(STRATEGY_UNIVERSE, investable, { eligibleOnly: true });
+    const shown = eligible.slice(0, 6);
+    const lines = [
+      `${first}, household investable is ${formatUsd(investable, true)}. Eligible for me keeps strategies whose minimum is at or under that. The filter starts off, so Strategies shows the full universe until you turn it on.`,
+      ...shown.map(
+        (strategy) =>
+          `${strategy.name} · ${strategy.manager} · ${strategy.category}, ${strategy.style} · minimum ${formatUsd(strategy.minimum, true)} · ${strategyFeeLine(strategy)}. ${strategy.summary}`,
+      ),
+    ];
+    if (eligible.length > shown.length) {
+      lines.push(
+        `${eligible.length - shown.length} more also meet this household minimum. Search Strategies for the rest, including ones above it.`,
+      );
+    }
     return lines.join("\n\n");
   }
 
@@ -108,6 +132,6 @@ export function answerQuestion(
     largest
       ? `The largest account is ${largest.name} at ${largest.custodian} (${formatUsd(largest.balance, true)}).`
       : `${client.household.name} is the household on file.`,
-    `Ask about offers, accounts, financials, or the household analysis. For example: what are my new offers.`,
+    `Ask about strategies, pitches, accounts, financials, or the household. For example: which strategies do I qualify for.`,
   ].join("\n\n");
 }

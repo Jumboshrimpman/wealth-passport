@@ -183,9 +183,9 @@ test("each account and the household keep three algorithmic matches and three bi
   assert.deepEqual(revealedItems(["one", "two", "three"], true), ["one", "two", "three"]);
   assert.deepEqual(revealedItems(["only"], false), ["only"]);
   assert.deepEqual(revealedItems([], false), []);
-  assert.equal(revealLabel("offers", 3, false), "Show me the next 2 offers");
+  assert.equal(revealLabel("offers", 3, false), "Show me the next 2 pitches");
   assert.equal(revealLabel("matches", 3, false), "Show me the next 2 matches");
-  assert.equal(revealLabel("offers", 2, false), "Show me the next offer");
+  assert.equal(revealLabel("offers", 2, false), "Show me the next pitch");
   assert.equal(revealLabel("matches", 2, false), "Show me the next match");
   assert.equal(revealLabel("offers", 1, false), null);
   assert.equal(revealLabel("offers", 0, false), null);
@@ -210,6 +210,7 @@ test("each account and the household keep three algorithmic matches and three bi
   assert.ok(merrill.algorithmic[0].matchPct > merrill.algorithmic[1].matchPct);
   assert.ok(merrill.algorithmic.every((item) => item.allInBps > 0));
   assert.equal(merrill.offers[0].terms, "all-in 38 bps");
+  assert.match(merrill.offers[0].customization, /State preference/);
   assert.deepEqual(
     merrill.offers.map((offer) => offer.id),
     ["meridian", "harbor-lane", "northbridge"],

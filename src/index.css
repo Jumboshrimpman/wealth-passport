@@ -1499,6 +1499,7 @@ textarea {
 }
 
 .offer-page h1,
+.strategies-page h1,
 .financials-page h1,
 .settings-page h1 {
   font-size: clamp(2.2rem, 4vw, 3.2rem);
@@ -1604,6 +1605,25 @@ textarea {
   font-size: 0.98rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+.lane-block .pitch-fact {
+  margin-top: 0.5rem;
+}
+
+.lane-block .pitch-label {
+  display: block;
+  color: #111;
+  font-size: 0.72rem;
+  font-weight: 560;
+}
+
+.lane-block .pitch-value {
+  display: block;
+  margin-top: 0.08rem;
+  color: #161616;
+  font-size: 0.92rem;
+  line-height: 1.4;
 }
 
 .lane-block .strategy-from {
@@ -1754,6 +1774,118 @@ textarea {
 .match-pct {
   font-variant-numeric: tabular-nums;
   font-size: 0.92rem;
+}
+
+.strategy-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  margin-top: 1.6rem;
+}
+
+.strategy-search input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #111;
+  background: transparent;
+  padding: 0.55rem 0;
+  font: inherit;
+  font-size: 1.05rem;
+  color: #111;
+  outline: none;
+}
+
+.strategy-eligible {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  max-width: 36rem;
+  color: #111;
+  cursor: pointer;
+}
+
+.strategy-eligible input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.18rem;
+  accent-color: #111;
+  flex: none;
+}
+
+.strategy-eligible-label {
+  display: block;
+  color: #111;
+  font-weight: 560;
+}
+
+.strategy-eligible-help {
+  display: block;
+  margin-top: 0.15rem;
+  color: #5e5e5e;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.strategy-count {
+  margin: 1.35rem 0 0.2rem;
+  color: #8a8a8a;
+  font-size: 0.84rem;
+}
+
+.strategy-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.strategy-list li {
+  padding: 1.05rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.strategy-list p {
+  margin: 0;
+}
+
+.strategy-name {
+  color: #111;
+  font-size: 1.12rem;
+  font-weight: 560;
+}
+
+.strategy-line {
+  margin-top: 0.16rem;
+  color: #161616;
+  font-size: 0.92rem;
+}
+
+.strategy-fee {
+  margin-top: 0.2rem;
+  color: #111;
+  font-size: 0.98rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.strategy-summary {
+  margin-top: 0.4rem;
+  max-width: 40rem;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.strategy-fit {
+  margin-top: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.strategy-fit.meets {
+  color: #0b4f2a;
+}
+
+.strategy-fit.above {
+  color: #8a8a8a;
 }
 
 .offer-names:empty {
