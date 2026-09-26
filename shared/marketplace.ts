@@ -1,5 +1,8 @@
 import { formatUsd } from "./format.ts";
-import type { Account, ClientRecord } from "./types.ts";
+import { matchInstitution } from "./match.ts";
+import { BID_TEMPLATES, type BidSleeve, type BidTemplate } from "./seed/bids.ts";
+import { INSTITUTION_SEEDS } from "./seed/institutions.ts";
+import type { Account, ClientRecord, Institution } from "./types.ts";
 
 export type RiskChoice = "aggressive" | "moderate" | "conservative";
 export type BalanceChoice = "equity" | "balanced" | "fixed-income";
@@ -649,130 +652,155 @@ export function buildOfferBook(client: ClientRecord, fit: FitInterview): OfferBo
   };
 }
 
-/**
- * Client-facing maximum. One offer is one strategy (an account lead, the
- * household lead, or a “More” extra) or one institution offer. The stored
- * book and the admin match list stay complete; only what a client is shown
- * is capped.
- */
-export const MAX_OFFERS_PER_CLIENT = 3;
+/** Top algorithmic matches kept on one account or on the household. */
+export const MAX_ALGORITHMIC_MATCHES = 3;
+/** Top company bids kept on one account or on the household. */
+export const MAX_TOP_OFFERS = 3;
 
-export interface InstitutionOfferRef {
+export interface BiddingOffer {
   id: string;
+  bidder: string;
   title: string;
-  /** 1 is the strongest desk. A higher number ranks lower. */
-  rank: number;
+  terms: string;
+  matchPct: number;
 }
 
-export type SurfacedOffer =
-  | {
-      kind: "strategy";
-      id: string;
-      score: number;
-      /** Null is the household idea. */
-      accountId: string | null;
-      recommendation: Recommendation;
-      /** A “More” extra. Extras fill a slot only after every primary is in. */
-      extra: boolean;
-    }
-  | {
-      kind: "institution";
-      id: string;
-      score: number;
-      institutionId: string;
-      title: string;
-      rank: number;
-    };
-
-/**
- * Rank 1 scores 92: under a focused account (96) and a household lead (93),
- * above an ordinary account lead (about 89). Each worse rank loses 4 points,
- * so a lower desk does not push out a stronger strategy.
- */
-export function institutionOfferScore(rank: number): number {
-  const place = Number.isFinite(rank) && rank >= 1 ? Math.round(rank) : 99;
-  return 92 - (place - 1) * 4;
+export interface OfferBoardRow {
+  /** Account id, or "household". */
+  key: string;
+  accountName: string;
+  meta: string;
+  /** Best algorithmic match first. Length 0–3. */
+  algorithmic: Recommendation[];
+  /** Best company bid first. Length 0–3. */
+  offers: BiddingOffer[];
 }
 
-function byScore(a: SurfacedOffer, b: SurfacedOffer): number {
-  return b.score - a.score || a.id.localeCompare(b.id);
+export interface OfferBoard {
+  rows: OfferBoardRow[];
+}
+
+interface Ranked {
+  id: string;
+  matchPct: number;
+}
+
+/** Highest match first. Ties break on id. Anything past the cap is dropped. */
+export function capByMatch<T extends Ranked>(items: readonly T[], cap: number): T[] {
+  return [...items].sort((a, b) => b.matchPct - a.matchPct || a.id.localeCompare(b.id)).slice(0, cap);
 }
 
 /**
- * The offers one client may see. Primaries compete first: the lead strategy
- * on each account, the lead household idea, and every eligible institution
- * offer. “More” extras are used only when fewer than three primaries exist.
- * Highest score wins. Ties break on id.
+ * Collapsed lists show rank 1 only. Expanded lists show every ranked item,
+ * which is already capped at three.
  */
-export function selectClientOffers(
-  book: OfferBook,
-  institutions: readonly InstitutionOfferRef[],
-): SurfacedOffer[] {
-  const primaries: SurfacedOffer[] = [];
-  for (const account of book.accounts) {
-    const lead = account.recommendations[0];
-    primaries.push({
-      kind: "strategy",
-      id: lead.id,
-      score: lead.matchPct,
-      accountId: account.accountId,
-      recommendation: lead,
-      extra: false,
-    });
+export function revealedItems<T>(ranked: readonly T[], expanded: boolean): readonly T[] {
+  if (ranked.length === 0) return [];
+  return expanded ? ranked : ranked.slice(0, 1);
+}
+
+/** Label for the control that reveals ranks 2 and 3. Null when there is nothing further to show. */
+export function revealLabel(
+  kind: "matches" | "offers",
+  rankedLength: number,
+  expanded: boolean,
+): string | null {
+  if (expanded || rankedLength <= 1) return null;
+  const hidden = rankedLength - 1;
+  if (hidden === 1) return kind === "offers" ? "Show me the next offer" : "Show me the next match";
+  const noun = kind === "offers" ? "offers" : "matches";
+  return `Show me the next ${hidden} ${noun}`;
+}
+
+function fixedIncome(client: ClientRecord, accountId: string): number {
+  return client.holdings
+    .filter((holding) => holding.accountId === accountId && holding.assetClass === "fixed-income")
+    .reduce((sum, holding) => sum + holding.value, 0);
+}
+
+/** Where a catalog institution's bid sits. Other bidders follow the sleeve. */
+function bidHostKey(client: ClientRecord, institutionId: string): string {
+  if (institutionId === "oakridge") {
+    const host = client.accounts
+      .filter((account) => account.sleeve === "private")
+      .sort((a, b) => b.balance - a.balance)[0];
+    return host?.id ?? "household";
   }
-  const householdLead = book.household[0];
-  primaries.push({
-    kind: "strategy",
-    id: householdLead.id,
-    score: householdLead.matchPct,
-    accountId: null,
-    recommendation: householdLead,
-    extra: false,
+  if (institutionId === "meridian") {
+    const taxable = client.accounts.filter((account) => account.sleeve === "taxable");
+    const host = [...taxable].sort(
+      (a, b) => fixedIncome(client, b.id) - fixedIncome(client, a.id) || b.balance - a.balance,
+    )[0];
+    if (host && fixedIncome(client, host.id) > 0) return host.id;
+    return "household";
+  }
+  return "household";
+}
+
+function toBiddingOffer(template: BidTemplate): BiddingOffer {
+  return {
+    id: template.id,
+    bidder: template.bidder,
+    title: template.title,
+    terms: template.terms,
+    matchPct: template.matchPct,
+  };
+}
+
+function bidsFor(
+  client: ClientRecord,
+  account: Account | null,
+  eligibleIds: ReadonlySet<string>,
+): BiddingOffer[] {
+  if (account && account.balance <= 0) return [];
+  const sleeve: BidSleeve = account ? account.sleeve : "household";
+  const here = account?.id ?? "household";
+  const pool = BID_TEMPLATES.filter((template) => {
+    if (!template.sleeves.includes(sleeve)) return false;
+    if (!template.institutionId) return true;
+    if (!eligibleIds.has(template.institutionId)) return false;
+    return bidHostKey(client, template.institutionId) === here;
   });
-  for (const institution of institutions) {
-    primaries.push({
-      kind: "institution",
-      id: institution.id,
-      score: institutionOfferScore(institution.rank),
-      institutionId: institution.id,
-      title: institution.title,
-      rank: institution.rank,
-    });
-  }
-
-  const selected = [...primaries].sort(byScore).slice(0, MAX_OFFERS_PER_CLIENT);
-  if (selected.length >= MAX_OFFERS_PER_CLIENT) return selected;
-
-  const extras: SurfacedOffer[] = [];
-  for (const account of book.accounts) {
-    for (const recommendation of account.recommendations.slice(1)) {
-      extras.push({
-        kind: "strategy",
-        id: recommendation.id,
-        score: recommendation.matchPct,
-        accountId: account.accountId,
-        recommendation,
-        extra: true,
-      });
-    }
-  }
-  for (const recommendation of book.household.slice(1)) {
-    extras.push({
-      kind: "strategy",
-      id: recommendation.id,
-      score: recommendation.matchPct,
-      accountId: null,
-      recommendation,
-      extra: true,
-    });
-  }
-  extras.sort(byScore);
-  return [...selected, ...extras.slice(0, MAX_OFFERS_PER_CLIENT - selected.length)];
+  return capByMatch(pool.map(toBiddingOffer), MAX_TOP_OFFERS);
 }
 
-/** How many offers the client actually sees. Never more than MAX_OFFERS_PER_CLIENT. */
-export function countNewOffers(book: OfferBook, institutions: readonly InstitutionOfferRef[]): number {
-  return selectClientOffers(book, institutions).length;
+/**
+ * One row per account, then the household. Algorithmic matches are WealthPass’s
+ * own ranking. Top offers are companies bidding rates on that row. Each list
+ * keeps at most three, highest match first.
+ */
+export function buildOfferBoard(
+  client: ClientRecord,
+  fit: FitInterview,
+  institutions: readonly Institution[] = INSTITUTION_SEEDS,
+): OfferBoard {
+  const book = buildOfferBook(client, fit);
+  const eligibleIds = new Set(
+    institutions.filter((institution) => matchInstitution(client, institution).eligible).map((institution) => institution.id),
+  );
+  const rows: OfferBoardRow[] = book.accounts.map((account) => {
+    const source = client.accounts.find((item) => item.id === account.accountId) ?? null;
+    return {
+      key: account.accountId,
+      accountName: account.accountName,
+      meta: `${account.custodian} · ${formatUsd(account.balance, true)}`,
+      algorithmic: capByMatch(account.recommendations, MAX_ALGORITHMIC_MATCHES),
+      offers: bidsFor(client, source, eligibleIds),
+    };
+  });
+  rows.push({
+    key: "household",
+    accountName: "Household",
+    meta: "Counted together at one bank",
+    algorithmic: capByMatch(book.household, MAX_ALGORITHMIC_MATCHES),
+    offers: bidsFor(client, null, eligibleIds),
+  });
+  return { rows };
+}
+
+/** Lead company bids the client sees before asking for the next ranks. */
+export function countNewOffers(board: OfferBoard): number {
+  return board.rows.filter((row) => row.offers.length > 0).length;
 }
 
 export function greetingLine(firstName: string, netWorth: number, offers: number): string {

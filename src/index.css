@@ -1526,11 +1526,34 @@ textarea {
 }
 
 .offers-table thead th {
-  color: #8a8a8a;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: #161616;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  text-transform: none;
   padding-bottom: 0.55rem;
+}
+
+.col-title,
+.col-note {
+  display: block;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.col-title {
+  color: #161616;
+  font-size: 0.95rem;
+}
+
+.col-note {
+  margin-top: 0.2rem;
+  color: #8a8a8a;
+  font-size: 0.75rem;
+}
+
+.offers-table td.offer-lane {
+  border-left: 1px solid #f0f0f0;
+  padding-left: 1.15rem;
 }
 
 .offer-account,
@@ -1572,16 +1595,42 @@ textarea {
   line-height: 1.45;
 }
 
-.strategy-block + .strategy-block {
-  margin-top: 0.85rem;
+.lane-block + .lane-block {
+  margin-top: 0.95rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #f4f4f4;
 }
 
-.strategy-more {
-  margin: 0 0 0.3rem;
+.rank-num {
+  margin: 0 0 0.25rem;
   color: #8a8a8a;
   font-size: 0.72rem;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+}
+
+.bid-name {
+  margin: 0;
+  color: #161616;
+}
+
+.bid-title,
+.bid-terms {
+  margin: 0.2rem 0 0;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+}
+
+.reveal-next {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1e7546;
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.16rem;
 }
 
 .match-line {

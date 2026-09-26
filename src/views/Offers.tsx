@@ -1,14 +1,13 @@
-import { useMemo } from "react";
-import { formatUsd } from "../../shared/format.ts";
+import { useEffect, useMemo, useState } from "react";
 import {
-  buildOfferBook,
+  buildOfferBoard,
   defaultFit,
-  selectClientOffers,
+  revealedItems,
+  revealLabel,
+  type BiddingOffer,
+  type OfferBoardRow,
   type Recommendation,
-  type SurfacedOffer,
 } from "../../shared/marketplace.ts";
-import type { OfferMatch } from "../../shared/match.ts";
-import type { ClientPassport } from "../../shared/types.ts";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 import { useOffers } from "../context/OfferContext";
@@ -23,85 +22,61 @@ function matchColor(pct: number): string {
   return "#34864e";
 }
 
-function fixedIncome(passport: ClientPassport, accountId: string): number {
-  return passport.holdings
-    .filter((holding) => holding.accountId === accountId && holding.assetClass === "fixed-income")
-    .reduce((sum, holding) => sum + holding.value, 0);
-}
-
-function offerRowKey(passport: ClientPassport, match: OfferMatch): string {
-  if (match.institution.id === "oakridge") {
-    const host = passport.accounts
-      .filter((account) => account.sleeve === "private")
-      .sort((a, b) => b.balance - a.balance)[0];
-    return host?.id ?? "household";
-  }
-  if (match.institution.id === "meridian") {
-    const host = passport.accounts
-      .filter((account) => account.sleeve === "taxable")
-      .sort((a, b) => fixedIncome(passport, b.id) - fixedIncome(passport, a.id))[0];
-    if (host && fixedIncome(passport, host.id) > 0) return host.id;
-    return "household";
-  }
-  return "household";
-}
-
-interface OfferTableRow {
-  key: string;
-  name: string;
-  meta: string;
-  strategies: Recommendation[];
-  institutionTitles: string[];
-  sortScore: number;
-}
-
 export function Offers() {
   const { passport } = useClient();
   const { profile } = useDemo();
   const { eligible } = useOffers();
   const fit = profile && profile.clientId === passport.id ? profile.fit : defaultFit(passport);
-  const book = useMemo(() => buildOfferBook(passport, fit), [fit, passport]);
-  const selected = useMemo(
+  const board = useMemo(
     () =>
-      selectClientOffers(
-        book,
-        eligible.map((match) => ({
-          id: match.institution.id,
-          title: match.institution.offer.title,
-          rank: match.institution.offer.rank,
-        })),
+      buildOfferBoard(
+        passport,
+        fit,
+        eligible.map((match) => match.institution),
       ),
-    [book, eligible],
+    [eligible, fit, passport],
   );
-  const rows = useMemo(
-    () => offerRows(passport, book, selected, eligible),
-    [book, eligible, passport, selected],
-  );
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setOpen({});
+  }, [passport.id]);
+
+  function expand(key: string) {
+    setOpen((current) => ({ ...current, [key]: true }));
+  }
 
   return (
     <div className="offer-page">
       <h1>Offers</h1>
       <p className="lede-quiet">
-        The strongest offers for {passport.household.clientFirstName}, at most three. Match and
-        institution offers sit on the same line. This ranking is proprietary. It cannot be bought.
+        Each account, and the household on its own, has two lists. Algorithmic match is our ranking
+        of the next strategy. Top offers are companies bidding their best rates on this profile.
+        Both lists open on the top result.
       </p>
       <div className="offers-scroll">
         <table className="offers-table">
           <thead>
             <tr>
               <th scope="col">Account</th>
-              <th scope="col">Strategy</th>
-              <th scope="col">Match and offers</th>
+              <th scope="col">
+                <span className="col-title">Algorithmic match</span>
+                <span className="col-note">Our ranking</span>
+              </th>
+              <th scope="col">
+                <span className="col-title">Top offers</span>
+                <span className="col-note">Companies bidding</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {board.rows.map((row) => (
               <OfferRow
                 key={row.key}
-                name={row.name}
-                meta={row.meta}
-                strategies={row.strategies}
-                offers={row.institutionTitles}
+                row={row}
+                matchesOpen={Boolean(open[`${row.key}:matches`])}
+                offersOpen={Boolean(open[`${row.key}:offers`])}
+                onExpand={expand}
               />
             ))}
           </tbody>
@@ -111,104 +86,84 @@ export function Offers() {
   );
 }
 
-function offerRows(
-  passport: ClientPassport,
-  book: ReturnType<typeof buildOfferBook>,
-  selected: SurfacedOffer[],
-  eligible: OfferMatch[],
-): OfferTableRow[] {
-  const byKey = new Map<string, OfferTableRow>();
-
-  function ensure(key: string): OfferTableRow {
-    const existing = byKey.get(key);
-    if (existing) return existing;
-    if (key === "household") {
-      const row: OfferTableRow = {
-        key,
-        name: "Household",
-        meta: "Counted together at one bank",
-        strategies: [],
-        institutionTitles: [],
-        sortScore: 0,
-      };
-      byKey.set(key, row);
-      return row;
-    }
-    const account = book.accounts.find((item) => item.accountId === key);
-    const row: OfferTableRow = {
-      key,
-      name: account?.accountName ?? "Account",
-      meta: account ? `${account.custodian} · ${formatUsd(account.balance, true)}` : "",
-      strategies: [],
-      institutionTitles: [],
-      sortScore: 0,
-    };
-    byKey.set(key, row);
-    return row;
-  }
-
-  for (const offer of selected) {
-    if (offer.kind !== "strategy") continue;
-    const row = ensure(offer.accountId ?? "household");
-    row.strategies.push(offer.recommendation);
-    row.sortScore = Math.max(row.sortScore, offer.score);
-  }
-
-  for (const offer of selected) {
-    if (offer.kind !== "institution") continue;
-    const match = eligible.find((item) => item.institution.id === offer.institutionId);
-    const row = ensure(match ? offerRowKey(passport, match) : "household");
-    row.institutionTitles.push(offer.title);
-    row.sortScore = Math.max(row.sortScore, offer.score);
-  }
-
-  return [...byKey.values()].sort((a, b) => b.sortScore - a.sortScore || a.name.localeCompare(b.name));
-}
-
 function OfferRow({
-  name,
-  meta,
-  strategies,
-  offers,
+  row,
+  matchesOpen,
+  offersOpen,
+  onExpand,
 }: {
-  name: string;
-  meta: string;
-  strategies: Recommendation[];
-  offers: string[];
+  row: OfferBoardRow;
+  matchesOpen: boolean;
+  offersOpen: boolean;
+  onExpand: (key: string) => void;
 }) {
-  const offerText = offers.join(" · ");
-  const lead = strategies[0];
+  const matches = revealedItems(row.algorithmic, matchesOpen);
+  const offers = revealedItems(row.offers, offersOpen);
+  const matchLabel = revealLabel("matches", row.algorithmic.length, matchesOpen);
+  const offerLabel = revealLabel("offers", row.offers.length, offersOpen);
   return (
     <tr>
       <th scope="row">
-        <span className="offer-account">{name}</span>
-        <span className="offer-meta">{meta}</span>
+        <span className="offer-account">{row.accountName}</span>
+        <span className="offer-meta">{row.meta}</span>
       </th>
       <td>
-        {strategies.map((recommendation, index) => (
-          <div key={recommendation.id} className="strategy-block">
-            {index > 0 ? <p className="strategy-more">More</p> : null}
-            <p className="strategy-shift">
-              <span className="strategy-now">{recommendation.currentStrategy}</span>
-              <span className="strategy-arrow" aria-hidden="true">
-                →
-              </span>
-              <span className="strategy-next">{recommendation.nextStrategy}</span>
-            </p>
-            <p className="strategy-reason">{recommendation.reason}</p>
-          </div>
+        {matches.map((recommendation, index) => (
+          <AlgorithmicMatch key={recommendation.id} recommendation={recommendation} rank={index + 1} />
         ))}
+        {matchLabel ? (
+          <button type="button" className="reveal-next" aria-expanded={false} onClick={() => onExpand(`${row.key}:matches`)}>
+            {matchLabel}
+          </button>
+        ) : null}
       </td>
-      <td>
-        <p className="match-line">
-          {lead ? (
-            <span className="match-pct" style={{ color: matchColor(lead.matchPct) }}>
-              {lead.matchPct}% match
-            </span>
-          ) : null}
-          <span className="offer-names">{offerText}</span>
-        </p>
+      <td className="offer-lane">
+        {offers.map((offer, index) => (
+          <BidBlock key={offer.id} offer={offer} rank={index + 1} />
+        ))}
+        {offerLabel ? (
+          <button type="button" className="reveal-next" aria-expanded={false} onClick={() => onExpand(`${row.key}:offers`)}>
+            {offerLabel}
+          </button>
+        ) : null}
       </td>
     </tr>
+  );
+}
+
+function AlgorithmicMatch({ recommendation, rank }: { recommendation: Recommendation; rank: number }) {
+  return (
+    <div className="lane-block">
+      {rank > 1 ? <p className="rank-num">{rank}</p> : null}
+      <p className="strategy-shift">
+        <span className="strategy-now">{recommendation.currentStrategy}</span>
+        <span className="strategy-arrow" aria-hidden="true">
+          →
+        </span>
+        <span className="strategy-next">{recommendation.nextStrategy}</span>
+      </p>
+      <p className="match-line">
+        <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
+          {recommendation.matchPct}% match
+        </span>
+      </p>
+      <p className="strategy-reason">{recommendation.reason}</p>
+    </div>
+  );
+}
+
+function BidBlock({ offer, rank }: { offer: BiddingOffer; rank: number }) {
+  return (
+    <div className="lane-block">
+      {rank > 1 ? <p className="rank-num">{rank}</p> : null}
+      <p className="bid-name">{offer.bidder}</p>
+      <p className="bid-title">{offer.title}</p>
+      <p className="bid-terms">{offer.terms}</p>
+      <p className="match-line">
+        <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
+          {offer.matchPct}% match
+        </span>
+      </p>
+    </div>
   );
 }

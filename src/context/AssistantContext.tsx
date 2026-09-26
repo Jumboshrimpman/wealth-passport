@@ -1,11 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  buildOfferBook,
+  buildOfferBoard,
   countNewOffers,
   defaultFit,
   describeWealth,
   greetingLine,
-  type InstitutionOfferRef,
 } from "../../shared/marketplace.ts";
 import { answerQuestion, STARTER_PROMPTS } from "../data/assistantCopy";
 import { useClient } from "./ClientContext";
@@ -46,20 +45,19 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const activeProfile = profile && profile.clientId === passport.id ? profile : null;
   const fit = useMemo(() => activeProfile?.fit ?? defaultFit(passport), [activeProfile, passport]);
   const wealth = useMemo(() => describeWealth(passport, activeProfile), [activeProfile, passport]);
-  const book = useMemo(() => buildOfferBook(passport, fit), [fit, passport]);
-  const institutionRefs = useMemo<InstitutionOfferRef[]>(
+  const board = useMemo(
     () =>
-      eligible.map((match) => ({
-        id: match.institution.id,
-        title: match.institution.offer.title,
-        rank: match.institution.offer.rank,
-      })),
-    [eligible],
+      buildOfferBoard(
+        passport,
+        fit,
+        eligible.map((match) => match.institution),
+      ),
+    [eligible, fit, passport],
   );
   const greeting = greetingLine(
     passport.household.clientFirstName,
     wealth.total,
-    countNewOffers(book, institutionRefs),
+    countNewOffers(board),
   );
 
   useEffect(() => {
@@ -72,9 +70,8 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       if (!trimmed) return;
       const reply = answerQuestion(trimmed, {
         client: passport,
-        book,
+        board,
         wealth,
-        institutions: eligible,
       });
       setMessages((current) => [
         ...current,
@@ -82,7 +79,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         { id: nextId(), role: "assistant", text: reply },
       ]);
     },
-    [book, eligible, passport, wealth],
+    [board, passport, wealth],
   );
 
   const value = useMemo(

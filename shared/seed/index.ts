@@ -7,10 +7,9 @@ import { GENERATED_CLIENT_SEEDS } from "./households.ts";
 export const DEFAULT_CLIENT_ID = "elena-whitmore";
 
 /**
- * Seed clients keep every account. A client is shown at most three offers
- * (MAX_OFFERS_PER_CLIENT): the highest-match account and household strategies
- * plus eligible institution offers. “More” extras fill a slot only when that
- * primary set is already under three. The cap does not delete seed accounts.
+ * Seed clients keep every account. Offers shows each account, and the household
+ * on its own row. Each row has up to three algorithmic matches and up to three
+ * company bids (see shared/seed/bids.ts). The page opens on rank 1 of each list.
  */
 export const CLIENT_SEEDS: ClientRecord[] = [elenaClient, priyaClient, ...GENERATED_CLIENT_SEEDS];
 

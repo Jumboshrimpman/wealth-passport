@@ -1,21 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { eligibleMatches, matchInstitutions } from "./match.ts";
 import {
+  buildOfferBoard,
   buildOfferBook,
+  capByMatch,
   clientFullName,
   defaultFit,
   describeWealth,
-  institutionOfferScore,
-  MAX_OFFERS_PER_CLIENT,
+  MAX_ALGORITHMIC_MATCHES,
+  MAX_TOP_OFFERS,
   oneBankHouseholdMinimum,
+  revealedItems,
+  revealLabel,
   runDemoConnector,
-  selectClientOffers,
   type DemoProfile,
-  type InstitutionOfferRef,
 } from "./marketplace.ts";
 import { CLIENT_SEEDS } from "./seed/index.ts";
-import { INSTITUTION_SEEDS } from "./seed/institutions.ts";
 
 function sampleProfile(clientId: string): DemoProfile {
   const client = CLIENT_SEEDS.find((row) => row.id === clientId);
@@ -159,80 +159,84 @@ test("one-bank household minimum is not a threshold a single account already mee
   assert.doesNotMatch(splitReason, /\$40M household minimum/);
 });
 
-function institutionRefs(clientId: string): InstitutionOfferRef[] {
-  const client = CLIENT_SEEDS.find((row) => row.id === clientId);
-  if (!client) throw new Error(`missing ${clientId}`);
-  return eligibleMatches(matchInstitutions(client, INSTITUTION_SEEDS)).map((match) => ({
-    id: match.institution.id,
-    title: match.institution.offer.title,
-    rank: match.institution.offer.rank,
-  }));
-}
+test("each account and the household keep three algorithmic matches and three bids", () => {
+  assert.equal(MAX_ALGORITHMIC_MATCHES, 3);
+  assert.equal(MAX_TOP_OFFERS, 3);
 
-test("a client sees at most three offers, highest match first", () => {
-  assert.equal(MAX_OFFERS_PER_CLIENT, 3);
-  assert.equal(institutionOfferScore(1), 92);
-  assert.equal(institutionOfferScore(2), 88);
-  assert.equal(institutionOfferScore(3), 84);
-  assert.equal(institutionOfferScore(4), 80);
+  const dropped = capByMatch(
+    [
+      { id: "a", matchPct: 70 },
+      { id: "b", matchPct: 90 },
+      { id: "c", matchPct: 80 },
+      { id: "d", matchPct: 60 },
+    ],
+    3,
+  );
+  assert.deepEqual(
+    dropped.map((item) => item.id),
+    ["b", "c", "a"],
+  );
+
+  assert.equal(revealedItems(["one", "two", "three"], false).length, 1);
+  assert.deepEqual(revealedItems(["one", "two", "three"], false), ["one"]);
+  assert.deepEqual(revealedItems(["one", "two", "three"], true), ["one", "two", "three"]);
+  assert.deepEqual(revealedItems(["only"], false), ["only"]);
+  assert.deepEqual(revealedItems([], false), []);
+  assert.equal(revealLabel("offers", 3, false), "Show me the next 2 offers");
+  assert.equal(revealLabel("matches", 3, false), "Show me the next 2 matches");
+  assert.equal(revealLabel("offers", 2, false), "Show me the next offer");
+  assert.equal(revealLabel("matches", 2, false), "Show me the next match");
+  assert.equal(revealLabel("offers", 1, false), null);
+  assert.equal(revealLabel("offers", 0, false), null);
+  assert.equal(revealLabel("offers", 3, true), null);
 
   const elena = CLIENT_SEEDS.find((row) => row.id === "elena-whitmore");
   if (!elena) throw new Error("elena missing");
-  const book = buildOfferBook(elena, defaultFit(elena));
-  const selected = selectClientOffers(book, institutionRefs(elena.id));
-  assert.equal(selected.length, 3);
-  assert.deepEqual(
-    selected.map((offer) => offer.id),
-    ["ml-pw-cheaper", "household-combine", "meridian"],
-  );
-  assert.equal(
-    selected.some((offer) => offer.kind === "strategy" && offer.extra),
-    false,
-  );
-  assert.equal(selected.some((offer) => offer.id === "first-atlantic" || offer.id === "oakridge"), false);
+  const board = buildOfferBoard(elena, defaultFit(elena));
+  assert.equal(board.rows.length, elena.accounts.length + 1);
+  assert.equal(board.rows[board.rows.length - 1].key, "household");
 
-  const withFourth = selectClientOffers(book, [
-    ...institutionRefs(elena.id),
-    { id: "rank-four", title: "Fourth desk", rank: 4 },
-  ]);
-  assert.equal(withFourth.length, 3);
-  assert.equal(withFourth.some((offer) => offer.id === "rank-four"), false);
-
-  const tiny = structuredClone(elena);
-  tiny.accounts = [elena.accounts[0]];
-  tiny.household = { ...elena.household, name: "Tiny household" };
-  const tinyBook = buildOfferBook(tiny, {
-    ...defaultFit(tiny),
-    focusAccountIds: [tiny.accounts[0].id],
-  });
-  const tinySelected = selectClientOffers(tinyBook, []);
-  assert.equal(tinySelected.length, 3);
+  const merrill = board.rows.find((row) => row.key === "ml-pw");
+  const household = board.rows.find((row) => row.key === "household");
+  const privateRow = board.rows.find((row) => row.key === "oak-pe");
+  assert.ok(merrill && household && privateRow);
+  assert.equal(merrill.algorithmic.length, 3);
+  assert.equal(merrill.algorithmic[0].id, "ml-pw-cheaper");
+  assert.ok(merrill.algorithmic[0].matchPct > merrill.algorithmic[1].matchPct);
   assert.deepEqual(
-    tinySelected.map((offer) => offer.id),
-    ["ml-pw-cheaper", "household-combine", "ml-pw-change"],
+    merrill.offers.map((offer) => offer.id),
+    ["meridian", "harbor-lane", "northbridge"],
   );
-  assert.equal(tinySelected.filter((offer) => offer.kind === "strategy" && offer.extra).length, 1);
+  assert.equal(merrill.offers.some((offer) => offer.id === "field-co" || offer.id === "lark-index"), false);
+  assert.equal(household.algorithmic[0].id, "household-combine");
+  assert.equal(household.offers[0].id, "first-atlantic");
+  assert.equal(household.offers.length, 3);
+  assert.equal(privateRow.offers[0].id, "oakridge");
+  assert.equal(revealedItems(merrill.offers, false).length, 1);
+  assert.equal(revealedItems(merrill.algorithmic, false).length, 1);
+
+  const quiet = structuredClone(elena);
+  quiet.accounts = [{ ...elena.accounts[0], balance: 0 }];
+  const quietBoard = buildOfferBoard(quiet, defaultFit(quiet));
+  assert.deepEqual(quietBoard.rows[0].offers, []);
+  assert.equal(revealLabel("offers", quietBoard.rows[0].offers.length, false), null);
 
   for (const client of CLIENT_SEEDS) {
-    const clientBook = buildOfferBook(client, defaultFit(client));
-    const refs = institutionRefs(client.id);
-    const visible = selectClientOffers(clientBook, refs);
-    assert.ok(visible.length <= MAX_OFFERS_PER_CLIENT);
-    assert.ok(visible.length >= 1);
-    const primaryIds = new Set([
-      ...clientBook.accounts.map((account) => account.recommendations[0].id),
-      clientBook.household[0].id,
-      ...refs.map((ref) => ref.id),
-    ]);
-    if (primaryIds.size >= MAX_OFFERS_PER_CLIENT) {
-      for (const offer of visible) {
-        assert.equal(primaryIds.has(offer.id), true, `${client.id} surfaced an extra while primaries filled the cap`);
-      }
+    const rows = buildOfferBoard(client, defaultFit(client)).rows;
+    assert.equal(rows.length, client.accounts.length + 1);
+    for (const row of rows) {
+      assert.ok(row.algorithmic.length <= MAX_ALGORITHMIC_MATCHES);
+      assert.ok(row.algorithmic.length >= 1);
+      assert.ok(row.offers.length <= MAX_TOP_OFFERS);
+      const matchScores = row.algorithmic.map((item) => item.matchPct);
+      const bidScores = row.offers.map((item) => item.matchPct);
+      assert.deepEqual(matchScores, [...matchScores].sort((a, b) => b - a));
+      assert.deepEqual(bidScores, [...bidScores].sort((a, b) => b - a));
+      assert.equal(revealedItems(row.algorithmic, false).length, 1);
+      assert.equal(revealedItems(row.offers, false).length, row.offers.length === 0 ? 0 : 1);
     }
-    const scores = visible.map((offer) => offer.score);
-    assert.deepEqual(scores, [...scores].sort((a, b) => b - a));
   }
 
-  const blob = JSON.stringify(selected);
+  const blob = JSON.stringify(board);
   assert.equal(blob.toLowerCase().includes(["paid", "placement"].join(" ")), false);
 });
