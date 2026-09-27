@@ -26,8 +26,22 @@ test("accepting opens a demo agreement and a Schwab LPOA before the row locks", 
   assert.match(agreement, /Client agreement with Meridian Global Asset Management/);
   assert.match(agreement, /Tax-aware municipal SMA/);
   assert.match(agreement, /demo signature/);
-  assert.match(lpoa, /will set up a brokerage with Schwab to manage the assets/);
-  assert.match(lpoa, /Meridian Global Asset Management/);
+  assert.match(
+    lpoa,
+    /Limited power of attorney\. Your selected Manager will set up a brokerage with Schwab to manage the assets/,
+  );
+  assert.equal(lpoa.includes("WealthPass will set up a brokerage"), false);
+  assert.equal(lpoa.includes("Meridian Global Asset Management"), false);
+  const algorithmicLpoa = schwabLpoaLines({
+    party: ALGORITHMIC_PARTY,
+    strategy: "Lower-fee equity strategy",
+    accountName: "Private Wealth brokerage",
+  }).join(" ");
+  assert.match(
+    algorithmicLpoa,
+    /Your selected Manager will set up a brokerage with Schwab to manage the assets/,
+  );
+  assert.equal(algorithmicLpoa.includes("WealthPass will set up a brokerage"), false);
   assert.equal(lpoa.toLowerCase().includes(["paid", "placement"].join(" ")), false);
 });
 

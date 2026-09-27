@@ -59,12 +59,12 @@ export function clientAgreementLines(
   ];
 }
 
-/** Demo LPOA. The asset manager sets up a Schwab brokerage to manage the assets. */
+/** Demo LPOA. The selected Manager sets up a Schwab brokerage to manage the assets. */
 export function schwabLpoaLines(
   choice: Pick<AcceptableChoice, "party" | "strategy" | "accountName">,
 ): string[] {
   return [
-    `Limited power of attorney. ${choice.party} will set up a brokerage with Schwab to manage the assets.`,
+    "Limited power of attorney. Your selected Manager will set up a brokerage with Schwab to manage the assets.",
     `The brokerage is for ${choice.strategy} on ${choice.accountName}.`,
     "This demo LPOA is not a real authorization.",
   ];
