@@ -5,6 +5,11 @@ import {
   choicePrice,
   clientAgreementLines,
   listsAfterAccept,
+  REVOKE_LIQUIDATION_ACKNOWLEDGMENT,
+  revokeConsentAcknowledgment,
+  revokeConsentLines,
+  revokeLiquidationLines,
+  revokeOnRow,
   rowCanAccept,
   schwabLpoaLines,
   type AcceptableChoice,
@@ -53,12 +58,14 @@ export function Offers() {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [picking, setPicking] = useState<string | null>(null);
   const [signing, setSigning] = useState<{ rowKey: string; choice: AcceptableChoice } | null>(null);
+  const [revoking, setRevoking] = useState<string | null>(null);
   const [accepted, setAccepted] = useState<Record<string, RowAcceptance>>(() => readAcceptedOffers(passport.id));
 
   useEffect(() => {
     setOpen({});
     setPicking(null);
     setSigning(null);
+    setRevoking(null);
     setAccepted(readAcceptedOffers(passport.id));
   }, [passport.id]);
 
@@ -75,6 +82,15 @@ export function Offers() {
       return next;
     });
     setPicking(null);
+  }
+
+  function revoke(rowKey: string) {
+    setAccepted((current) => {
+      const next = revokeOnRow(current, rowKey);
+      writeAcceptedOffers(passport.id, next);
+      return next;
+    });
+    setRevoking(null);
   }
 
   return (
@@ -112,6 +128,7 @@ export function Offers() {
                 onStartPick={() => setPicking(row.key)}
                 onCancelPick={() => setPicking(null)}
                 onChoose={(choice) => setSigning({ rowKey: row.key, choice })}
+                onRevoke={() => setRevoking(row.key)}
               />
             ))}
           </tbody>
@@ -125,6 +142,13 @@ export function Offers() {
             accept(signing.rowKey, signing.choice);
             setSigning(null);
           }}
+        />
+      ) : null}
+      {revoking && accepted[revoking] ? (
+        <RevokeModal
+          acceptance={accepted[revoking]}
+          onCancel={() => setRevoking(null)}
+          onRevoke={() => revoke(revoking)}
         />
       ) : null}
     </div>
@@ -141,6 +165,7 @@ function OfferRow({
   onStartPick,
   onCancelPick,
   onChoose,
+  onRevoke,
 }: {
   row: OfferBoardRow;
   matchesOpen: boolean;
@@ -151,6 +176,7 @@ function OfferRow({
   onStartPick: () => void;
   onCancelPick: () => void;
   onChoose: (choice: AcceptableChoice) => void;
+  onRevoke: () => void;
 }) {
   const shown = accepted ? listsAfterAccept(row, accepted) : null;
   const matches = shown ? shown.algorithmic : revealedItems(row.algorithmic, matchesOpen);
@@ -221,6 +247,7 @@ function OfferRow({
           onStartPick={onStartPick}
           onCancelPick={onCancelPick}
           onChoose={onChoose}
+          onRevoke={onRevoke}
         />
       </td>
     </tr>
@@ -235,6 +262,7 @@ function AcceptCell({
   onStartPick,
   onCancelPick,
   onChoose,
+  onRevoke,
 }: {
   canAccept: boolean;
   accepted: RowAcceptance | null;
@@ -243,13 +271,19 @@ function AcceptCell({
   onStartPick: () => void;
   onCancelPick: () => void;
   onChoose: (choice: AcceptableChoice) => void;
+  onRevoke: () => void;
 }) {
   if (!canAccept) return null;
   if (accepted) {
     return (
-      <div className="accepted-offer" role="status">
-        <p className="accepted-kicker">Accepted</p>
-        <p className="accepted-copy">{accepted.confirmation}</p>
+      <div className="accepted-offer">
+        <div role="status">
+          <p className="accepted-kicker">Accepted</p>
+          <p className="accepted-copy">{accepted.confirmation}</p>
+        </div>
+        <button type="button" className="text-button revoke-consent" onClick={onRevoke}>
+          Revoke
+        </button>
       </div>
     );
   }
@@ -325,6 +359,57 @@ function SignModal({
         <div className="accept-modal-actions">
           <button type="button" className="text-button" disabled={!ready} onClick={onSign}>
             Sign
+          </button>
+          <button type="button" className="reveal-next" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RevokeModal({
+  acceptance,
+  onCancel,
+  onRevoke,
+}: {
+  acceptance: RowAcceptance;
+  onCancel: () => void;
+  onRevoke: () => void;
+}) {
+  const [consent, setConsent] = useState(false);
+  const [liquidation, setLiquidation] = useState(false);
+  const ready = consent && liquidation;
+  return (
+    <div className="accept-modal-backdrop" role="presentation" onClick={onCancel}>
+      <div
+        className="accept-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="revoke-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="revoke-modal-title">Revoke consent</h2>
+        <p className="accept-modal-kicker">Consent</p>
+        {revokeConsentLines(acceptance).map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        <label className="accept-modal-check">
+          <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
+          <span>{revokeConsentAcknowledgment(acceptance)}</span>
+        </label>
+        <p className="accept-modal-kicker">Liquidation</p>
+        {revokeLiquidationLines().map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        <label className="accept-modal-check">
+          <input type="checkbox" checked={liquidation} onChange={(event) => setLiquidation(event.target.checked)} />
+          <span>{REVOKE_LIQUIDATION_ACKNOWLEDGMENT}</span>
+        </label>
+        <div className="accept-modal-actions">
+          <button type="button" className="text-button" disabled={!ready} onClick={onRevoke}>
+            Revoke
           </button>
           <button type="button" className="reveal-next" onClick={onCancel}>
             Cancel

@@ -6,7 +6,12 @@ import {
   acceptanceConfirmation,
   clientAgreementLines,
   schwabLpoaLines,
+  revokeConsentAcknowledgment,
+  revokeConsentLines,
+  revokeLiquidationLines,
+  REVOKE_LIQUIDATION_ACKNOWLEDGMENT,
   acceptOnRow,
+  revokeOnRow,
   allInBpsFromTerms,
   listsAfterAccept,
   rowCanAccept,
@@ -145,4 +150,46 @@ test("each account and the household can accept one visible choice", () => {
   assert.equal(fromStorage.matchesOpen, false);
   assert.equal(fromStorage.offersOpen, false);
   assert.equal(listsAfterAccept(household, fromStorage).algorithmic.length, 1);
+});
+
+test("revoking names the strategy, price, and manager, then clears that row", () => {
+  const elena = CLIENT_SEEDS.find((row) => row.id === "elena-whitmore");
+  if (!elena) throw new Error("elena missing");
+  const board = buildOfferBoard(elena, defaultFit(elena));
+  const merrill = board.rows.find((row) => row.key === "ml-pw");
+  const household = board.rows.find((row) => row.key === "household");
+  assert.ok(merrill && household);
+  const choices = acceptChoicesFor(merrill, false, false);
+  const meridian = choices.find((choice) => choice.id === "bid:meridian");
+  const wealthpass = choices.find((choice) => choice.party === ALGORITHMIC_PARTY);
+  assert.ok(meridian && wealthpass);
+
+  const consent = revokeConsentLines(meridian).join(" ");
+  assert.match(consent, /You are revoking consent for Tax-aware municipal SMA/);
+  assert.match(consent, /The price is all-in 38 bps/);
+  assert.match(consent, /The manager is Meridian Global Asset Management/);
+  assert.equal(
+    revokeConsentAcknowledgment(meridian),
+    "I revoke consent for Tax-aware municipal SMA at all-in 38 bps with Meridian Global Asset Management",
+  );
+  const algorithmic = revokeConsentLines(wealthpass).join(" ");
+  assert.match(algorithmic, /Lower-fee equity strategy/);
+  assert.match(algorithmic, /The price is all-in 28 bps/);
+  assert.match(algorithmic, /The manager is WealthPass/);
+
+  const liquidation = revokeLiquidationLines().join(" ");
+  assert.match(liquidation, /brokerage will be liquidated/);
+  assert.match(liquidation, /sent back to your custodian/);
+  assert.match(REVOKE_LIQUIDATION_ACKNOWLEDGMENT, /liquidated and the assets sent back to my custodian/);
+
+  const booked = acceptOnRow(acceptOnRow({}, merrill.key, meridian), household.key, acceptChoicesFor(household, false, false)[1]);
+  const cleared = revokeOnRow(booked, merrill.key);
+  assert.equal(cleared[merrill.key], undefined);
+  assert.equal(cleared[household.key].choiceId, booked[household.key].choiceId);
+  assert.equal(revokeOnRow(cleared, merrill.key)[household.key].choiceId, booked[household.key].choiceId);
+  const again = acceptOnRow(cleared, merrill.key, wealthpass);
+  assert.equal(again[merrill.key].choiceId, wealthpass.id);
+
+  const blob = consent + liquidation + REVOKE_LIQUIDATION_ACKNOWLEDGMENT + revokeConsentAcknowledgment(meridian);
+  assert.equal(blob.toLowerCase().includes(["paid", "placement"].join(" ")), false);
 });

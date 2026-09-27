@@ -1742,6 +1742,11 @@ textarea {
   line-height: 1.4;
 }
 
+.accepted-offer .revoke-consent {
+  display: inline-block;
+  margin-top: 0.75rem;
+}
+
 .accept-picker {
   display: flex;
   flex-direction: column;

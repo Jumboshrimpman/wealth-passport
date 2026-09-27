@@ -70,6 +70,38 @@ export function schwabLpoaLines(
   ];
 }
 
+/** Demo revocation. Confirming it in the product does not liquidate an account. */
+export function revokeConsentLines(
+  acceptance: Pick<RowAcceptance, "strategy" | "party" | "allInBps" | "rateLabel">,
+): string[] {
+  const price = choicePrice(acceptance);
+  return [
+    `You are revoking consent for ${acceptance.strategy}.`,
+    price ? `The price is ${price}.` : "No price was shown on accept.",
+    `The manager is ${acceptance.party}.`,
+    "This is a demo signature. It is not a legal instruction.",
+  ];
+}
+
+export function revokeConsentAcknowledgment(
+  acceptance: Pick<RowAcceptance, "strategy" | "party" | "allInBps" | "rateLabel">,
+): string {
+  const price = choicePrice(acceptance);
+  const priced = price ? ` at ${price}` : "";
+  return `I revoke consent for ${acceptance.strategy}${priced} with ${acceptance.party}`;
+}
+
+export function revokeLiquidationLines(): string[] {
+  return [
+    "Your brokerage will be liquidated.",
+    "The assets will be sent back to your custodian.",
+    "This demo acknowledgment is not an instruction to a custodian.",
+  ];
+}
+
+export const REVOKE_LIQUIDATION_ACKNOWLEDGMENT =
+  "I understand my brokerage will be liquidated and the assets sent back to my custodian";
+
 export function acceptanceConfirmation(
   choice: Pick<AcceptableChoice, "party" | "strategy" | "accountName" | "allInBps" | "rateLabel">,
 ): string {
@@ -139,6 +171,17 @@ export function acceptOnRow(
       offersOpen: visibility.offersOpen,
     },
   };
+}
+
+/** Drop one row’s acceptance. Other rows stay. */
+export function revokeOnRow(
+  current: Readonly<Record<string, RowAcceptance>>,
+  rowKey: string,
+): Record<string, RowAcceptance> {
+  if (!current[rowKey]) return { ...current };
+  const next = { ...current };
+  delete next[rowKey];
+  return next;
 }
 
 /**
