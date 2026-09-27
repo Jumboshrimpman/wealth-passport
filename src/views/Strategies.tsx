@@ -6,7 +6,10 @@ import {
   meetsStrategyMinimum,
   STRATEGY_UNIVERSE,
   strategyFeeLine,
+  type StrategyProfile,
 } from "../../shared/strategies.ts";
+import { detailFromProfile } from "../../shared/strategyDetail.ts";
+import { StrategyDetailModal } from "../components/StrategyDetailModal";
 import { useClient } from "../context/ClientContext";
 
 /** Eligible-for-me starts off so the full universe is visible until the client narrows it. */
@@ -15,6 +18,7 @@ export function Strategies() {
   const investable = passport.household.investable;
   const [query, setQuery] = useState("");
   const [eligibleOnly, setEligibleOnly] = useState(false);
+  const [selected, setSelected] = useState<StrategyProfile | null>(null);
   const rows = useMemo(
     () => browseStrategies(STRATEGY_UNIVERSE, investable, { query, eligibleOnly }),
     [eligibleOnly, investable, query],
@@ -64,22 +68,27 @@ export function Strategies() {
             const fee = strategyFeeLine(strategy);
             return (
               <li key={strategy.id}>
-                <p className="strategy-name">{strategy.name}</p>
-                <p className="strategy-line">
-                  {strategy.category} · {strategy.style}
-                </p>
-                <p className="strategy-line">{strategy.manager}</p>
-                <p className="strategy-line">Minimum {formatUsd(strategy.minimum, true)}</p>
-                {fee ? <p className="strategy-fee">{fee}</p> : null}
-                <p className="strategy-summary">{strategy.summary}</p>
-                <p className={qualifies ? "strategy-fit meets" : "strategy-fit above"}>
-                  {qualifies ? "You meet the minimum" : "Above this household"}
-                </p>
+                <button type="button" className="strategy-row" aria-haspopup="dialog" onClick={() => setSelected(strategy)}>
+                  <span className="strategy-name">{strategy.name}</span>
+                  <span className="strategy-line">
+                    {strategy.category} · {strategy.style}
+                  </span>
+                  <span className="strategy-line">{strategy.manager}</span>
+                  <span className="strategy-line">Minimum {formatUsd(strategy.minimum, true)}</span>
+                  {fee ? <span className="strategy-fee">{fee}</span> : null}
+                  <span className="strategy-summary">{strategy.summary}</span>
+                  <span className={qualifies ? "strategy-fit meets" : "strategy-fit above"}>
+                    {qualifies ? "You meet the minimum" : "Above this household"}
+                  </span>
+                </button>
               </li>
             );
           })}
         </ul>
       )}
+      {selected ? (
+        <StrategyDetailModal detail={detailFromProfile(selected, investable)} onClose={() => setSelected(null)} />
+      ) : null}
     </div>
   );
 }

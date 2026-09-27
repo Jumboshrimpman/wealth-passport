@@ -1360,7 +1360,7 @@ textarea {
 }
 
 .assistant-dock.is-collapsed {
-  width: 2.75rem;
+  width: 3.35rem;
 }
 
 .assistant-dock-bar {
@@ -1381,15 +1381,31 @@ textarea {
 
 .assistant-rail {
   flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
   border: 0;
   background: transparent;
   color: #161616;
   cursor: pointer;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  letter-spacing: 0.08em;
-  font-size: 0.82rem;
-  padding: 1rem 0;
+  writing-mode: horizontal-tb;
+  padding: 0.85rem 0.2rem 1rem;
+}
+
+.teddy-mark {
+  width: 2.2rem;
+  height: auto;
+  display: block;
+}
+
+.assistant-rail:hover .teddy-mark,
+.assistant-rail:focus-visible .teddy-mark {
+  transform: translateY(-1px);
+}
+
+.assistant-rail:focus-visible {
+  outline: 1px solid #111;
+  outline-offset: -1px;
 }
 
 .assistant-panel.dock,
@@ -1611,6 +1627,30 @@ textarea {
   font-size: 1.08rem;
   font-weight: 560;
   line-height: 1.25;
+}
+
+button.proposed-name {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.lane-block.strategy-open {
+  cursor: pointer;
+}
+
+.lane-block.strategy-open:hover .proposed-name {
+  text-decoration: underline;
+  text-underline-offset: 0.14rem;
+}
+
+.lane-block.strategy-open:has(.details-toggle:hover) .proposed-name {
+  text-decoration: none;
 }
 
 .lane-block .all-in-fee,
@@ -1856,6 +1896,90 @@ textarea {
   margin-top: 0;
 }
 
+.strategy-detail-modal {
+  width: min(36rem, 100%);
+}
+
+.strategy-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.strategy-detail-head h2 {
+  margin: 0;
+}
+
+.strategy-detail-head .reveal-next {
+  margin: 0.4rem 0 0;
+  flex: none;
+}
+
+.accept-modal .strategy-detail-line {
+  margin: 0.16rem 0 0;
+  color: #161616;
+  font-size: 0.95rem;
+}
+
+.accept-modal .strategy-detail-fee {
+  margin: 0.28rem 0 0;
+  color: #111;
+  font-size: 0.98rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.accept-modal .strategy-detail-fit {
+  margin: 0.28rem 0 0;
+  font-size: 0.84rem;
+}
+
+.strategy-detail-fit.meets {
+  color: #0b4f2a;
+}
+
+.strategy-detail-fit.above {
+  color: #8a8a8a;
+}
+
+.accept-modal .strategy-detail-summary {
+  margin: 0.45rem 0 0;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.accept-modal .strategy-from {
+  margin-top: 0.55rem;
+}
+
+.strategy-chart-figure {
+  margin: 0.2rem 0 0;
+}
+
+.strategy-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.strategy-chart-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.15rem;
+  color: #8a8a8a;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.accept-modal .strategy-chart-note {
+  margin: 0.28rem 0 0;
+  color: #8a8a8a;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .reveal-next {
   margin: 0.55rem 0 0;
   padding: 0;
@@ -1959,7 +2083,32 @@ textarea {
   border-bottom: 1px solid #f0f0f0;
 }
 
-.strategy-list p {
+.strategy-row {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.strategy-row:hover .strategy-name {
+  text-decoration: underline;
+  text-underline-offset: 0.14rem;
+}
+
+.strategy-row:focus-visible {
+  outline: 1px solid #111;
+  outline-offset: 3px;
+}
+
+.strategy-list p,
+.strategy-row > span {
+  display: block;
   margin: 0;
 }
 
@@ -2384,11 +2533,11 @@ textarea {
 
   .assistant-rail {
     writing-mode: horizontal-tb;
-    transform: none;
-    text-align: left;
-    padding: 0.95rem 1.1rem;
-    text-decoration: underline;
-    text-underline-offset: 0.28em;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.7rem 1.1rem;
+    text-decoration: none;
   }
 
   .portal.chat-home {
