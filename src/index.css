@@ -1360,7 +1360,7 @@ textarea {
 }
 
 .assistant-dock.is-collapsed {
-  width: 3.6rem;
+  width: 3rem;
 }
 
 .assistant-dock-bar {
@@ -1393,14 +1393,15 @@ textarea {
 }
 
 .teddy-mark {
-  width: 2.45rem;
+  width: 1.7rem;
   height: auto;
   display: block;
+  color: #9a9a9a;
 }
 
 .assistant-rail:hover .teddy-mark,
 .assistant-rail:focus-visible .teddy-mark {
-  transform: translateY(-1px);
+  color: #161616;
 }
 
 .assistant-rail:focus-visible {
