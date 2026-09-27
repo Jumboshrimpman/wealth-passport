@@ -33,7 +33,8 @@ export interface DemoProfile {
   coinbase: { connected: boolean; amount: number; label: string };
   kalshi: { connected: boolean; amount: number; label: string };
   other: { label: string; amount: number } | null;
-  taxDocName: string | null;
+  /** True after the simulated IRS connector runs. Wage and return data is not a file upload. */
+  irsConnected: boolean;
   /** True when the person enrolling marked that they are the financial advisor. */
   isFinancialAdvisor: boolean;
   fit: FitInterview;
@@ -68,6 +69,13 @@ export interface IrsConnectResult {
 }
 
 export type DemoConnectResult = BankConnectResult | AssetConnectResult | IrsConnectResult;
+
+/** Match bands on pitches: ≥90 green, ≥60 and <90 yellow, below 60 red. */
+export function matchTone(pct: number): "high" | "mid" | "low" {
+  if (pct >= 90) return "high";
+  if (pct >= 60) return "mid";
+  return "low";
+}
 
 export interface Recommendation {
   id: string;
@@ -296,6 +304,18 @@ function splitOutside(outside: number): { tax: number; irs: number; rest: number
   return { tax, irs, rest: outside - tax - irs };
 }
 
+function irsWealthPoint(amount: number, connected: boolean): WealthPoint {
+  return {
+    id: "irs",
+    label: "IRS transcript",
+    amount,
+    status: "pending",
+    note: connected
+      ? "Connected in this demo. A transcript request is out, and nothing has posted yet."
+      : "Not connected",
+  };
+}
+
 function pictureFrom(points: WealthPoint[], total: number): WealthPicture {
   const drafted = points.map((point) => ({ ...point }));
   const sum = drafted.reduce((totalSum, point) => totalSum + point.amount, 0);
@@ -320,11 +340,9 @@ function wealthFromRecord(client: ClientRecord): WealthPicture {
     status: account.verifiedCustodian ? "verified" : "pending",
     note: account.verifiedCustodian ? "Balance verified" : "Confirmation still out",
   }));
-  if (tax > 0) {
-    points.push({ id: "tax", label: "Tax documents", amount: tax, status: "pending", note: "Still processing" });
-  }
-  if (irs > 0) {
-    points.push({ id: "irs", label: "IRS transcript", amount: irs, status: "pending", note: "Request still out" });
+  const irsSlice = tax + irs;
+  if (irsSlice > 0) {
+    points.push(irsWealthPoint(irsSlice, false));
   }
   if (rest > 0) {
     points.push({
@@ -408,17 +426,9 @@ function wealthFromProfile(client: ClientRecord, profile: DemoProfile): WealthPi
       note: "Still outside the connected accounts",
     });
   }
-  if (tax > 0) {
-    points.push({
-      id: "tax",
-      label: "Tax documents",
-      amount: tax,
-      status: "pending",
-      note: profile.taxDocName ? `${profile.taxDocName} · still processing` : "Still processing",
-    });
-  }
-  if (irs > 0) {
-    points.push({ id: "irs", label: "IRS transcript", amount: irs, status: "pending", note: "Request still out" });
+  const irsSlice = tax + irs;
+  if (irsSlice > 0 || profile.irsConnected) {
+    points.push(irsWealthPoint(irsSlice, profile.irsConnected));
   }
   if (rest > 0) {
     points.push({

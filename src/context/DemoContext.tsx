@@ -15,9 +15,15 @@ function readProfile(): DemoProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as DemoProfile;
+    const parsed = JSON.parse(raw) as DemoProfile & { taxDocName?: string };
     if (!parsed || typeof parsed.clientId !== "string" || !parsed.fit) return null;
-    return { ...parsed, isFinancialAdvisor: parsed.isFinancialAdvisor === true };
+    const stored: DemoProfile & { taxDocName?: string } = { ...parsed };
+    delete stored.taxDocName;
+    return {
+      ...stored,
+      isFinancialAdvisor: stored.isFinancialAdvisor === true,
+      irsConnected: stored.irsConnected === true,
+    };
   } catch {
     return null;
   }

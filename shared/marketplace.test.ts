@@ -8,6 +8,7 @@ import {
   clientFullName,
   defaultFit,
   describeWealth,
+  matchTone,
   MAX_ALGORITHMIC_MATCHES,
   MAX_TOP_OFFERS,
   householdMinimumFor,
@@ -42,7 +43,7 @@ function sampleProfile(clientId: string): DemoProfile {
     coinbase: { connected: true, amount: coinbase.amount, label: coinbase.label },
     kalshi: { connected: true, amount: kalshi.amount, label: kalshi.label },
     other: { label: "Art", amount: 500_000 },
-    taxDocName: "2025-return.pdf",
+    irsConnected: true,
     isFinancialAdvisor: false,
     fit: { ...defaultFit(client), motive: "cheaper", focusAccountIds: [bank.accounts[0]?.id ?? ""] },
   };
@@ -82,9 +83,27 @@ test("wealth points add up for every seeded household", () => {
       enrolled.points.reduce((sum, point) => sum + point.amount, 0),
       enrolled.total,
     );
-    assert.ok(enrolled.points.some((point) => point.id === "tax" && point.status === "pending"));
-    assert.ok(enrolled.points.some((point) => point.note.includes("Request still out")));
+    assert.equal(plain.points.some((point) => point.id === "tax" || point.label === "Tax documents"), false);
+    assert.equal(enrolled.points.some((point) => point.id === "tax" || point.label === "Tax documents"), false);
+    assert.ok(
+      enrolled.points.some(
+        (point) => point.id === "irs" && point.note.includes("Connected in this demo"),
+      ),
+    );
+    assert.equal(
+      enrolled.points.some((point) => /still processing|\.pdf|w-2|tax return/i.test(`${point.label} ${point.note}`)),
+      false,
+    );
   }
+});
+
+test("match tone uses three bands", () => {
+  assert.equal(matchTone(100), "high");
+  assert.equal(matchTone(90), "high");
+  assert.equal(matchTone(89.99), "mid");
+  assert.equal(matchTone(60), "mid");
+  assert.equal(matchTone(59.99), "low");
+  assert.equal(matchTone(0), "low");
 });
 
 test("fit changes which recommendation leads", () => {
