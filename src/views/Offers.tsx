@@ -20,6 +20,7 @@ import {
   allInFeeLabel,
   buildOfferBoard,
   defaultFit,
+  matchTone,
   revealedItems,
   revealLabel,
   type BiddingOffer,
@@ -32,16 +33,6 @@ import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 import { useOffers } from "../context/OfferContext";
 import { readAcceptedOffers, writeAcceptedOffers } from "../offers/acceptedOffers";
-
-/** Darker green is a higher match. Every step stays readable on white. */
-function matchColor(pct: number): string {
-  if (pct >= 95) return "#0b4f2a";
-  if (pct >= 92) return "#115c34";
-  if (pct >= 88) return "#17683d";
-  if (pct >= 84) return "#1e7546";
-  if (pct >= 78) return "#26824f";
-  return "#34864e";
-}
 
 export function Offers() {
   const { passport } = useClient();
@@ -471,7 +462,7 @@ function AlgorithmicMatch({
             <span className="from-label">Currently</span> {recommendation.currentStrategy}
           </p>
           <p className="match-line">
-            <span className="match-pct" style={{ color: matchColor(recommendation.matchPct) }}>
+            <span className={`match-pct ${matchTone(recommendation.matchPct)}`}>
               {recommendation.matchPct}% match
             </span>
           </p>
@@ -527,7 +518,7 @@ function BidBlock({
         <>
           <p className="pitch-note">{offer.customization}</p>
           <p className="match-line">
-            <span className="match-pct" style={{ color: matchColor(offer.matchPct) }}>
+            <span className={`match-pct ${matchTone(offer.matchPct)}`}>
               {offer.matchPct}% match
             </span>
           </p>

@@ -387,7 +387,7 @@ function validPayload(overrides?: (payload: EnrollmentPayload) => void): Enrollm
   };
   payload.personal.occupation = "Surgeon";
   payload.personal.industry = "Healthcare";
-  payload.financial.sourceOfFundsDocs = ["Tax returns (last 2 years)"];
+  payload.financial.sourceOfFundsDocs = ["Bank statements (last 3 months)"];
   payload.acknowledgments = {
     amlProgram: true,
     privacyPolicy: true,

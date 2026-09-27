@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatUsd } from "../../shared/format.ts";
 import type {
@@ -28,7 +28,6 @@ type Step =
   | "coinbase"
   | "kalshi"
   | "other"
-  | "tax"
   | "irs"
   | "risk"
   | "balance"
@@ -36,6 +35,23 @@ type Step =
   | "focus";
 
 type AgentChoice = "chatgpt" | "anthropic";
+
+const SELF_STEPS: Step[] = [
+  "fork",
+  "connect",
+  "returned",
+  "fundrise",
+  "coinbase",
+  "kalshi",
+  "other",
+  "irs",
+  "risk",
+  "balance",
+  "motive",
+  "focus",
+];
+
+const AGENT_STEPS: Step[] = ["fork", "agent", "agent-run", "agent-pause"];
 
 const AGENTS: { id: AgentChoice; label: string }[] = [
   { id: "chatgpt", label: "ChatGPT Finance" },
@@ -59,6 +75,13 @@ const MOTIVES: { id: MotiveChoice; label: string }[] = [
   { id: "change", label: "I want a change" },
   { id: "cheaper", label: "I want something cheaper" },
 ];
+
+function enrollProgress(step: Step): number {
+  const flow = step === "agent" || step === "agent-run" || step === "agent-pause" ? AGENT_STEPS : SELF_STEPS;
+  const index = flow.indexOf(step);
+  if (index <= 0 || flow.length < 2) return 0;
+  return Math.round((index / (flow.length - 1)) * 100);
+}
 
 function AdvisorMark({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
   return (
@@ -104,7 +127,6 @@ export function Enroll() {
   const [kalshi, setKalshi] = useState<AssetConnectResult | null>(null);
   const [otherLabel, setOtherLabel] = useState("");
   const [otherAmount, setOtherAmount] = useState("");
-  const [taxName, setTaxName] = useState<string | null>(null);
   const [irs, setIrs] = useState<IrsConnectResult | null>(null);
   const [risk, setRisk] = useState<RiskChoice | null>(null);
   const [balance, setBalance] = useState<BalanceChoice | null>(null);
@@ -112,10 +134,15 @@ export function Enroll() {
   const [focus, setFocus] = useState<string[]>([]);
   const [isFinancialAdvisor, setIsFinancialAdvisor] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const otherValue = Number(otherAmount.replace(/[^0-9.]/g, ""));
+  const otherReady = otherLabel.trim().length > 0 && Number.isFinite(otherValue) && otherValue > 0;
 
   async function connectBank(next: "plaid" | "kubera") {
     setBusy(true);
+    setPending(next);
     setError(null);
     try {
       const result = await connectDemo(next, passport.id);
@@ -129,11 +156,13 @@ export function Enroll() {
       setError("The demo connection did not return. Try again.");
     } finally {
       setBusy(false);
+      setPending(null);
     }
   }
 
   async function connectAsset(next: "fundrise" | "coinbase" | "kalshi") {
     setBusy(true);
+    setPending(next);
     setError(null);
     try {
       const result = await connectDemo(next, passport.id);
@@ -145,11 +174,13 @@ export function Enroll() {
       setError("The demo connection did not return. Try again.");
     } finally {
       setBusy(false);
+      setPending(null);
     }
   }
 
   async function connectIrs() {
     setBusy(true);
+    setPending("irs");
     setError(null);
     try {
       const result = await connectDemo("irs", passport.id);
@@ -159,6 +190,7 @@ export function Enroll() {
       setError("The demo connection did not return. Try again.");
     } finally {
       setBusy(false);
+      setPending(null);
     }
   }
 
@@ -169,7 +201,7 @@ export function Enroll() {
     coinbase: AssetConnectResult | null;
     kalshi: AssetConnectResult | null;
     other: { label: string; amount: number } | null;
-    taxDocName: string | null;
+    irsConnected: boolean;
     risk: RiskChoice;
     balance: BalanceChoice;
     motive: MotiveChoice;
@@ -193,7 +225,7 @@ export function Enroll() {
         ? { connected: true, amount: input.kalshi.amount, label: input.kalshi.label }
         : { connected: false, amount: 0, label: "" },
       other: input.other,
-      taxDocName: input.taxDocName,
+      irsConnected: input.irsConnected,
       isFinancialAdvisor: input.isFinancialAdvisor,
       fit: {
         risk: input.risk,
@@ -209,16 +241,15 @@ export function Enroll() {
   }
 
   function finish() {
-    if (!bank || !provider || !risk || !balance || !motive || focus.length === 0) return;
-    const amount = Number(otherAmount.replace(/[^0-9.]/g, ""));
+    if (!bank || !provider || !risk || !balance || !motive || !irs || focus.length === 0) return;
     completeEnrollment({
       bank,
       provider,
       fundrise,
       coinbase,
       kalshi,
-      other: Number.isFinite(amount) && amount > 0 ? { label: otherLabel.trim() || "Other assets", amount } : null,
-      taxDocName: taxName,
+      other: otherReady ? { label: otherLabel.trim(), amount: otherValue } : null,
+      irsConnected: true,
       risk,
       balance,
       motive,
@@ -240,6 +271,7 @@ export function Enroll() {
   async function startAgent(choice: AgentChoice) {
     const label = choice === "chatgpt" ? "ChatGPT Finance" : "Anthropic RIA dashboard";
     setAgent(choice);
+    setPending(choice);
     setStep("agent-run");
     setError(null);
     setBusy(true);
@@ -268,6 +300,12 @@ export function Enroll() {
       const kal = await pullAsset("kalshi");
       setKalshi(kal);
       lines.push(kal ? `${kal.label} is in.` : "No Kalshi positions came back.");
+      setAgentLines([...lines]);
+
+      const irsResult = await connectDemo("irs", passport.id);
+      if (irsResult.kind !== "irs") throw new Error("Expected an IRS result.");
+      setIrs(irsResult);
+      lines.push("IRS connector returned a transcript request. No tax file was uploaded.");
       lines.push("Paused. How you take risk has to come from you.");
       setAgentLines([...lines]);
       setStep("agent-pause");
@@ -276,11 +314,12 @@ export function Enroll() {
       setStep("fork");
     } finally {
       setBusy(false);
+      setPending(null);
     }
   }
 
   function answerRisk(choice: RiskChoice) {
-    if (!bank) return;
+    if (!bank || !irs) return;
     const largest = [...bank.accounts].sort((a, b) => b.balance - a.balance)[0];
     completeEnrollment({
       bank,
@@ -289,7 +328,7 @@ export function Enroll() {
       coinbase,
       kalshi,
       other: null,
-      taxDocName: null,
+      irsConnected: true,
       risk: choice,
       balance: "balanced",
       motive: "change",
@@ -298,33 +337,37 @@ export function Enroll() {
     });
   }
 
+  function skipOther() {
+    setOtherLabel("");
+    setOtherAmount("");
+    setStep("irs");
+  }
+
   return (
     <div className="public-page">
       <main className="enroll-flow">
         <p className="wordmark">
           <Link to="/">{PRODUCT_NAME}</Link>
         </p>
+        <EnrollProgress value={enrollProgress(step)} />
         {step === "fork" ? (
           <section>
             <h1>How do you want to enroll?</h1>
             <p>Either way stays in this demo. Nothing is sent to a bank, a model, or an advisor.</p>
             <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
-            <div className="fork-options">
-              <div>
-                <button type="button" onClick={() => setStep("agent")}>
-                  Use my finance agent
-                </button>
-                <p>
-                  ChatGPT Finance, or an Anthropic RIA-style dashboard, runs the connections and only
-                  pauses when a person needs to answer.
-                </p>
-              </div>
-              <div>
-                <button type="button" onClick={() => setStep("connect")}>
-                  I&rsquo;ll enroll myself
-                </button>
-                <p>Connect each source yourself, in order.</p>
-              </div>
+            <div className="enroll-choices" role="listbox" aria-label="How do you want to enroll?">
+              <button type="button" className="enroll-choice enroll-path" onClick={() => setStep("agent")}>
+                <span className="enroll-path-copy">
+                  <span className="enroll-path-title">Use my finance agent</span>
+                  <span className="enroll-path-note">An agent runs the connections and pauses for you.</span>
+                </span>
+              </button>
+              <button type="button" className="enroll-choice enroll-path" onClick={() => setStep("connect")}>
+                <span className="enroll-path-copy">
+                  <span className="enroll-path-title">I&rsquo;ll enroll myself</span>
+                  <span className="enroll-path-note">You connect each source yourself, in order.</span>
+                </span>
+              </button>
             </div>
           </section>
         ) : null}
@@ -332,23 +375,26 @@ export function Enroll() {
         {step === "agent" ? (
           <section>
             <h1>Which agent should run this?</h1>
-            <p>Demo only. Neither product is connected.</p>
+            <p>Demo only. Neither product is connected. Pick one to start.</p>
             <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
-            <div className="choices">
+            <div className="enroll-choices">
               {AGENTS.map((option) => (
                 <button
                   key={option.id}
                   type="button"
+                  className="enroll-choice"
                   disabled={busy}
                   onClick={() => void startAgent(option.id)}
                 >
-                  {option.label}
+                  <span>{pending === option.id ? "Starting…" : option.label}</span>
                 </button>
               ))}
             </div>
-            <button type="button" className="text-button" onClick={() => setStep("connect")}>
-              I&rsquo;ll enroll myself instead
-            </button>
+            <div className="enroll-actions">
+              <Secondary disabled={busy} onClick={() => setStep("connect")}>
+                I&rsquo;ll enroll myself instead
+              </Secondary>
+            </div>
           </section>
         ) : null}
 
@@ -363,22 +409,20 @@ export function Enroll() {
               lines={agentLines}
               waiting={agent === "anthropic" ? "The Anthropic RIA dashboard" : "ChatGPT Finance"}
             />
-            <div className="choices agent-pause-choices" role="listbox" aria-label="How do you take risk?">
-              {RISKS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  aria-pressed={risk === option.id}
-                  className={risk === option.id ? "is-on" : ""}
-                  onClick={() => setRisk(option.id)}
-                >
-                  {option.label}
-                </button>
-              ))}
+            <ChoiceList
+              label="How do you take risk?"
+              options={RISKS}
+              value={risk}
+              onChange={setRisk}
+            />
+            <p className="enroll-feedback" role="status">
+              {risk ? `${RISKS.find((option) => option.id === risk)?.label} is saved. Finish when you are ready.` : "Pick a risk posture. Finish stays closed until you do."}
+            </p>
+            <div className="enroll-actions">
+              <Primary disabled={!risk || !irs} onClick={() => risk && answerRisk(risk)}>
+                Finish enrollment
+              </Primary>
             </div>
-            <button type="button" className="text-button" disabled={!risk} onClick={() => risk && answerRisk(risk)}>
-              Continue
-            </button>
             <AgentStatusLog lines={agentLines} />
           </section>
         ) : null}
@@ -388,12 +432,14 @@ export function Enroll() {
             <h1>Connect a bank or a balance sheet.</h1>
             <p>Simulated. Nothing leaves this demo, and we only ask for what this pull does not return.</p>
             <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
-            <div className="public-actions">
-              <button type="button" disabled={busy} onClick={() => void connectBank("plaid")}>
-                Plaid
+            <div className="enroll-choices">
+              <button type="button" className="enroll-choice" disabled={busy} onClick={() => void connectBank("plaid")}>
+                <span>{pending === "plaid" ? "Connecting…" : "Connect Plaid"}</span>
+                <span className="choice-hint">Bank accounts</span>
               </button>
-              <button type="button" disabled={busy} onClick={() => void connectBank("kubera")}>
-                Kubera
+              <button type="button" className="enroll-choice" disabled={busy} onClick={() => void connectBank("kubera")}>
+                <span>{pending === "kubera" ? "Connecting…" : "Connect Kubera"}</span>
+                <span className="choice-hint">Balance sheet</span>
               </button>
             </div>
           </section>
@@ -417,9 +463,9 @@ export function Enroll() {
                 </li>
               ))}
             </ul>
-            <button type="button" className="text-button" onClick={() => setStep("fundrise")}>
-              Continue
-            </button>
+            <div className="enroll-actions">
+              <Primary onClick={() => setStep("fundrise")}>Continue to private holdings</Primary>
+            </div>
           </section>
         ) : null}
 
@@ -428,8 +474,10 @@ export function Enroll() {
             title="Any private or alternative holdings?"
             body="Fundrise, if you have it. This is the gap the bank pull did not cover."
             result={fundrise}
-            busy={busy}
+            connecting={pending === "fundrise"}
             connectLabel="Connect Fundrise"
+            skipLabel="I don't have private holdings"
+            continueLabel="Continue to crypto"
             onConnect={() => void connectAsset("fundrise")}
             onSkip={() => setStep("coinbase")}
             onContinue={() => setStep("coinbase")}
@@ -441,8 +489,10 @@ export function Enroll() {
             title="Any crypto?"
             body="Coinbase, if you have it."
             result={coinbase}
-            busy={busy}
+            connecting={pending === "coinbase"}
             connectLabel="Connect Coinbase"
+            skipLabel="I don't have crypto"
+            continueLabel="Continue to prediction markets"
             onConnect={() => void connectAsset("coinbase")}
             onSkip={() => setStep("kalshi")}
             onContinue={() => setStep("kalshi")}
@@ -454,8 +504,10 @@ export function Enroll() {
             title="Any prediction markets?"
             body="Kalshi, if you have it."
             result={kalshi}
-            busy={busy}
+            connecting={pending === "kalshi"}
             connectLabel="Connect Kalshi"
+            skipLabel="I don't have prediction markets"
+            continueLabel="Continue to other holdings"
             onConnect={() => void connectAsset("kalshi")}
             onSkip={() => setStep("other")}
             onContinue={() => setStep("other")}
@@ -478,61 +530,42 @@ export function Enroll() {
                 onChange={(event) => setOtherAmount(event.target.value)}
               />
             </label>
-            <div className="public-actions">
-              <button type="button" onClick={() => setStep("tax")}>
-                Continue
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setOtherLabel("");
-                  setOtherAmount("");
-                  setStep("tax");
-                }}
-              >
-                Nothing else
-              </button>
+            <p className="enroll-feedback" role="status">
+              {otherReady
+                ? `${otherLabel.trim()} · ${formatUsd(otherValue)} will be declared, not verified.`
+                : "Add a name and a value, or skip with Nothing else."}
+            </p>
+            <div className="enroll-actions">
+              <Primary disabled={!otherReady} onClick={() => setStep("irs")}>
+                Add this holding
+              </Primary>
+              <Secondary onClick={skipOther}>Nothing else</Secondary>
             </div>
-          </section>
-        ) : null}
-
-        {step === "tax" ? (
-          <section>
-            <h1>Upload a tax document.</h1>
-            <p>The file stays in this browser. It will show as still processing.</p>
-            <label className="field">
-              Tax document
-              <input
-                type="file"
-                accept="application/pdf,image/*"
-                onChange={(event) => setTaxName(event.target.files?.[0]?.name ?? null)}
-              />
-            </label>
-            {taxName ? <p>{taxName} · still processing</p> : null}
-            <button type="button" className="text-button" onClick={() => setStep("irs")}>
-              Continue
-            </button>
           </section>
         ) : null}
 
         {step === "irs" ? (
           <section>
-            <h1>Verify with the IRS.</h1>
+            <h1>Connect to the IRS.</h1>
             <p>
-              This follows the shape of an ID.me handoff: confirm it is you, then the agency request
-              goes out. This demo does not contact the IRS or ID.me.
+              Wage and return records come from this connection. Nothing is uploaded. This demo does
+              not contact the IRS.
             </p>
             {irs ? (
               <>
-                <p>{irs.detail}</p>
-                <button type="button" className="text-button" onClick={() => setStep("risk")}>
-                  Continue
-                </button>
+                <p className="enroll-feedback" role="status">
+                  Connected. {irs.detail}
+                </p>
+                <div className="enroll-actions">
+                  <Primary onClick={() => setStep("risk")}>Continue to risk</Primary>
+                </div>
               </>
             ) : (
-              <button type="button" className="text-button" disabled={busy} onClick={() => void connectIrs()}>
-                Continue
-              </button>
+              <div className="enroll-actions">
+                <Primary disabled={busy} onClick={() => void connectIrs()}>
+                  {pending === "irs" ? "Connecting…" : "Connect IRS"}
+                </Primary>
+              </div>
             )}
           </section>
         ) : null}
@@ -543,6 +576,7 @@ export function Enroll() {
             options={RISKS}
             value={risk}
             onChange={setRisk}
+            continueLabel="Continue to allocation"
             onContinue={() => risk && setStep("balance")}
           />
         ) : null}
@@ -552,6 +586,7 @@ export function Enroll() {
             options={BALANCES}
             value={balance}
             onChange={setBalance}
+            continueLabel="Continue to why you are here"
             onContinue={() => balance && setStep("motive")}
           />
         ) : null}
@@ -561,6 +596,7 @@ export function Enroll() {
             options={MOTIVES}
             value={motive}
             onChange={setMotive}
+            continueLabel="Choose accounts"
             onContinue={() => motive && setStep("focus")}
           />
         ) : null}
@@ -569,15 +605,16 @@ export function Enroll() {
           <section>
             <h1>Which accounts matter most?</h1>
             <p>These are the accounts the connection already returned.</p>
-            <div className="choices">
+            <div className="enroll-choices" role="listbox" aria-label="Which accounts matter most?">
               {bank.accounts.map((account) => {
                 const on = focus.includes(account.id);
                 return (
                   <button
                     key={account.id}
                     type="button"
-                    aria-pressed={on}
-                    className={on ? "is-on" : ""}
+                    role="option"
+                    aria-selected={on}
+                    className={on ? "enroll-choice is-on" : "enroll-choice"}
                     onClick={() =>
                       setFocus((current) =>
                         current.includes(account.id)
@@ -586,14 +623,24 @@ export function Enroll() {
                       )
                     }
                   >
-                    {account.institution} · {account.name}
+                    <span>
+                      {account.institution} · {account.name}
+                    </span>
+                    {on ? <span className="choice-mark">Selected</span> : null}
                   </button>
                 );
               })}
             </div>
-            <button type="button" className="text-button" disabled={focus.length === 0} onClick={finish}>
-              See your offers
-            </button>
+            <p className="enroll-feedback" role="status">
+              {focus.length === 0
+                ? "Select at least one account. See your offers stays closed until you do."
+                : `${focus.length} ${focus.length === 1 ? "account" : "accounts"} selected.`}
+            </p>
+            <div className="enroll-actions">
+              <Primary disabled={focus.length === 0 || !irs} onClick={finish}>
+                See your offers
+              </Primary>
+            </div>
           </section>
         ) : null}
 
@@ -601,6 +648,60 @@ export function Enroll() {
       </main>
       <LegalFooter />
     </div>
+  );
+}
+
+function EnrollProgress({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, Math.round(value)));
+  return (
+    <div className="enroll-progress">
+      <div className="enroll-progress-meta">
+        <span>Signup</span>
+        <span>{pct}%</span>
+      </div>
+      <div
+        className="enroll-progress-track"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-label="Signup progress"
+      >
+        <span style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function Primary({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="enroll-primary" disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+function Secondary({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="enroll-secondary" disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
   );
 }
 
@@ -647,8 +748,10 @@ function AssetStep({
   title,
   body,
   result,
-  busy,
+  connecting,
   connectLabel,
+  skipLabel,
+  continueLabel,
   onConnect,
   onSkip,
   onContinue,
@@ -656,8 +759,10 @@ function AssetStep({
   title: string;
   body: string;
   result: AssetConnectResult | null;
-  busy: boolean;
+  connecting: boolean;
   connectLabel: string;
+  skipLabel: string;
+  continueLabel: string;
   onConnect: () => void;
   onSkip: () => void;
   onContinue: () => void;
@@ -668,24 +773,57 @@ function AssetStep({
       <p>{body}</p>
       {result ? (
         <>
-          <p>
-            {result.label} · {formatUsd(result.amount)} verified. {result.detail}
+          <p className="enroll-feedback" role="status">
+            Connected. {result.label} · {formatUsd(result.amount)}. {result.detail}
           </p>
-          <button type="button" className="text-button" onClick={onContinue}>
-            Continue
-          </button>
+          <div className="enroll-actions">
+            <Primary onClick={onContinue}>{continueLabel}</Primary>
+          </div>
         </>
       ) : (
-        <div className="public-actions">
-          <button type="button" disabled={busy} onClick={onConnect}>
-            {connectLabel}
-          </button>
-          <button type="button" onClick={onSkip}>
-            I don&rsquo;t have this
-          </button>
+        <div className="enroll-actions">
+          <Primary disabled={connecting} onClick={onConnect}>
+            {connecting ? "Connecting…" : connectLabel}
+          </Primary>
+          <Secondary disabled={connecting} onClick={onSkip}>
+            {skipLabel}
+          </Secondary>
         </div>
       )}
     </section>
+  );
+}
+
+function ChoiceList<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { id: T; label: string }[];
+  value: T | null;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div className="enroll-choices" role="listbox" aria-label={label}>
+      {options.map((option) => {
+        const on = value === option.id;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="option"
+            aria-selected={on}
+            className={on ? "enroll-choice is-on" : "enroll-choice"}
+            onClick={() => onChange(option.id)}
+          >
+            <span>{option.label}</span>
+            {on ? <span className="choice-mark">Selected</span> : null}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -694,33 +832,29 @@ function ChoiceStep<T extends string>({
   options,
   value,
   onChange,
+  continueLabel,
   onContinue,
 }: {
   title: string;
   options: { id: T; label: string }[];
   value: T | null;
   onChange: (id: T) => void;
+  continueLabel: string;
   onContinue: () => void;
 }) {
+  const selected = options.find((option) => option.id === value);
   return (
     <section>
       <h1>{title}</h1>
-      <div className="choices" role="listbox" aria-label={title}>
-        {options.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            aria-pressed={value === option.id}
-            className={value === option.id ? "is-on" : ""}
-            onClick={() => onChange(option.id)}
-          >
-            {option.label}
-          </button>
-        ))}
+      <ChoiceList label={title} options={options} value={value} onChange={onChange} />
+      <p className="enroll-feedback" role="status">
+        {selected ? `${selected.label} is saved for this step.` : "Pick one. The next step stays closed until you do."}
+      </p>
+      <div className="enroll-actions">
+        <Primary disabled={!value} onClick={onContinue}>
+          {continueLabel}
+        </Primary>
       </div>
-      <button type="button" className="text-button" disabled={!value} onClick={onContinue}>
-        Continue
-      </button>
     </section>
   );
 }

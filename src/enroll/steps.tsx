@@ -538,7 +538,8 @@ export function FinancialStep({ payload, patch }: StepProps) {
 
       <div>
         <p className="tiny muted" style={{ margin: "0 0 0.5rem" }}>
-          Source-of-funds documentation you can provide (upload portal opens after submission).
+          Other source-of-funds records you can name. Wage and tax-return records come from an IRS
+          connection, not a file upload.
         </p>
         <div className="stack" style={{ gap: "0.4rem" }}>
           {SOF_DOC_OPTIONS.map((doc) => (

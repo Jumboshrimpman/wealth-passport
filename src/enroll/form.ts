@@ -73,8 +73,6 @@ export const FREQUENCY_OPTIONS: { value: TradingFrequency; label: string }[] = [
 ];
 
 export const SOF_DOC_OPTIONS = [
-  "Tax returns (last 2 years)",
-  "Payslips (last 3 months)",
   "Bank statements (last 3 months)",
   "Investment account statements",
   "Business financial statements",

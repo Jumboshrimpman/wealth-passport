@@ -2017,6 +2017,18 @@ button.proposed-name {
   font-size: 0.92rem;
 }
 
+.match-pct.high {
+  color: #17683d;
+}
+
+.match-pct.mid {
+  color: #8a6a00;
+}
+
+.match-pct.low {
+  color: #8a3d3d;
+}
+
 .strategy-tools {
   display: flex;
   flex-direction: column;
@@ -2213,34 +2225,157 @@ button.proposed-name {
   line-height: 1.4;
 }
 
-.fork-options {
+.enroll-progress {
+  max-width: 16rem;
+  margin: 0 0 2.4rem;
+}
+
+.enroll-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  color: #8a8a8a;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.enroll-progress-track {
+  height: 2px;
+  margin-top: 0.45rem;
+  background: #f0f0f0;
+}
+
+.enroll-progress-track > span {
+  display: block;
+  height: 100%;
+  background: #111;
+  transition: width 0.25s ease;
+}
+
+.enroll-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.5rem;
+}
+
+.enroll-flow button.enroll-primary,
+.enroll-flow button.enroll-secondary,
+.enroll-flow button.enroll-choice {
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.enroll-flow button.enroll-primary {
+  background: #111;
+  color: #fff;
+  border: 1px solid #111;
+  padding: 0.72rem 1.05rem;
+}
+
+.enroll-flow button.enroll-primary:disabled {
+  background: #f3f3f3;
+  color: #b0b0b0;
+  border-color: #f3f3f3;
+  cursor: default;
+}
+
+.enroll-flow button.enroll-secondary {
+  background: #fff;
+  color: #5e5e5e;
+  border: 1px solid #e4e4e4;
+  padding: 0.72rem 1.05rem;
+}
+
+.enroll-flow button.enroll-secondary:disabled {
+  color: #c8c8c8;
+  cursor: default;
+}
+
+.enroll-choices {
   display: flex;
   flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 1.3rem;
+}
+
+.enroll-flow button.enroll-choice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 28rem;
+  text-align: left;
+  background: #fff;
+  color: #161616;
+  border: 1px solid #e7e7e7;
+  padding: 0.85rem 0.95rem;
+}
+
+.enroll-flow button.enroll-choice.is-on {
+  border-color: #111;
+  background: #fafafa;
+}
+
+.enroll-flow button.enroll-choice:disabled {
+  color: #b0b0b0;
+  cursor: default;
+}
+
+.enroll-flow button.enroll-choice.enroll-path {
   align-items: flex-start;
-  gap: 1.6rem;
-  margin-top: 1.6rem;
+  min-height: 4.75rem;
+  padding: 1rem 1.05rem;
 }
 
-.fork-options button {
-  background: transparent;
-  border: 0;
-  padding: 0;
+.enroll-flow button.enroll-choice.enroll-path:hover,
+.enroll-flow button.enroll-choice.enroll-path:focus-visible {
+  border-color: #111;
+  outline: none;
+}
+
+.enroll-path-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.enroll-path-title {
   color: #111;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 0.28em;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
 }
 
-.fork-options p,
-.agent-log {
-  margin: 0.4rem 0 0;
+.enroll-path-note {
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.choice-mark {
+  color: #17683d;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.choice-hint {
+  color: #8a8a8a;
+  font-size: 0.82rem;
+}
+
+.enroll-flow .enroll-feedback {
+  margin-top: 1rem;
+  color: #111;
+  font-size: 0.95rem;
 }
 
 .agent-log {
   list-style: none;
   padding: 0;
-  margin-top: 1.4rem;
+  margin: 1.4rem 0 0;
 }
 
 .agent-log li {
