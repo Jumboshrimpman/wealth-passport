@@ -355,18 +355,19 @@ export function Enroll() {
             <h1>How do you want to enroll?</h1>
             <p>Either way stays in this demo. Nothing is sent to a bank, a model, or an advisor.</p>
             <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
-            <div className="fork-options">
-              <div>
-                <Secondary onClick={() => setStep("agent")}>Use my finance agent</Secondary>
-                <p>
-                  ChatGPT Finance, or an Anthropic RIA-style dashboard, runs the connections and only
-                  pauses when a person needs to answer.
-                </p>
-              </div>
-              <div>
-                <Primary onClick={() => setStep("connect")}>I&rsquo;ll enroll myself</Primary>
-                <p>Connect each source yourself, in order.</p>
-              </div>
+            <div className="enroll-choices" role="listbox" aria-label="How do you want to enroll?">
+              <button type="button" className="enroll-choice enroll-path" onClick={() => setStep("agent")}>
+                <span className="enroll-path-copy">
+                  <span className="enroll-path-title">Use my finance agent</span>
+                  <span className="enroll-path-note">An agent runs the connections and pauses for you.</span>
+                </span>
+              </button>
+              <button type="button" className="enroll-choice enroll-path" onClick={() => setStep("connect")}>
+                <span className="enroll-path-copy">
+                  <span className="enroll-path-title">I&rsquo;ll enroll myself</span>
+                  <span className="enroll-path-note">You connect each source yourself, in order.</span>
+                </span>
+              </button>
             </div>
           </section>
         ) : null}

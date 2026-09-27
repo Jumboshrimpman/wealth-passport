@@ -2225,14 +2225,6 @@ button.proposed-name {
   line-height: 1.4;
 }
 
-.fork-options {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1.6rem;
-  margin-top: 1.6rem;
-}
-
 .enroll-progress {
   max-width: 16rem;
   margin: 0 0 2.4rem;
@@ -2333,6 +2325,35 @@ button.proposed-name {
   cursor: default;
 }
 
+.enroll-flow button.enroll-choice.enroll-path {
+  align-items: flex-start;
+  min-height: 4.75rem;
+  padding: 1rem 1.05rem;
+}
+
+.enroll-flow button.enroll-choice.enroll-path:hover,
+.enroll-flow button.enroll-choice.enroll-path:focus-visible {
+  border-color: #111;
+  outline: none;
+}
+
+.enroll-path-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.enroll-path-title {
+  color: #111;
+  font-size: 1.02rem;
+}
+
+.enroll-path-note {
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .choice-mark {
   color: #17683d;
   font-size: 0.72rem;
@@ -2351,19 +2372,10 @@ button.proposed-name {
   font-size: 0.95rem;
 }
 
-.fork-options button {
-  font-size: 1rem;
-}
-
-.fork-options p,
-.agent-log {
-  margin: 0.4rem 0 0;
-}
-
 .agent-log {
   list-style: none;
   padding: 0;
-  margin-top: 1.4rem;
+  margin: 1.4rem 0 0;
 }
 
 .agent-log li {
