@@ -26,6 +26,8 @@ import {
   type OfferBoardRow,
   type Recommendation,
 } from "../../shared/marketplace.ts";
+import { detailFromBid, detailFromRecommendation, type StrategyDetail } from "../../shared/strategyDetail.ts";
+import { StrategyDetailModal } from "../components/StrategyDetailModal";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 import { useOffers } from "../context/OfferContext";
@@ -60,12 +62,15 @@ export function Offers() {
   const [signing, setSigning] = useState<{ rowKey: string; choice: AcceptableChoice } | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [accepted, setAccepted] = useState<Record<string, RowAcceptance>>(() => readAcceptedOffers(passport.id));
+  const [strategy, setStrategy] = useState<StrategyDetail | null>(null);
+  const investable = passport.household.investable;
 
   useEffect(() => {
     setOpen({});
     setPicking(null);
     setSigning(null);
     setRevoking(null);
+    setStrategy(null);
     setAccepted(readAcceptedOffers(passport.id));
   }, [passport.id]);
 
@@ -129,6 +134,8 @@ export function Offers() {
                 onCancelPick={() => setPicking(null)}
                 onChoose={(choice) => setSigning({ rowKey: row.key, choice })}
                 onRevoke={() => setRevoking(row.key)}
+                onOpenMatch={(recommendation) => setStrategy(detailFromRecommendation(recommendation, investable))}
+                onOpenBid={(offer) => setStrategy(detailFromBid(offer, investable))}
               />
             ))}
           </tbody>
@@ -151,6 +158,7 @@ export function Offers() {
           onRevoke={() => revoke(revoking)}
         />
       ) : null}
+      {strategy ? <StrategyDetailModal detail={strategy} onClose={() => setStrategy(null)} /> : null}
     </div>
   );
 }
@@ -166,6 +174,8 @@ function OfferRow({
   onCancelPick,
   onChoose,
   onRevoke,
+  onOpenMatch,
+  onOpenBid,
 }: {
   row: OfferBoardRow;
   matchesOpen: boolean;
@@ -177,6 +187,8 @@ function OfferRow({
   onCancelPick: () => void;
   onChoose: (choice: AcceptableChoice) => void;
   onRevoke: () => void;
+  onOpenMatch: (recommendation: Recommendation) => void;
+  onOpenBid: (offer: BiddingOffer) => void;
 }) {
   const shown = accepted ? listsAfterAccept(row, accepted) : null;
   const matches = shown ? shown.algorithmic : revealedItems(row.algorithmic, matchesOpen);
@@ -204,6 +216,7 @@ function OfferRow({
             rank={index + 1}
             compact={Boolean(accepted)}
             chosen={accepted?.choiceId === `match:${recommendation.id}`}
+            onOpen={() => onOpenMatch(recommendation)}
           />
         ))}
         {matchLabel ? (
@@ -225,6 +238,7 @@ function OfferRow({
             rank={index + 1}
             compact={Boolean(accepted)}
             chosen={accepted?.choiceId === `bid:${offer.id}`}
+            onOpen={() => onOpenBid(offer)}
           />
         ))}
         {offerLabel ? (
@@ -425,19 +439,23 @@ function AlgorithmicMatch({
   rank,
   compact = false,
   chosen = false,
+  onOpen,
 }: {
   recommendation: Recommendation;
   rank: number;
   compact?: boolean;
   chosen?: boolean;
+  onOpen: () => void;
 }) {
   const [details, setDetails] = useState(false);
   const lead = rank === 1;
   return (
-    <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
+    <div className={`lane-block strategy-open${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`} onClick={onOpen}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
       {chosen ? <p className="accepted-mark">Accepted</p> : null}
-      <p className="proposed-name">{recommendation.nextStrategy}</p>
+      <button type="button" className="proposed-name" aria-haspopup="dialog" onClick={onOpen}>
+        {recommendation.nextStrategy}
+      </button>
       <p className="all-in-fee">{allInFeeLabel(recommendation.allInBps)}</p>
       {compact || recommendation.strategyMinimum == null ? null : (
         <p className="min-line">Strategy minimum {formatUsd(recommendation.strategyMinimum, true)}</p>
@@ -461,7 +479,15 @@ function AlgorithmicMatch({
         </>
       )}
       {compact || !lead ? null : (
-        <button type="button" className="reveal-next details-toggle" aria-expanded={details} onClick={() => setDetails((open) => !open)}>
+        <button
+          type="button"
+          className="reveal-next details-toggle"
+          aria-expanded={details}
+          onClick={(event) => {
+            event.stopPropagation();
+            setDetails((open) => !open);
+          }}
+        >
           {details ? "Hide" : "Details"}
         </button>
       )}
@@ -474,19 +500,23 @@ function BidBlock({
   rank,
   compact = false,
   chosen = false,
+  onOpen,
 }: {
   offer: BiddingOffer;
   rank: number;
   compact?: boolean;
   chosen?: boolean;
+  onOpen: () => void;
 }) {
   const [details, setDetails] = useState(false);
   const lead = rank === 1;
   return (
-    <div className={`lane-block${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`}>
+    <div className={`lane-block strategy-open${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`} onClick={onOpen}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
       {chosen ? <p className="accepted-mark">Accepted</p> : null}
-      <p className="proposed-name">{offer.title}</p>
+      <button type="button" className="proposed-name" aria-haspopup="dialog" onClick={onOpen}>
+        {offer.title}
+      </button>
       {compact ? null : <p className="bid-name">{offer.bidder}</p>}
       <p className="all-in-fee">{offer.terms}</p>
       {compact || offer.minimum == null ? null : (
@@ -504,7 +534,15 @@ function BidBlock({
         </>
       )}
       {compact || !lead ? null : (
-        <button type="button" className="reveal-next details-toggle" aria-expanded={details} onClick={() => setDetails((open) => !open)}>
+        <button
+          type="button"
+          className="reveal-next details-toggle"
+          aria-expanded={details}
+          onClick={(event) => {
+            event.stopPropagation();
+            setDetails((open) => !open);
+          }}
+        >
           {details ? "Hide" : "Details"}
         </button>
       )}
