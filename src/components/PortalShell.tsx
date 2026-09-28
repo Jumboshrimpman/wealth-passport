@@ -6,7 +6,7 @@ import { clerkAppearance } from "../auth/clerk";
 import { PRODUCT_NAME } from "../data/catalog";
 import { useAssistant } from "../context/AssistantContext";
 import { AssistantPanel } from "./AssistantPanel";
-import { TeddyMark } from "./TeddyMark";
+import { CompanionMark } from "./CompanionMark";
 
 const LINKS = [
   { to: "/assistant", label: "Assistant" },
@@ -79,8 +79,19 @@ export function PortalShell() {
         {showDock ? (
           <aside className={`assistant-dock ${minimized ? "is-collapsed" : ""}`} aria-label="Assistant">
             {minimized ? (
-              <button type="button" className="assistant-rail" aria-expanded={false} aria-label="Show assistant" onClick={expand}>
-                <TeddyMark />
+              <button type="button" className="assistant-rail" aria-expanded={false} aria-label="Open assistant" onClick={expand}>
+                <CompanionMark />
+                <span className="assistant-rail-label">Assistant</span>
+                <svg className="assistant-rail-chevron" viewBox="0 0 12 12" aria-hidden="true">
+                  <path
+                    d="M4.65 2.15 8.5 6 4.65 9.85"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.15"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
             ) : (
               <>
