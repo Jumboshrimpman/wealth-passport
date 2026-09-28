@@ -1360,7 +1360,11 @@ textarea {
 }
 
 .assistant-dock.is-collapsed {
-  width: 3rem;
+  width: max-content;
+  border-left-color: transparent;
+  background: transparent;
+  align-items: flex-end;
+  padding: 0.85rem 0.85rem 0 0.4rem;
 }
 
 .assistant-dock-bar {
@@ -1380,33 +1384,54 @@ textarea {
 }
 
 .assistant-rail {
-  flex: 1;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  color: #161616;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #d8d8d8;
+  background: #fff;
+  color: #9a9a9a;
   cursor: pointer;
   writing-mode: horizontal-tb;
-  padding: 0.85rem 0.2rem 1rem;
+  padding: 0.22rem 0.5rem 0.22rem 0.22rem;
+  line-height: 1;
 }
 
-.teddy-mark {
-  width: 1.7rem;
-  height: auto;
-  display: block;
-  color: #9a9a9a;
-}
-
-.assistant-rail:hover .teddy-mark,
-.assistant-rail:focus-visible .teddy-mark {
+.assistant-rail:hover {
+  border-color: #bdbdbd;
+  background: #fafafa;
   color: #161616;
+}
+
+.assistant-rail:active {
+  border-color: #9a9a9a;
+  color: #111;
 }
 
 .assistant-rail:focus-visible {
   outline: 1px solid #111;
-  outline-offset: -1px;
+  outline-offset: 3px;
+}
+
+.companion-mark {
+  width: 1.55rem;
+  height: 1.55rem;
+  display: block;
+  flex: none;
+}
+
+.assistant-rail-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.assistant-rail-chevron {
+  width: 0.62rem;
+  height: 0.62rem;
+  display: block;
+  flex: none;
 }
 
 .assistant-panel.dock,
@@ -2667,13 +2692,15 @@ button.proposed-name {
     transition: none;
   }
 
-  .assistant-rail {
-    writing-mode: horizontal-tb;
+  .assistant-dock.is-collapsed {
     align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 0.7rem 1.1rem;
-    text-decoration: none;
+    padding: 0.7rem 1rem;
+    border-top: 1px solid #f0f0f0;
+    background: #fff;
+  }
+
+  .assistant-rail-chevron {
+    transform: rotate(-90deg);
   }
 
   .portal.chat-home {
