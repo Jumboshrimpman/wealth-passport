@@ -24,6 +24,8 @@ Cursor / Cloud Agents should follow [AGENTS.md](AGENTS.md). That file repeats th
 
 The ranking is proprietary and cannot be bought. Institutions may send an offer through the platform; that delivery does not change the ranking.
 
+Demo strategies on the Strategies tab are modeled on publicly listed UMA manager-profile data from Morgan Stanley Investment Solutions (Select UMA manager profiles). Manager names, strategy names, styles, account minimums, and inception dates follow that public index and the short header on those profile documents. Descriptions, risk bands, and ESG flags in the app are original demo copy. This is not an official Morgan Stanley product, and the catalog does not reproduce profile narratives, holdings, or performance.
+
 **Live site (GitHub Pages):** [https://jumboshrimpman.github.io/wealth-passport/](https://jumboshrimpman.github.io/wealth-passport/) — published from `main`. Vite `base` is `/wealth-passport/`. Pages is static, so it falls back to the same two client seeds bundled in the client if `/api` is unreachable.
 
 First-time Pages enable (repo admin, once): **Settings → Pages → Build and deployment → Source → GitHub Actions**, then re-run **Deploy GitHub Pages**.

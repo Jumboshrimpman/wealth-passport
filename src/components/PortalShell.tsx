@@ -3,28 +3,41 @@ import { useEffect, useRef } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { hasClerkKey, usePortalAccess } from "../auth/access";
 import { clerkAppearance } from "../auth/clerk";
-import { PRODUCT_NAME } from "../data/catalog";
+import { MODE_HOMES, MODE_NAV, modeFromPath, PRODUCT_NAME } from "../data/catalog";
 import { useAssistant } from "../context/AssistantContext";
+import { useMode } from "../context/ModeContext";
 import { AssistantPanel } from "./AssistantPanel";
 import { CompanionMark } from "./CompanionMark";
+import { InstitutionAssistantPanel } from "./InstitutionAssistantPanel";
+import { RoleSwitcher } from "./RoleSwitcher";
 
-const LINKS = [
-  { to: "/assistant", label: "Assistant" },
-  { to: "/offers", label: "Pitches" },
-  { to: "/strategies", label: "Strategies" },
-  { to: "/financials", label: "Financials" },
-  { to: "/settings", label: "Settings" },
-];
+const OPEN_DOCK = new Set([
+  "/offers",
+  "/financials",
+  "/strategies",
+  "/institution/clients",
+  "/institution/strategies",
+  "/institution/pitches",
+]);
 
 export function PortalShell() {
   const location = useLocation();
+  const { mode } = useMode();
   const { clerkSignedIn } = usePortalAccess();
   const { minimized, setMinimized } = useAssistant();
-  const chatHome = location.pathname === "/assistant";
+  const routeMode = modeFromPath(location.pathname) ?? mode;
+  const institutional = routeMode === "institution";
+  const chatHome = location.pathname === "/assistant" || location.pathname === "/institution";
   const showDock = !chatHome;
-  const wide = location.pathname === "/admin" || location.pathname === "/institution";
+  const wide =
+    location.pathname === "/admin" ||
+    location.pathname === "/institution/clients" ||
+    location.pathname === "/institution/strategies" ||
+    location.pathname === "/institution/pitches";
   const roomy = location.pathname === "/offers" || location.pathname === "/strategies";
   const pinned = useRef<{ path: string; minimized: boolean } | null>(null);
+  const links = MODE_NAV[routeMode];
+  const navLabel = routeMode === "institution" ? "Institutional" : routeMode === "admin" ? "Admin" : "Client";
 
   useEffect(() => {
     if (!showDock) return;
@@ -32,13 +45,7 @@ export function PortalShell() {
       setMinimized(pinned.current.minimized);
       return;
     }
-    setMinimized(
-      !(
-        location.pathname === "/offers" ||
-        location.pathname === "/financials" ||
-        location.pathname === "/strategies"
-      ),
-    );
+    setMinimized(!OPEN_DOCK.has(location.pathname));
   }, [location.pathname, setMinimized, showDock]);
 
   function minimize() {
@@ -57,16 +64,18 @@ export function PortalShell() {
         Skip to content
       </a>
       <header className="portal-header">
-        <NavLink to="/assistant" className="wordmark">
-          {PRODUCT_NAME}
-        </NavLink>
-        <nav className="portal-nav" aria-label="Client">
-          {LINKS.map((link) => (
-            <NavLink key={link.to} to={link.to}>
+        <div className="portal-leading">
+          <RoleSwitcher />
+          <NavLink to={MODE_HOMES[routeMode]} className="wordmark">
+            {PRODUCT_NAME}
+          </NavLink>
+        </div>
+        <nav className="portal-nav" aria-label={navLabel}>
+          {links.map((link) => (
+            <NavLink key={link.to} to={link.to} end>
               {link.label}
             </NavLink>
           ))}
-          <NavLink to="/admin">Admin</NavLink>
         </nav>
         {hasClerkKey() && clerkSignedIn ? <UserButton appearance={clerkAppearance} /> : null}
       </header>
@@ -101,7 +110,7 @@ export function PortalShell() {
                     Minimize
                   </button>
                 </div>
-                <AssistantPanel variant="dock" />
+                {institutional ? <InstitutionAssistantPanel variant="dock" /> : <AssistantPanel variant="dock" />}
               </>
             )}
           </aside>

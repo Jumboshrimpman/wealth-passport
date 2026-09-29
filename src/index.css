@@ -1284,11 +1284,12 @@ textarea {
 
 .portal-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.5rem;
   flex: none;
-  padding: 1.15rem 1.5rem;
+  padding: 1rem 1.35rem;
   border-bottom: 1px solid #f2f2f2;
 }
 
@@ -2061,6 +2062,23 @@ button.proposed-name {
   margin-top: 1.6rem;
 }
 
+.strategy-filter select {
+  border: 0;
+  border-bottom: 1px solid #111;
+  background: transparent;
+  padding: 0.4rem 1.4rem 0.4rem 0;
+  font: inherit;
+  color: #111;
+}
+
+.strategy-yours {
+  margin-left: 0.55rem;
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+
 .strategy-search input {
   width: 100%;
   border: 0;
@@ -2729,12 +2747,47 @@ button.proposed-name {
   padding: 0;
 }
 
+.record-list-head,
 .record-list button {
-  width: 100%;
   display: grid;
-  grid-template-columns: 1.4fr 1fr auto;
+  grid-template-columns: minmax(11rem, 1.6fr) 6.5rem 7.4rem minmax(7rem, 1fr) auto;
   gap: 1rem;
   text-align: left;
+}
+
+.record-list-head {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.record-list-head span:last-child,
+.record-list button span:last-child {
+  text-align: right;
+}
+
+.record-id {
+  letter-spacing: 0.04em;
+}
+
+.admin-id-facts {
+  display: flex;
+  gap: 2.5rem;
+  margin: 0.85rem 0 0.2rem;
+}
+
+.admin-id-facts dt {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+}
+
+.admin-id-facts dd {
+  margin: 0.15rem 0 0;
+}
+
+.record-list button {
+  width: 100%;
   background: transparent;
   border: 0;
   border-bottom: 1px solid #f0f0f0;
@@ -2808,8 +2861,504 @@ button.proposed-name {
     min-width: 52rem;
   }
 
+  .record-list-head,
   .record-list button {
     grid-template-columns: 1fr;
     gap: 0.15rem;
+  }
+
+  .record-list-head span:last-child,
+  .record-list button span:last-child {
+    text-align: left;
+  }
+}
+
+.portal-leading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.role-switch {
+  display: inline-flex;
+  border: 1px solid #ececec;
+  background: #fff;
+}
+
+.role-switch button {
+  border: 0;
+  background: transparent;
+  color: #9a9a9a;
+  cursor: pointer;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  padding: 0.38rem 0.65rem;
+  line-height: 1.2;
+}
+
+.role-switch button + button {
+  border-left: 1px solid #ececec;
+}
+
+.role-switch button[aria-checked="true"] {
+  color: #111;
+  background: #fafafa;
+}
+
+.role-switch button:focus-visible {
+  outline: 1px solid #111;
+  outline-offset: -1px;
+}
+
+.assistant-prompts button {
+  text-align: left;
+  max-width: 36rem;
+  white-space: normal;
+}
+
+.desk-page h1,
+.desk-page h2 {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+}
+
+.desk-page h2 {
+  font-size: 1.7rem;
+  margin-top: 0.4rem;
+}
+
+.desk-block + .desk-block {
+  margin-top: 3.5rem;
+}
+
+.desk-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.4rem;
+  align-items: center;
+  margin: 1.4rem 0 0.4rem;
+}
+
+.desk-field {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 9rem;
+}
+
+.desk-field.is-wide,
+.desk-search {
+  flex: 1 1 16rem;
+}
+
+.desk-field span {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+}
+
+.desk-field input,
+.desk-field select,
+.desk-field textarea,
+.desk-search input {
+  border: 0;
+  border-bottom: 1px solid #e6e6e6;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.45rem 0;
+  width: 100%;
+  outline: none;
+}
+
+.desk-check {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+}
+
+.desk-check input {
+  margin-top: 0.28rem;
+}
+
+.desk-actions,
+.desk-send {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1.3rem;
+  align-items: center;
+  margin: 0.8rem 0;
+}
+
+.desk-price {
+  color: #9a9a9a;
+  font-size: 0.82rem;
+}
+
+.desk-price .text-button,
+.desk-actions .text-button,
+.desk-send .text-button {
+  font-size: 0.95rem;
+}
+
+.desk-table {
+  margin-top: 1.2rem;
+}
+
+.desk-head,
+.desk-rows button {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) 9rem;
+  gap: 1.25rem;
+  text-align: left;
+  width: 100%;
+}
+
+.desk-head span:last-child,
+.desk-rows button span:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.desk-head {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.desk-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.desk-rows button {
+  border: 0;
+  border-bottom: 1px solid #f4f4f4;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.85rem 0;
+  color: #161616;
+}
+
+.desk-rows button[aria-pressed="true"] {
+  color: #111;
+}
+
+.desk-own-list,
+.desk-market,
+.desk-charges,
+.desk-recs {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.desk-tabs {
+  display: flex;
+  gap: 1.4rem;
+  margin: 0.4rem 0 1.4rem;
+}
+
+.desk-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 0.15rem 0 0.4rem;
+  font: inherit;
+  color: #9a9a9a;
+  cursor: pointer;
+}
+
+.desk-tabs button[aria-selected="true"] {
+  color: #111;
+  border-bottom-color: #111;
+}
+
+.desk-more {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #5e5e5e;
+  font: inherit;
+  cursor: pointer;
+}
+
+.desk-more:hover {
+  color: #111;
+}
+
+.desk-own-list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #f2f2f2;
+  padding: 0.75rem 0;
+  cursor: pointer;
+}
+
+.desk-strategy-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1.2rem;
+  align-items: baseline;
+  border-bottom: 1px solid #f2f2f2;
+  padding: 0.75rem 0;
+}
+
+.desk-strategy-list .text-button {
+  border-bottom: 0;
+  width: auto;
+  padding: 0;
+}
+
+.desk-own-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 1 1 16rem;
+}
+
+.desk-own-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1rem;
+  align-items: baseline;
+}
+
+.desk-status {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.desk-status.is-posted {
+  color: #111;
+}
+
+.desk-status-line {
+  margin-top: 1rem;
+}
+
+.desk-work {
+  margin: 1.4rem 0 0.4rem;
+  padding-top: 0.2rem;
+}
+
+.desk-steps {
+  display: flex;
+  gap: 1rem;
+  color: #b0b0b0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.desk-steps .is-current {
+  color: #111;
+}
+
+.desk-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem 1.5rem;
+  margin: 1rem 0 1.2rem;
+}
+
+.desk-form-grid .is-wide {
+  grid-column: 1 / -1;
+}
+
+.desk-facts {
+  margin: 0.6rem 0 1rem;
+}
+
+.desk-facts div {
+  margin-bottom: 0.75rem;
+}
+
+.desk-facts dt {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+}
+
+.desk-facts dd {
+  margin: 0.12rem 0 0;
+}
+
+.desk-section {
+  margin: 1.35rem 0 0.2rem;
+}
+
+.desk-section h3,
+.desk-work > h3 {
+  margin: 0.2rem 0 0.35rem;
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.desk-section .desk-form-grid {
+  margin-top: 0.7rem;
+}
+
+.desk-sleeves {
+  list-style: none;
+  margin: 0.4rem 0 0.6rem;
+  padding: 0;
+}
+
+.desk-sleeve {
+  display: grid;
+  grid-template-columns: 1.3fr 5.5rem 0.7fr 0.7fr 1.2fr auto;
+  gap: 0.55rem 0.7rem;
+  align-items: end;
+  border-top: 1px solid #f2f2f2;
+  padding: 0.75rem 0 0.15rem;
+}
+
+.desk-sleeve-remove {
+  margin-bottom: 0.45rem;
+}
+
+.desk-sleeve-read {
+  list-style: none;
+  margin: 0.15rem 0 0.35rem;
+  padding: 0;
+}
+
+.desk-sleeve-read li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.28rem 0;
+  border-bottom: 1px solid #f6f6f6;
+}
+
+.desk-total {
+  margin: 0.35rem 0 0.2rem;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+}
+
+.desk-total.is-off {
+  color: #111;
+}
+
+.desk-recs li {
+  border-top: 1px solid #f2f2f2;
+  padding: 0.9rem 0 0.2rem;
+}
+
+.desk-recs h3 {
+  font-size: 1.15rem;
+}
+
+.desk-market li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-bottom: 1px solid #f4f4f4;
+  padding: 0.9rem 0;
+}
+
+.desk-market p {
+  margin: 0.2rem 0 0;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+}
+
+.desk-market-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  color: #5e5e5e;
+  white-space: nowrap;
+}
+
+.desk-yours {
+  margin-left: 0.6rem;
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+
+.desk-targets {
+  border: 0;
+  margin: 0.4rem 0 1rem;
+  padding: 0;
+}
+
+.desk-targets legend {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.desk-charges li {
+  display: grid;
+  grid-template-columns: 5rem 1fr auto;
+  gap: 1rem;
+  border-bottom: 1px solid #f2f2f2;
+  padding: 0.7rem 0;
+}
+
+.desk-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.55);
+  z-index: 30;
+}
+
+.desk-sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(28rem, 100%);
+  background: #fff;
+  border-left: 1px solid #eee;
+  z-index: 31;
+  overflow: auto;
+  padding: 1.6rem 1.5rem 3rem;
+}
+
+.desk-overlap ul {
+  margin: 0.3rem 0 0.6rem;
+  padding-left: 1.1rem;
+}
+
+@media (max-width: 720px) {
+  .desk-form-grid,
+  .desk-market li,
+  .desk-charges li,
+  .desk-sleeve {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .desk-market-meta {
+    align-items: flex-start;
+  }
+
+  .desk-head,
+  .desk-rows button {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .desk-sheet {
+    width: 100%;
+    border-left: 0;
   }
 }
