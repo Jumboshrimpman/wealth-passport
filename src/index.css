@@ -2747,12 +2747,47 @@ button.proposed-name {
   padding: 0;
 }
 
+.record-list-head,
 .record-list button {
-  width: 100%;
   display: grid;
-  grid-template-columns: 1.4fr 1fr auto;
+  grid-template-columns: minmax(11rem, 1.6fr) 6.5rem 7.4rem minmax(7rem, 1fr) auto;
   gap: 1rem;
   text-align: left;
+}
+
+.record-list-head {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.record-list-head span:last-child,
+.record-list button span:last-child {
+  text-align: right;
+}
+
+.record-id {
+  letter-spacing: 0.04em;
+}
+
+.admin-id-facts {
+  display: flex;
+  gap: 2.5rem;
+  margin: 0.85rem 0 0.2rem;
+}
+
+.admin-id-facts dt {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+}
+
+.admin-id-facts dd {
+  margin: 0.15rem 0 0;
+}
+
+.record-list button {
+  width: 100%;
   background: transparent;
   border: 0;
   border-bottom: 1px solid #f0f0f0;
@@ -2826,9 +2861,15 @@ button.proposed-name {
     min-width: 52rem;
   }
 
+  .record-list-head,
   .record-list button {
     grid-template-columns: 1fr;
     gap: 0.15rem;
+  }
+
+  .record-list-head span:last-child,
+  .record-list button span:last-child {
+    text-align: left;
   }
 }
 

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { recordIds } from "../../shared/recordIds.ts";
 import { SEEDED_PASSPORTS } from "../../shared/seed/index.ts";
 import {
   anonymizeBook,
@@ -141,4 +142,12 @@ test("desk assistant actions stay anonymized and do not sell placement", () => {
   assert.equal(/this firm/.test(spokenWithGreeting), false);
   assert.match(fit.text, /household AUM of \$25M or more/);
   assert.match(fit.text, /already have an account at your firm/);
+  const adminIds = SEEDED_PASSPORTS.flatMap((passport) => {
+    const ids = recordIds(passport.id);
+    return [ids.clientId, ids.householdId];
+  });
+  const institutional = `${spokenWithGreeting}\n${book.map(anonPublicText).join("\n")}`.toLowerCase();
+  for (const id of adminIds) {
+    assert.equal(institutional.includes(id.toLowerCase()), false, id);
+  }
 });

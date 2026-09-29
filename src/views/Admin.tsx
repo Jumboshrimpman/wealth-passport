@@ -16,6 +16,7 @@ import { useClient } from "../context/ClientContext";
 import { useConsent } from "../context/ConsentContext";
 import { useOffers } from "../context/OfferContext";
 import { formatUsd, offerHeadline } from "../data/catalog";
+import { recordIds } from "../../shared/recordIds";
 
 const EVENT_KIND_LABEL: Record<AuditEvent["kind"], string> = {
   "consent.changed": "Consent",
@@ -99,27 +100,49 @@ export function Admin() {
       <SectionHead
         kicker="Admin · control room"
         title="All client records"
-        lede="Every household in the book is listed here. Open one to read the record. The charts below stay available."
+        lede="Every household in the book is listed here with its client ID and household ID. Open one to read the record. The charts below stay available."
       />
 
       <section className="record-browser">
+        <div className="record-list-head" role="row">
+          <span role="columnheader">Name</span>
+          <span role="columnheader">Client ID</span>
+          <span role="columnheader">Household ID</span>
+          <span role="columnheader">Domicile</span>
+          <span role="columnheader">Household AUM</span>
+        </div>
         <ul className="record-list">
-          {clients.map((client) => (
-            <li key={client.id}>
-              <button
-                type="button"
-                className={client.id === passport.id ? "is-current" : ""}
-                onClick={() => selectClient(client.id)}
-              >
-                <span>{client.name}</span>
-                <span>{client.domicile}</span>
-                <span>{formatUsd(client.householdValue, true)}</span>
-              </button>
-            </li>
-          ))}
+          {clients.map((client) => {
+            const ids = recordIds(client.id);
+            return (
+              <li key={client.id}>
+                <button
+                  type="button"
+                  className={client.id === passport.id ? "is-current" : ""}
+                  onClick={() => selectClient(client.id)}
+                >
+                  <span>{client.name}</span>
+                  <span className="record-id">{ids.clientId}</span>
+                  <span className="record-id">{ids.householdId}</span>
+                  <span>{client.domicile}</span>
+                  <span>{formatUsd(client.householdValue, true)}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
         <div className="record-detail">
           <h2>{household.name}</h2>
+          <dl className="admin-id-facts">
+            <div>
+              <dt>Client ID</dt>
+              <dd className="record-id">{recordIds(passport.id).clientId}</dd>
+            </div>
+            <div>
+              <dt>Household ID</dt>
+              <dd className="record-id">{recordIds(passport.id).householdId}</dd>
+            </div>
+          </dl>
           <p>
             {household.principals} · {household.domicile} · {formatUsd(household.householdValue)} ·{" "}
             {household.risk.label}
