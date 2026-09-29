@@ -14,10 +14,13 @@ import {
   RISK_LEVELS,
   SAMPLE_CLEAN_FILE,
   SAMPLE_RECONCILE_FILE,
+  sleeveTotal,
   statusLabel,
   statusNote,
+  type AllocationSleeve,
   type DeskPitch,
   type OwnedStrategy,
+  type StrategyProfileDraft,
 } from "../../institution/desk";
 
 export function InstitutionStrategies() {
@@ -154,34 +157,7 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
         </p>
         <h2>{draft.name || "Untitled strategy"}</h2>
         {draft.sourceFile ? <p className="desk-price">Read from {draft.sourceFile}</p> : null}
-        <dl className="desk-facts">
-          <div>
-            <dt>Objective</dt>
-            <dd>{draft.objective}</dd>
-          </div>
-          <div>
-            <dt>Asset class</dt>
-            <dd>
-              {draft.assetClass} · {draft.style} · {draft.risk}
-            </dd>
-          </div>
-          <div>
-            <dt>Minimum AUM</dt>
-            <dd>{formatUsd(draft.minAum, true)}</dd>
-          </div>
-          <div>
-            <dt>Fee</dt>
-            <dd>{draft.feeBps} bps</dd>
-          </div>
-          <div>
-            <dt>Holdings</dt>
-            <dd>{draft.holdingsSummary}</dd>
-          </div>
-          <div>
-            <dt>ESG</dt>
-            <dd>{draft.esgFlags}</dd>
-          </div>
-        </dl>
+        <ProfileRead draft={draft} />
         <h3>Recommendations</h3>
         <ul className="desk-recs">
           {strategy.recommendations.map((rec) => {
@@ -227,6 +203,15 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
     );
   }
 
+  const total = sleeveTotal(draft.sleeves);
+  const off = Math.abs(total - 100) > 1;
+
+  function patchSleeve(sleeveId: string, patch: Partial<AllocationSleeve>) {
+    updateDraft(strategy.id, {
+      sleeves: draft.sleeves.map((row) => (row.id === sleeveId ? { ...row, ...patch } : row)),
+    });
+  }
+
   return (
     <form
       className="desk-work"
@@ -242,47 +227,237 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
       </p>
       <h2>{draft.sourceFile ? "Check the profile" : "New strategy"}</h2>
       {draft.sourceFile ? <p className="desk-price">Read from {draft.sourceFile}. Correct anything the read got wrong.</p> : null}
-      <div className="desk-form-grid">
-        <Field label="Name" value={draft.name} onChange={(name) => updateDraft(strategy.id, { name })} />
-        <Field label="Objective" value={draft.objective} onChange={(objective) => updateDraft(strategy.id, { objective })} long />
-        <SelectField
-          label="Asset class"
-          value={draft.assetClass}
-          options={ASSET_CLASSES}
-          onChange={(assetClass) => updateDraft(strategy.id, { assetClass })}
-        />
-        <SelectField label="Risk" value={draft.risk} options={RISK_LEVELS} onChange={(risk) => updateDraft(strategy.id, { risk })} />
-        <Field label="Style" value={draft.style} onChange={(style) => updateDraft(strategy.id, { style })} />
-        <Field label="Benchmark" value={draft.benchmark} onChange={(benchmark) => updateDraft(strategy.id, { benchmark })} />
-        <Field
-          label="Minimum AUM"
-          value={String(draft.minAum)}
-          onChange={(value) => updateDraft(strategy.id, { minAum: Number(value) })}
-          numeric
-        />
-        <Field
-          label="Fee (bps)"
-          value={String(draft.feeBps)}
-          onChange={(value) => updateDraft(strategy.id, { feeBps: Number(value) })}
-          numeric
-        />
-        <Field
-          label="Liquidity"
-          value={draft.liquidity}
-          onChange={(liquidity) => updateDraft(strategy.id, { liquidity })}
-        />
-        <Field
-          label="Holdings summary"
-          value={draft.holdingsSummary}
-          onChange={(holdingsSummary) => updateDraft(strategy.id, { holdingsSummary })}
-          long
-        />
-        <Field label="ESG flags" value={draft.esgFlags} onChange={(esgFlags) => updateDraft(strategy.id, { esgFlags })} long />
-      </div>
+
+      <section className="desk-section">
+        <h3>Identity</h3>
+        <div className="desk-form-grid">
+          <Field label="Name" value={draft.name} onChange={(name) => updateDraft(strategy.id, { name })} />
+          <Field label="Vehicle" value={draft.vehicle} onChange={(vehicle) => updateDraft(strategy.id, { vehicle })} />
+          <Field label="Style" value={draft.style} onChange={(style) => updateDraft(strategy.id, { style })} />
+          <Field
+            label="Investor profile"
+            value={draft.investorProfile}
+            onChange={(investorProfile) => updateDraft(strategy.id, { investorProfile })}
+          />
+          <Field label="Tax posture" value={draft.taxPosture} onChange={(taxPosture) => updateDraft(strategy.id, { taxPosture })} />
+          <Field
+            label="Benchmark adherence"
+            value={draft.benchmarkAdherence}
+            onChange={(benchmarkAdherence) => updateDraft(strategy.id, { benchmarkAdherence })}
+          />
+          <Field label="As of" value={draft.asOf} onChange={(asOf) => updateDraft(strategy.id, { asOf })} />
+          <SelectField
+            label="Asset class"
+            value={draft.assetClass}
+            options={ASSET_CLASSES}
+            onChange={(assetClass) => updateDraft(strategy.id, { assetClass })}
+          />
+        </div>
+      </section>
+
+      <section className="desk-section">
+        <h3>Objective and process</h3>
+        <div className="desk-form-grid">
+          <Field label="Objective" value={draft.objective} onChange={(objective) => updateDraft(strategy.id, { objective })} long />
+          <Field label="Process" value={draft.process} onChange={(process) => updateDraft(strategy.id, { process })} long />
+          <Field label="Horizon" value={draft.horizon} onChange={(horizon) => updateDraft(strategy.id, { horizon })} long />
+        </div>
+      </section>
+
+      <section className="desk-section">
+        <h3>Allocation</h3>
+        <p className={`desk-total ${off ? "is-off" : ""}`}>
+          {total}% of the book{off ? ". The sleeves should add to 100." : "."}
+        </p>
+        <ul className="desk-sleeves">
+          {draft.sleeves.map((row) => (
+            <li key={row.id} className="desk-sleeve">
+              <Field label="Sleeve" value={row.label} onChange={(label) => patchSleeve(row.id, { label })} />
+              <Field
+                label="Weight %"
+                value={String(row.weightPct)}
+                numeric
+                onChange={(value) => patchSleeve(row.id, { weightPct: Number(value) })}
+              />
+              <Field label="Vehicle" value={row.vehicle} onChange={(vehicle) => patchSleeve(row.id, { vehicle })} />
+              <Field label="Range" value={row.range} onChange={(range) => patchSleeve(row.id, { range })} />
+              <Field
+                label="Holdings"
+                value={row.holdingsNote}
+                onChange={(holdingsNote) => patchSleeve(row.id, { holdingsNote })}
+              />
+              <button
+                type="button"
+                className="text-button desk-sleeve-remove"
+                onClick={() =>
+                  updateDraft(strategy.id, { sleeves: draft.sleeves.filter((item) => item.id !== row.id) })
+                }
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          className="text-button"
+          onClick={() =>
+            updateDraft(strategy.id, {
+              sleeves: [
+                ...draft.sleeves,
+                {
+                  id: `sleeve-${draft.sleeves.length + 1}-${Date.now()}`,
+                  label: "",
+                  weightPct: 0,
+                  vehicle: "SMA",
+                  range: "",
+                  holdingsNote: "",
+                },
+              ],
+            })
+          }
+        >
+          Add sleeve
+        </button>
+      </section>
+
+      <section className="desk-section">
+        <h3>Characteristics</h3>
+        <div className="desk-form-grid">
+          <Field
+            label="Holdings count"
+            value={draft.holdingsCount}
+            onChange={(holdingsCount) => updateDraft(strategy.id, { holdingsCount })}
+          />
+          <Field label="Turnover" value={draft.turnover} onChange={(turnover) => updateDraft(strategy.id, { turnover })} />
+          <Field
+            label="Invests within"
+            value={draft.investsWithin}
+            onChange={(investsWithin) => updateDraft(strategy.id, { investsWithin })}
+          />
+          <Field label="Benchmark" value={draft.benchmark} onChange={(benchmark) => updateDraft(strategy.id, { benchmark })} />
+          <Field
+            label="Tracking"
+            value={draft.trackingNote}
+            onChange={(trackingNote) => updateDraft(strategy.id, { trackingNote })}
+            long
+          />
+        </div>
+      </section>
+
+      <section className="desk-section">
+        <h3>Risk and suitability</h3>
+        <div className="desk-form-grid">
+          <SelectField label="Risk" value={draft.risk} options={RISK_LEVELS} onChange={(risk) => updateDraft(strategy.id, { risk })} />
+          <Field
+            label="Volatility"
+            value={draft.volatilityNote}
+            onChange={(volatilityNote) => updateDraft(strategy.id, { volatilityNote })}
+            long
+          />
+          <Field
+            label="Suitability"
+            value={draft.suitability}
+            onChange={(suitability) => updateDraft(strategy.id, { suitability })}
+            long
+          />
+        </div>
+      </section>
+
+      <section className="desk-section">
+        <h3>Fee and minimum</h3>
+        <div className="desk-form-grid">
+          <Field
+            label="Fee (bps)"
+            value={String(draft.feeBps)}
+            onChange={(value) => updateDraft(strategy.id, { feeBps: Number(value) })}
+            numeric
+          />
+          <Field
+            label="Minimum AUM"
+            value={String(draft.minAum)}
+            onChange={(value) => updateDraft(strategy.id, { minAum: Number(value) })}
+            numeric
+          />
+          <Field label="What the fee covers" value={draft.feeNote} onChange={(feeNote) => updateDraft(strategy.id, { feeNote })} long />
+          <Field label="ESG" value={draft.esgFlags} onChange={(esgFlags) => updateDraft(strategy.id, { esgFlags })} long />
+          <Field
+            label="Holdings summary"
+            value={draft.holdingsSummary}
+            onChange={(holdingsSummary) => updateDraft(strategy.id, { holdingsSummary })}
+            long
+          />
+        </div>
+      </section>
+
       <button type="submit" className="text-button">
         Review recommendations
       </button>
     </form>
+  );
+}
+
+function ProfileRead({ draft }: { draft: StrategyProfileDraft }) {
+  const total = sleeveTotal(draft.sleeves);
+  const off = Math.abs(total - 100) > 1;
+  return (
+    <>
+      <p className="desk-price">
+        {draft.vehicle} · {draft.investorProfile} · {draft.taxPosture} · {draft.asOf}
+      </p>
+      <dl className="desk-facts">
+        <div>
+          <dt>Objective</dt>
+          <dd>{draft.objective}</dd>
+        </div>
+        <div>
+          <dt>Process</dt>
+          <dd>{draft.process}</dd>
+        </div>
+        <div>
+          <dt>Allocation</dt>
+          <dd>
+            <ul className="desk-sleeve-read">
+              {draft.sleeves.map((row) => (
+                <li key={row.id}>
+                  <span>{row.label || "Untitled sleeve"}</span>
+                  <span>
+                    {row.weightPct}% · {row.vehicle}
+                    {row.range ? ` · ${row.range}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className={`desk-total ${off ? "is-off" : ""}`}>
+              {total}% of the book{off ? ". The sleeves should add to 100." : "."}
+            </p>
+          </dd>
+        </div>
+        <div>
+          <dt>Characteristics</dt>
+          <dd>
+            {draft.holdingsCount} holdings · turnover {draft.turnover} · invests within {draft.investsWithin}. Benchmark{" "}
+            {draft.benchmark}. {draft.trackingNote}
+          </dd>
+        </div>
+        <div>
+          <dt>Risk</dt>
+          <dd>
+            {draft.risk}. {draft.volatilityNote} {draft.suitability}
+          </dd>
+        </div>
+        <div>
+          <dt>Fee</dt>
+          <dd>
+            {draft.feeBps} bps · minimum {formatUsd(draft.minAum, true)}. {draft.feeNote}
+          </dd>
+        </div>
+        <div>
+          <dt>ESG</dt>
+          <dd>{draft.esgFlags}</dd>
+        </div>
+      </dl>
+    </>
   );
 }
 

@@ -73,30 +73,55 @@ export interface AnonClient {
   firmAccounts: FirmAccount[];
 }
 
-export type QualityFlag = "pass" | "reconcile-fail";
+/** One sleeve in a strategy pack. Weights across the book should add to 100. */
+export interface AllocationSleeve {
+  id: string;
+  label: string;
+  weightPct: number;
+  vehicle: string;
+  range: string;
+  holdingsNote: string;
+}
 
+/**
+ * Standardized strategy profile. Field groups follow a finished strategy pack:
+ * identity, objective and process, allocation, characteristics, risk, fees.
+ */
 export interface StrategyProfileDraft {
   id: string;
   name: string;
-  objective: string;
-  assetClass: string;
-  risk: string;
-  minAum: number;
-  feeBps: number;
-  holdingsSummary: string;
-  esgFlags: string;
+  vehicle: string;
   style: string;
+  investorProfile: string;
+  taxPosture: string;
+  benchmarkAdherence: string;
+  asOf: string;
+  objective: string;
+  process: string;
+  horizon: string;
+  sleeves: AllocationSleeve[];
+  holdingsCount: string;
+  turnover: string;
+  investsWithin: string;
   benchmark: string;
-  liquidity: string;
+  trackingNote: string;
+  risk: string;
+  volatilityNote: string;
+  suitability: string;
+  feeBps: number;
+  feeNote: string;
+  minAum: number;
+  esgFlags: string;
+  holdingsSummary: string;
+  assetClass: string;
   sourceFile: string | null;
-  qualityFlag: QualityFlag;
 }
 
 export interface DeskRecommendation {
   id: string;
   title: string;
   detail: string;
-  patch: Partial<Pick<StrategyProfileDraft, "objective" | "minAum" | "feeBps" | "esgFlags" | "holdingsSummary">>;
+  patch: Partial<Pick<StrategyProfileDraft, "objective" | "feeBps" | "esgFlags" | "holdingsSummary" | "sleeves">>;
 }
 
 export type ListingStatus = "editing" | "recommendations" | "under-review" | "posted" | "human-review";
@@ -314,36 +339,143 @@ function titleFromFile(filename: string): string {
   return stem.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function sleeve(
+  id: string,
+  label: string,
+  weightPct: number,
+  vehicle: string,
+  range: string,
+  holdingsNote: string,
+): AllocationSleeve {
+  return { id, label, weightPct, vehicle, range, holdingsNote };
+}
+
+/** Sum of sleeve weights, rounded to a tenth of a percent. */
+export function sleeveTotal(sleeves: readonly AllocationSleeve[]): number {
+  const raw = sleeves.reduce((sum, row) => sum + (Number.isFinite(row.weightPct) ? row.weightPct : 0), 0);
+  return Math.round(raw * 10) / 10;
+}
+
+/** Scale sleeve weights so they add to 100. An empty book becomes one unassigned sleeve. */
+export function footSleeves(sleeves: readonly AllocationSleeve[]): AllocationSleeve[] {
+  if (sleeves.length === 0) {
+    return [sleeve("unassigned", "Unassigned", 100, "SMA", "", "")];
+  }
+  const total = sleeveTotal(sleeves);
+  if (Math.abs(total - 100) <= 0.15) return sleeves.map((row) => ({ ...row }));
+  const scaled = sleeves.map((row) => {
+    const raw = total > 0 ? (row.weightPct / total) * 100 : 100 / sleeves.length;
+    return { ...row, weightPct: Math.round(raw * 10) / 10 };
+  });
+  const drift = Math.round((100 - sleeveTotal(scaled)) * 10) / 10;
+  const last = scaled[scaled.length - 1];
+  if (last) last.weightPct = Math.round((last.weightPct + drift) * 10) / 10;
+  return scaled;
+}
+
 const CLEAN_PROFILE: Omit<StrategyProfileDraft, "id" | "sourceFile"> = {
-  name: "Tax-Aware US Equity",
-  objective: "Harvest losses in a large-cap US equity sleeve without drifting from the household benchmark.",
-  assetClass: "Equity",
+  name: "Northline Tax-Aware Allocation",
+  vehicle: "Hybrid SMA and ETF",
+  style: "Tax-aware core allocation",
+  investorProfile: "Moderately growth",
+  taxPosture: "Tax-aware",
+  benchmarkAdherence: "High",
+  asOf: "Q2 2026",
+  objective:
+    "Keep a taxable household close to a balanced policy while harvesting losses inside the equity and municipal sleeves.",
+  process:
+    "Choose each sleeve for a role, rebalance when a weight leaves its range, and harvest a loss when a substitute holding is available.",
+  horizon: "Strategic allocation, reviewed each quarter. Tilts stay inside the published ranges.",
+  sleeves: [
+    sleeve("us-equity", "US equity core", 46, "SMA", "40–52%", "About 80 names, single-name cap 2%"),
+    sleeve("intl-equity", "International developed equity", 18, "ETF", "12–24%", "Broad developed markets"),
+    sleeve("munis", "Municipal bonds", 28, "SMA", "22–34%", "Intermediate ladder"),
+    sleeve("cash", "Cash", 8, "Cash", "2–12%", "Settlement and tax reserves"),
+  ],
+  holdingsCount: "120–160 across the separate accounts",
+  turnover: "About 25%",
+  investsWithin: "About 3 business days",
+  benchmark: "US 60/40 blend",
+  trackingNote: "Expected to stay near the policy blend. Tracking is a guide, not a promise.",
   risk: "Moderate",
-  minAum: 10_000_000,
+  volatilityNote: "Equity is the larger share, so the path follows equity, with a cushion from municipals and cash.",
+  suitability:
+    "Taxable households that can leave the allocation in place through a full cycle. Not a fit when principal is needed on a set date.",
   feeBps: 32,
+  feeNote: "Covers management of the sleeves. Custody, and expenses inside an ETF, sit outside this fee.",
+  minAum: 10_000_000,
+  esgFlags: "No dedicated sustainability screen.",
   holdingsSummary:
-    "S&P 500 names with a 2% single-name cap. Cash stays under 3%. No individual municipal bonds in this sleeve.",
-  esgFlags: "Excludes thermal coal and civilian firearms.",
-  style: "Tax-aware core",
-  benchmark: "S&P 500",
-  liquidity: "Daily",
-  qualityFlag: "pass",
+    "Four sleeves. US equity is the core separate account. International equity is an ETF. Municipals are their own account. Cash is a reserve, not a return engine.",
+  assetClass: "Multi-asset",
 };
 
 const RECONCILE_PROFILE: Omit<StrategyProfileDraft, "id" | "sourceFile"> = {
-  name: "Opportunistic Credit",
-  objective: "Reach for yield in a mixed credit book.",
-  assetClass: "Fixed income",
+  name: "Cedar Opportunistic Credit",
+  vehicle: "Separate account",
+  style: "Opportunistic credit",
+  investorProfile: "Aggressive income",
+  taxPosture: "Taxable",
+  benchmarkAdherence: "Moderate",
+  asOf: "Q2 2026",
+  objective: "Seek extra yield from a mix of investment-grade credit and high yield.",
+  process: "Pair an investment-grade book with a high-yield sleeve, and rebalance when either leaves its stated range.",
+  horizon: "Tactical, reviewed inside a year.",
+  sleeves: [
+    sleeve("ig-credit", "Investment-grade credit", 48, "SMA", "40–60%", "Intermediate corporates"),
+    sleeve("high-yield", "High yield", 31, "ETF", "20–40%", "Broad high-yield market"),
+    sleeve("cash", "Cash", 9, "Cash", "0–15%", "Dry powder"),
+  ],
+  holdingsCount: "Not fully read from the file",
+  turnover: "Not stated",
+  investsWithin: "Not stated",
+  benchmark: "US investment-grade credit",
+  trackingNote: "The sleeve weights in the file do not add to the whole book.",
   risk: "Aggressive",
+  volatilityNote: "Credit spreads drive the result. The cash sleeve is small.",
+  suitability: "Households that can accept a credit drawdown. Not a fit when a stable coupon is the point.",
+  feeBps: 93,
+  feeNote: "Read as a management fee. Confirm what it covers before this lists.",
   minAum: 5_000_000,
-  feeBps: 95,
-  holdingsSummary: "See spreadsheet.",
   esgFlags: "None stated",
-  style: "Credit",
-  benchmark: "Bloomberg US Aggregate",
-  liquidity: "Monthly",
-  qualityFlag: "reconcile-fail",
+  holdingsSummary:
+    "Three sleeves were read from the workbook. Their weights do not add to the whole portfolio. Confirm the missing share before this lists.",
+  assetClass: "Fixed income",
 };
+
+function genericProfile(base: string): Omit<StrategyProfileDraft, "id" | "sourceFile"> {
+  return {
+    name: titleFromFile(base),
+    vehicle: "Separate account",
+    style: "Core",
+    investorProfile: "Moderate",
+    taxPosture: "Not stated",
+    benchmarkAdherence: "To be confirmed",
+    asOf: "Q2 2026",
+    objective: `Pursue the mandate described in ${base}.`,
+    process: "The file named a mandate. Confirm how names are selected, when the book rebalances, and whether losses are harvested.",
+    horizon: "Strategic.",
+    sleeves: [
+      sleeve("growth", "Global equity", 60, "SMA", "50–70%", "Core equity book"),
+      sleeve("bonds", "Bonds", 35, "SMA", "25–45%", "Investment-grade bonds"),
+      sleeve("cash", "Cash", 5, "Cash", "0–10%", "Reserve"),
+    ],
+    holdingsCount: "80–120",
+    turnover: "About 20%",
+    investsWithin: "About 5 business days",
+    benchmark: "To be confirmed",
+    trackingNote: "To be confirmed.",
+    risk: "Moderate",
+    volatilityNote: "Split between growth assets and bonds.",
+    suitability: "Households seeking one balanced allocation.",
+    feeBps: 45,
+    feeNote: "Management fee only.",
+    minAum: 5_000_000,
+    esgFlags: "Not stated",
+    holdingsSummary: `Holdings were read from ${base}. Weights are summarized here for a manager to confirm.`,
+    assetClass: "Multi-asset",
+  };
+}
 
 /** Demo parse: filename selects a fixture. No document model runs. */
 export function parseStrategyFile(filename: string): StrategyProfileDraft {
@@ -351,27 +483,18 @@ export function parseStrategyFile(filename: string): StrategyProfileDraft {
   const lower = base.toLowerCase();
   const id = `parsed-${slug(base) || "upload"}`;
   if (lower.includes("unreconciled") || lower.includes("reconcile")) {
-    return { ...RECONCILE_PROFILE, id, sourceFile: base };
+    return { ...RECONCILE_PROFILE, sleeves: RECONCILE_PROFILE.sleeves.map((row) => ({ ...row })), id, sourceFile: base };
   }
   if (lower.includes("tax-aware") || lower.includes("tax aware") || lower.includes("gsam")) {
-    return { ...CLEAN_PROFILE, id, sourceFile: base };
+    return { ...CLEAN_PROFILE, sleeves: CLEAN_PROFILE.sleeves.map((row) => ({ ...row })), id, sourceFile: base };
   }
-  return {
-    id,
-    name: titleFromFile(base),
-    objective: `Pursue the mandate described in ${base}.`,
-    assetClass: "Multi-asset",
-    risk: "Moderate",
-    minAum: 5_000_000,
-    feeBps: 45,
-    holdingsSummary: `Holdings were read from ${base}. Weights and names are summarized here for a manager to confirm.`,
-    esgFlags: "Not stated",
-    style: "Core",
-    benchmark: "To be confirmed",
-    liquidity: "Daily",
-    sourceFile: base,
-    qualityFlag: "pass",
-  };
+  const generic = genericProfile(base);
+  return { ...generic, id, sourceFile: base };
+}
+
+function sleeveMixLine(sleeves: readonly AllocationSleeve[]): string {
+  if (sleeves.length === 0) return "No sleeves yet.";
+  return sleeves.map((row) => `${row.label || "Untitled"} ${row.weightPct}%`).join(" · ");
 }
 
 export function recommendationsFor(draft: StrategyProfileDraft): DeskRecommendation[] {
@@ -382,7 +505,8 @@ export function recommendationsFor(draft: StrategyProfileDraft): DeskRecommendat
     draft.benchmark !== "To be confirmed" &&
     !clipped.toLowerCase().includes(draft.benchmark.toLowerCase());
   const tightened = namesBenchmark ? `${clipped.replace(/\.$/, "")}. Benchmark ${draft.benchmark}.` : clipped;
-  const esg = /not stated|^none\b/i.test(draft.esgFlags) ? "No ESG screen on this listing." : draft.esgFlags.trim();
+  const total = sleeveTotal(draft.sleeves);
+  const footed = Math.abs(total - 100) <= 1;
   return [
     {
       id: "objective",
@@ -397,20 +521,22 @@ export function recommendationsFor(draft: StrategyProfileDraft): DeskRecommendat
       patch: { feeBps: Math.max(5, Math.round((draft.feeBps || 0) / 5) * 5) },
     },
     {
-      id: "esg",
-      title: "State the ESG position",
-      detail: "Say what is screened, or say that nothing is.",
-      patch: { esgFlags: esg },
+      id: "allocation",
+      title: footed ? "Confirm the sleeve mix" : "Foot the allocation",
+      detail: footed
+        ? "The sleeves already add to 100. This line records the mix."
+        : `These weights add to ${total}%. Scale them so the book reads 100.`,
+      patch: { sleeves: footSleeves(draft.sleeves) },
     },
   ];
 }
 
 export function recommendationPreview(rec: DeskRecommendation): string {
   if (rec.patch.objective) return rec.patch.objective;
+  if (rec.patch.sleeves) return sleeveMixLine(rec.patch.sleeves);
   if (rec.patch.esgFlags) return rec.patch.esgFlags;
   if (rec.patch.holdingsSummary) return rec.patch.holdingsSummary;
   if (rec.patch.feeBps != null) return `${rec.patch.feeBps} bps`;
-  if (rec.patch.minAum != null) return formatUsd(rec.patch.minAum, true);
   return "";
 }
 
@@ -427,10 +553,10 @@ export function applyDecisions(
 
 /**
  * Internal checker. The manager never sees this reason — only Posted or Human review.
- * Reconcile failures and thin or implausible profiles go to a person.
+ * Books whose sleeves do not add to 100, and thin or implausible profiles, go to a person.
  */
 export function listingDecision(draft: StrategyProfileDraft): "posted" | "human-review" {
-  if (draft.qualityFlag === "reconcile-fail") return "human-review";
+  if (draft.sleeves.length === 0 || Math.abs(sleeveTotal(draft.sleeves) - 100) > 1) return "human-review";
   if (!draft.name.trim() || !draft.objective.trim()) return "human-review";
   if (!Number.isFinite(draft.feeBps) || draft.feeBps <= 0 || draft.feeBps > 200) return "human-review";
   if (draft.holdingsSummary.trim().length < 40) return "human-review";
@@ -453,18 +579,31 @@ export function blankStrategy(id: string): OwnedStrategy {
   const draft: StrategyProfileDraft = {
     id,
     name: "",
-    objective: "",
-    assetClass: "Equity",
-    risk: "Moderate",
-    minAum: 10_000_000,
-    feeBps: 35,
-    holdingsSummary: "",
-    esgFlags: "Not stated",
+    vehicle: "Separate account",
     style: "Core",
-    benchmark: "S&P 500",
-    liquidity: "Daily",
+    investorProfile: "Moderate",
+    taxPosture: "Not stated",
+    benchmarkAdherence: "To be confirmed",
+    asOf: "Q2 2026",
+    objective: "",
+    process: "",
+    horizon: "Strategic.",
+    sleeves: [sleeve("core", "Core sleeve", 100, "SMA", "", "")],
+    holdingsCount: "",
+    turnover: "",
+    investsWithin: "",
+    benchmark: "To be confirmed",
+    trackingNote: "",
+    risk: "Moderate",
+    volatilityNote: "",
+    suitability: "",
+    feeBps: 35,
+    feeNote: "",
+    minAum: 10_000_000,
+    esgFlags: "Not stated",
+    holdingsSummary: "",
+    assetClass: "Equity",
     sourceFile: null,
-    qualityFlag: "pass",
   };
   return { id, draft, status: "editing", recommendations: [], decisions: {} };
 }
@@ -568,18 +707,34 @@ const POSTED_SEED: OwnedStrategy = {
   draft: {
     id: "own-tax-aware",
     name: "US Equity Tax-Aware SMA",
-    objective: "Harvest losses around a large-cap US equity book without leaving the S&P 500 band.",
-    assetClass: "Equity",
-    risk: "Moderate",
-    minAum: 10_000_000,
-    feeBps: 30,
-    holdingsSummary: "S&P 500 constituents, a 2% single-name cap, and cash under 3%. No municipal bonds in this sleeve.",
-    esgFlags: "Excludes thermal coal and civilian firearms.",
+    vehicle: "Separate account",
     style: "Tax-aware core",
+    investorProfile: "Growth",
+    taxPosture: "Tax-aware",
+    benchmarkAdherence: "High",
+    asOf: "Q2 2026",
+    objective: "Harvest losses around a large-cap US equity book without leaving the S&P 500 band.",
+    process: "Own the large-cap book, harvest losses against a substitute, and rebalance when a name leaves its cap.",
+    horizon: "Strategic. The book is reviewed each quarter.",
+    sleeves: [
+      sleeve("equity", "US large-cap equity", 98, "SMA", "96–100%", "Broad large-cap book, 2% single-name cap"),
+      sleeve("cash", "Cash", 2, "Cash", "0–4%", "Frictions and tax reserves"),
+    ],
+    holdingsCount: "150–175",
+    turnover: "About 20%",
+    investsWithin: "About 3 business days",
     benchmark: "S&P 500",
-    liquidity: "Daily",
+    trackingNote: "Stays close to the large-cap index. Tracking is a guide, not a promise.",
+    risk: "Moderate",
+    volatilityNote: "Moves with large-cap US equity. Cash is a residual, not a buffer.",
+    suitability: "Taxable households that want equity exposure and can use harvested losses.",
+    feeBps: 30,
+    feeNote: "Management fee. Custody is separate.",
+    minAum: 10_000_000,
+    esgFlags: "Excludes thermal coal and civilian firearms.",
+    holdingsSummary: "A large-cap US equity separate account with a 2% single-name cap, and cash under 4%. No municipal bonds in this book.",
+    assetClass: "Equity",
     sourceFile: null,
-    qualityFlag: "pass",
   },
 };
 

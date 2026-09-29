@@ -16,6 +16,7 @@ import {
   recommendationsFor,
   SAMPLE_RECONCILE_FILE,
   seedPitches,
+  sleeveTotal,
 } from "./desk.ts";
 
 function forbiddenNeedles(): string[] {
@@ -77,23 +78,39 @@ test("client name search does not find an anonymized household", () => {
 
 test("strategy upload parses into a profile and the hidden checker posts or holds", () => {
   const clean = parseStrategyFile(CANNED_STRATEGY_FILE);
-  assert.equal(clean.qualityFlag, "pass");
-  assert.equal(clean.assetClass, "Equity");
-  assert.ok(clean.feeBps > 0);
+  assert.equal(clean.name, "Northline Tax-Aware Allocation");
+  assert.equal(clean.assetClass, "Multi-asset");
+  assert.equal(clean.vehicle, "Hybrid SMA and ETF");
+  assert.equal(sleeveTotal(clean.sleeves), 100);
+  assert.equal(clean.feeBps, 32);
+  assert.equal(clean.minAum, 10_000_000);
   assert.equal(clean.sourceFile, CANNED_STRATEGY_FILE);
+  assert.ok(clean.objective.length > 40);
+  assert.ok(clean.process.length > 20);
   const recs = recommendationsFor(clean);
   assert.equal(recs.length, 3);
-  const accepted = applyDecisions(clean, recs, { objective: "accept", fee: "accept", esg: "accept" });
+  assert.deepEqual(
+    recs.map((rec) => rec.id),
+    ["objective", "fee", "allocation"],
+  );
+  const accepted = applyDecisions(clean, recs, { objective: "accept", fee: "accept", allocation: "accept" });
   assert.equal(accepted.feeBps, 30);
-  assert.equal(accepted.qualityFlag, "pass");
+  assert.match(accepted.objective, /US 60\/40 blend/);
+  assert.equal(sleeveTotal(accepted.sleeves), 100);
   assert.equal(listingDecision(accepted), "posted");
 
   const held = parseStrategyFile(SAMPLE_RECONCILE_FILE);
-  assert.equal(held.qualityFlag, "reconcile-fail");
+  assert.equal(held.name, "Cedar Opportunistic Credit");
+  assert.equal(sleeveTotal(held.sleeves), 88);
   assert.equal(listingDecision(held), "human-review");
+  const heldRecs = recommendationsFor(held);
+  const footed = applyDecisions(held, heldRecs, { allocation: "accept" });
+  assert.equal(sleeveTotal(footed.sleeves), 100);
+  assert.equal(listingDecision(footed), "posted");
+
   const generic = parseStrategyFile("Global Balanced Sleeve.pdf");
   assert.equal(generic.name, "Global Balanced Sleeve");
-  assert.equal(generic.qualityFlag, "pass");
+  assert.equal(sleeveTotal(generic.sleeves), 100);
   assert.equal(listingDecision({ ...generic, name: "", holdingsSummary: "short" }), "human-review");
 });
 

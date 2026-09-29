@@ -3069,6 +3069,67 @@ button.proposed-name {
   margin: 0.12rem 0 0;
 }
 
+.desk-section {
+  margin: 1.35rem 0 0.2rem;
+}
+
+.desk-section h3,
+.desk-work > h3 {
+  margin: 0.2rem 0 0.35rem;
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.desk-section .desk-form-grid {
+  margin-top: 0.7rem;
+}
+
+.desk-sleeves {
+  list-style: none;
+  margin: 0.4rem 0 0.6rem;
+  padding: 0;
+}
+
+.desk-sleeve {
+  display: grid;
+  grid-template-columns: 1.3fr 5.5rem 0.7fr 0.7fr 1.2fr auto;
+  gap: 0.55rem 0.7rem;
+  align-items: end;
+  border-top: 1px solid #f2f2f2;
+  padding: 0.75rem 0 0.15rem;
+}
+
+.desk-sleeve-remove {
+  margin-bottom: 0.45rem;
+}
+
+.desk-sleeve-read {
+  list-style: none;
+  margin: 0.15rem 0 0.35rem;
+  padding: 0;
+}
+
+.desk-sleeve-read li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.28rem 0;
+  border-bottom: 1px solid #f6f6f6;
+}
+
+.desk-total {
+  margin: 0.35rem 0 0.2rem;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+}
+
+.desk-total.is-off {
+  color: #111;
+}
+
 .desk-recs li {
   border-top: 1px solid #f2f2f2;
   padding: 0.9rem 0 0.2rem;
@@ -3157,7 +3218,8 @@ button.proposed-name {
 @media (max-width: 720px) {
   .desk-form-grid,
   .desk-market li,
-  .desk-charges li {
+  .desk-charges li,
+  .desk-sleeve {
     grid-template-columns: 1fr;
     display: grid;
   }
