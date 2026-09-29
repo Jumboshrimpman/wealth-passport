@@ -137,5 +137,8 @@ test("desk assistant actions stay anonymized and do not sell placement", () => {
   const spokenWithGreeting = `${spoken}\n${greeting.toLowerCase()}`;
   assert.equal(/sit near/.test(spokenWithGreeting), false);
   assert.match(greeting, /household AUM of \$25M or more/);
+  assert.match(greeting, /already have an account at your firm/);
+  assert.equal(/this firm/.test(spokenWithGreeting), false);
   assert.match(fit.text, /household AUM of \$25M or more/);
+  assert.match(fit.text, /already have an account at your firm/);
 });

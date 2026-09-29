@@ -25,7 +25,7 @@ export function InstitutionClients() {
     <div className="desk-page">
       <h1>Clients</h1>
       <p className="lede-quiet">
-        Households on the platform, without names. Open one to see what is already at this firm, or to send a pitch.
+        Households on the platform, without names. Open one to see what is already at your firm, or to send a pitch.
       </p>
       <div className="desk-tools">
         <label className="desk-field desk-search">
@@ -60,7 +60,7 @@ export function InstitutionClients() {
         </label>
         <label className="desk-check">
           <input type="checkbox" checked={firmOnly} onChange={(event) => setFirmOnly(event.target.checked)} />
-          Already with this firm
+          Already with your firm
         </label>
       </div>
       <div className="desk-table" role="table" aria-label="Anonymized clients">
@@ -150,7 +150,7 @@ function ClientSheet({
         </dl>
         {row.withFirm != null ? (
           <div className="desk-overlap">
-            <h3>Already with this firm</h3>
+            <h3>Already with your firm</h3>
             <ul>
               {row.firmAccounts.map((account) => (
                 <li key={`${account.type}-${account.balance}`}>
@@ -158,10 +158,10 @@ function ClientSheet({
                 </li>
               ))}
             </ul>
-            <p>With the firm {formatUsd(row.withFirm)}. Elsewhere {formatUsd(row.elsewhere ?? 0)}.</p>
+            <p>With your firm {formatUsd(row.withFirm)}. Elsewhere {formatUsd(row.elsewhere ?? 0)}.</p>
           </div>
         ) : (
-          <p className="lede-quiet">No account at this firm on the record.</p>
+          <p className="lede-quiet">No account at your firm on the record.</p>
         )}
         <h3>Pitch to this client</h3>
         {pitches.length === 0 ? (

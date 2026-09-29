@@ -806,7 +806,7 @@ export function seedPitches(): DeskPitch[] {
     {
       id: "pitch-equity",
       name: "Tax-aware equity on an existing account",
-      solution: "Run the tax-aware SMA on the account already held at this firm, and leave the rest of the household untouched.",
+      solution: "Run the tax-aware SMA on the account already held at your firm, and leave the rest of the household untouched.",
       pricing: "30 bps all-in.",
       targetClientId: "priya-shah",
       audienceNote: "",
@@ -827,7 +827,7 @@ export function deskGreeting(book: readonly AnonClient[], pitches: readonly Desk
   const here = book.filter((row) => row.withFirm != null).length;
   const sent = pitches.reduce((sum, pitch) => sum + pitch.sent.length, 0);
   const household = band === 1 ? "household has" : "households have";
-  const account = here === 1 ? "already has an account at this firm" : "already have an account at this firm";
+  const account = here === 1 ? "already has an account at your firm" : "already have an account at your firm";
   const pitchWord = sent === 1 ? "pitch has" : "pitches have";
   return `${band} ${household} household AUM of ${formatUsd(FIT_HOUSEHOLD_AUM, true)} or more. ${here} ${account}. ${sent} ${pitchWord} gone out.`;
 }
@@ -852,13 +852,13 @@ export function deskReply(
   if (/(fit|which client|anonym)/.test(text)) {
     const rows = fittingClients(ctx.book);
     const lines = rows.map((row) => {
-      const overlap = row.withFirm != null ? " Part of this household is already with this firm." : "";
+      const overlap = row.withFirm != null ? " Part of this household is already with your firm." : "";
       return `${row.ref} · age ${row.age} · ${formatLocation(row)} · ${formatUsd(row.householdAum, true)}.${overlap}`;
     });
     return {
       effect: null,
       text: [
-        `${rows.length} households have household AUM of ${formatUsd(FIT_HOUSEHOLD_AUM, true)} or more, or already have an account at this firm. Names stay off this desk.`,
+        `${rows.length} households have household AUM of ${formatUsd(FIT_HOUSEHOLD_AUM, true)} or more, or already have an account at your firm. Names stay off this desk.`,
         ...lines,
         "You can upload a strategy for a free listing, or draft a pitch and confirm who receives it.",
       ].join("\n\n"),
