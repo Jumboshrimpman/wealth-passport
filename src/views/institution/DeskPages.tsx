@@ -9,7 +9,6 @@ import {
   postedCatalogProfile,
   PITCH_SEND_USD,
   recommendationPreview,
-  refFor,
   RISK_LEVELS,
   SAMPLE_CLEAN_FILE,
   SAMPLE_RECONCILE_FILE,
@@ -18,6 +17,7 @@ import {
   type AllocationSleeve,
   type DeskPitch,
   type OwnedStrategy,
+  type PitchSolution,
   type StrategyProfileDraft,
 } from "../../institution/desk";
 
@@ -75,7 +75,7 @@ function CreatePane() {
   return (
     <section className="desk-block">
       <h2>Your strategies</h2>
-      <p className="lede-quiet">List a strategy for free. Upload a PDF or Excel file, check the profile, then take one round of recommendations.</p>
+      <p className="lede-quiet">List a strategy for free. Upload a PDF or Excel file, check the profile, then take one round of AI suggestions.</p>
       <div className="desk-actions">
         <button type="button" className="text-button" onClick={desk.startManual}>
           Create manually
@@ -148,28 +148,39 @@ function CreatePane() {
 }
 
 function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
-  const { updateDraft, openRecommendations, decideRecommendation, submitStrategy, editStrategyAgain, saveListedStrategy } =
+  const { updateDraft, openRecommendations, decideRecommendation, submitStrategy, editStrategyAgain, saveListedStrategy, editorFocus } =
     useInstitutional();
   const draft = strategy.draft;
+  const rootRef = useRef<HTMLElement | null>(null);
   const savingListing = Boolean(strategy.resumeStatus);
+  useEffect(() => {
+    rootRef.current?.scrollIntoView({ block: "start" });
+  }, [editorFocus, strategy.id]);
   if (strategy.status === "recommendations") {
     const ready = strategy.recommendations.every((rec) => strategy.decisions[rec.id]);
     return (
-      <div className="desk-work">
+      <div
+        className="desk-work"
+        ref={(node) => {
+          rootRef.current = node;
+        }}
+      >
         <p className="desk-steps">
           <span>Edit</span>
-          <span className="is-current">Recommendations</span>
+          <span className="is-current">AI suggestions</span>
           <span>Submit</span>
         </p>
         <h2>{draft.name || "Untitled strategy"}</h2>
         {draft.sourceFile ? <p className="desk-price">Read from {draft.sourceFile}</p> : null}
         <ProfileRead draft={draft} />
-        <h3>Recommendations</h3>
+        <h3>AI suggestions</h3>
+        <p className="desk-ai-note">Suggestions to improve how this listing appears to clients. Optional. Not a compliance edit.</p>
         <ul className="desk-recs">
           {strategy.recommendations.map((rec) => {
             const decision = strategy.decisions[rec.id];
             return (
               <li key={rec.id}>
+                <p className="desk-ai-kicker">AI</p>
                 <h3>{rec.title}</h3>
                 <p>{rec.detail}</p>
                 <p className="desk-price">{recommendationPreview(rec)}</p>
@@ -204,7 +215,7 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
             Submit for listing
           </button>
         </div>
-        <p className="desk-price">Accept or decline each line. This is the only round. Listing is free.</p>
+        <p className="desk-price">Accept or decline each suggestion. This is the only round. Listing is free.</p>
       </div>
     );
   }
@@ -221,6 +232,9 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
   return (
     <form
       className="desk-work"
+      ref={(node) => {
+        rootRef.current = node;
+      }}
       onSubmit={(event) => {
         event.preventDefault();
         if (savingListing) saveListedStrategy(strategy.id);
@@ -230,7 +244,7 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
       {savingListing ? null : (
         <p className="desk-steps">
           <span className="is-current">Edit</span>
-          <span>Recommendations</span>
+          <span>AI suggestions</span>
           <span>Submit</span>
         </p>
       )}
@@ -537,28 +551,65 @@ export function InstitutionPitches() {
   const { pitches, activePitchId, openPitch, updatePitch, startPitch, sendPitch, sendPrice } = useInstitutional();
   const active = pitches.find((pitch) => pitch.id === activePitchId) ?? null;
   const [notice, setNotice] = useState<string | null>(null);
+  const [sentFor, setSentFor] = useState<string | null>(null);
+  const activeIdRef = useRef(activePitchId);
+  activeIdRef.current = activePitchId;
+  const showingSent = sentFor != null && sentFor === activePitchId;
+
+  useEffect(() => {
+    setNotice(null);
+  }, [activePitchId]);
+
+  useEffect(() => {
+    if (!sentFor || !activePitchId || sentFor === activePitchId) return;
+    setSentFor(null);
+  }, [activePitchId, sentFor]);
+
+  useEffect(() => {
+    if (!sentFor) return;
+    const id = sentFor;
+    const timer = window.setTimeout(() => {
+      setSentFor((current) => (current === id ? null : current));
+      if (activeIdRef.current === id) openPitch(null);
+    }, 2200);
+    return () => window.clearTimeout(timer);
+  }, [openPitch, sentFor]);
 
   return (
     <div className="desk-page">
       <h1>Pitches</h1>
-      <p className="lede-quiet">A pitch is a name, a solution, and a price for one household. Confirm the household before it sends.</p>
+      <p className="lede-quiet">
+        A pitch is a strategy-shaped solution for the households you select. Confirm that set before it sends.
+      </p>
       <p className="desk-price">${sendPrice.toLocaleString("en-US")} to send a pitch. Listing a strategy is free.</p>
       <button type="button" className="text-button" onClick={startPitch}>
         New pitch
       </button>
-      {active ? (
+      {showingSent ? (
+        <p className="desk-sent" role="status">
+          SENT
+        </p>
+      ) : active ? (
         <PitchEditor
           pitch={active}
           notice={notice}
           onNotice={setNotice}
           onChange={(patch) => updatePitch(active.id, patch)}
-          onSend={(clientId) => setNotice(sendPitch(active.id, clientId))}
+          onSend={(clientIds) => {
+            const result = sendPitch(active.id, clientIds);
+            if (!result.ok) {
+              setNotice("Choose at least one household.");
+              return;
+            }
+            setNotice(null);
+            setSentFor(active.id);
+          }}
         />
       ) : null}
       <ul className="desk-own-list">
         {pitches.map((pitch) => (
           <li key={pitch.id}>
-            <button type="button" onClick={() => openPitch(pitch.id)} aria-pressed={pitch.id === activePitchId}>
+            <button type="button" onClick={() => openPitch(pitch.id)} aria-pressed={pitch.id === activePitchId && !showingSent}>
               <span>{pitch.name || "Untitled pitch"}</span>
               <span className="desk-status">{pitch.sent.length ? `Sent · ${pitch.sent.length}` : "Draft"}</span>
             </button>
@@ -580,25 +631,46 @@ function PitchEditor({
   notice: string | null;
   onNotice: (value: string | null) => void;
   onChange: (patch: Partial<DeskPitch>) => void;
-  onSend: (clientId: string) => void;
+  onSend: (clientIds: string[]) => void;
 }) {
   const { book } = useInstitutional();
+  const solution = pitch.solution;
   const ordered = [...book].sort((a, b) => {
     const aMatch = matchesNewYorkPitch(a) && /new york/i.test(pitch.audienceNote) ? 0 : 1;
     const bMatch = matchesNewYorkPitch(b) && /new york/i.test(pitch.audienceNote) ? 0 : 1;
     return aMatch - bMatch || b.householdAum - a.householdAum;
   });
+  const total = sleeveTotal(solution.sleeves);
+  const off = Math.abs(total - 100) > 1;
+
+  function patchSolution(patch: Partial<PitchSolution>) {
+    onChange({ solution: { ...solution, ...patch } });
+  }
+
+  function patchSleeve(sleeveId: string, patch: Partial<AllocationSleeve>) {
+    patchSolution({
+      sleeves: solution.sleeves.map((row) => (row.id === sleeveId ? { ...row, ...patch } : row)),
+    });
+  }
+
+  function toggleHousehold(id: string) {
+    const selected = pitch.targetClientIds.includes(id)
+      ? pitch.targetClientIds.filter((item) => item !== id)
+      : [...pitch.targetClientIds, id];
+    onNotice(null);
+    onChange({ targetClientIds: selected });
+  }
 
   return (
     <form
       className="desk-work"
       onSubmit={(event) => {
         event.preventDefault();
-        if (!pitch.targetClientId) {
-          onNotice("Choose a household. Targeting is not confirmed yet.");
+        if (pitch.targetClientIds.length === 0) {
+          onNotice("Choose at least one household.");
           return;
         }
-        onSend(pitch.targetClientId);
+        onSend(pitch.targetClientIds);
       }}
     >
       {pitch.audienceNote ? <p className="desk-price">{pitch.audienceNote}</p> : null}
@@ -607,58 +679,144 @@ function PitchEditor({
           <span>Name</span>
           <input value={pitch.name} onChange={(event) => onChange({ name: event.target.value })} />
         </label>
-        <label className="desk-field is-wide">
-          <span>Customized solution</span>
-          <textarea rows={4} value={pitch.solution} onChange={(event) => onChange({ solution: event.target.value })} />
-        </label>
-        <label className="desk-field is-wide">
-          <span>Unique pricing</span>
-          <textarea rows={2} value={pitch.pricing} onChange={(event) => onChange({ pricing: event.target.value })} />
-        </label>
-        <label className="desk-field is-wide">
-          <span>Target household</span>
-        <select
-          value={pitch.targetClientId ?? ""}
-          onChange={(event) => onChange({ targetClientId: event.target.value || null })}
+      </div>
+
+      <section className="desk-section">
+        <h3>Customized solution</h3>
+        <div className="desk-form-grid">
+          <SelectField
+            label="Asset class"
+            value={solution.assetClass}
+            options={ASSET_CLASSES}
+            onChange={(assetClass) => patchSolution({ assetClass })}
+          />
+          <Field label="Style" value={solution.style} onChange={(style) => patchSolution({ style })} />
+          <Field label="Vehicle" value={solution.vehicle} onChange={(vehicle) => patchSolution({ vehicle })} />
+          <Field
+            label="Investor profile"
+            value={solution.investorProfile}
+            onChange={(investorProfile) => patchSolution({ investorProfile })}
+          />
+          <SelectField
+            label="Risk"
+            value={solution.risk}
+            options={RISK_LEVELS}
+            onChange={(risk) => patchSolution({ risk })}
+          />
+          <Field
+            label="Objective"
+            value={solution.objective}
+            onChange={(objective) => patchSolution({ objective })}
+            long
+          />
+        </div>
+        <h3>Allocation</h3>
+        <p className={`desk-total ${off ? "is-off" : ""}`}>
+          {total}% of the book{off ? ". The sleeves should add to 100." : "."}
+        </p>
+        <ul className="desk-sleeves">
+          {solution.sleeves.map((row) => (
+            <li key={row.id} className="desk-sleeve">
+              <Field label="Sleeve" value={row.label} onChange={(label) => patchSleeve(row.id, { label })} />
+              <Field
+                label="Weight %"
+                value={String(row.weightPct)}
+                numeric
+                onChange={(value) => patchSleeve(row.id, { weightPct: Number(value) })}
+              />
+              <Field label="Vehicle" value={row.vehicle} onChange={(vehicle) => patchSleeve(row.id, { vehicle })} />
+              <Field label="Range" value={row.range} onChange={(range) => patchSleeve(row.id, { range })} />
+              <Field
+                label="Holdings"
+                value={row.holdingsNote}
+                onChange={(holdingsNote) => patchSleeve(row.id, { holdingsNote })}
+              />
+              <button
+                type="button"
+                className="text-button desk-sleeve-remove"
+                onClick={() => patchSolution({ sleeves: solution.sleeves.filter((item) => item.id !== row.id) })}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          className="text-button"
+          onClick={() =>
+            patchSolution({
+              sleeves: [
+                ...solution.sleeves,
+                {
+                  id: `sleeve-${solution.sleeves.length + 1}-${Date.now()}`,
+                  label: "",
+                  weightPct: 0,
+                  vehicle: "SMA",
+                  range: "",
+                  holdingsNote: "",
+                },
+              ],
+            })
+          }
         >
-          <option value="">Leave unconfirmed</option>
+          Add sleeve
+        </button>
+        <div className="desk-form-grid">
+          <Field
+            label="Fee (bps)"
+            value={String(solution.feeBps)}
+            numeric
+            onChange={(value) => patchSolution({ feeBps: Number(value) })}
+          />
+          <Field
+            label="Minimum AUM"
+            value={String(solution.minAum)}
+            numeric
+            onChange={(value) => patchSolution({ minAum: Number(value) })}
+          />
+          <Field
+            label="What the fee covers"
+            value={solution.feeNote}
+            onChange={(feeNote) => patchSolution({ feeNote })}
+            long
+          />
+          <Field label="ESG" value={solution.esgFlags} onChange={(esgFlags) => patchSolution({ esgFlags })} long />
+        </div>
+      </section>
+
+      <section className="desk-section">
+        <h3>Households</h3>
+        <ul className="desk-targets">
           {ordered.map((row) => {
             const matched = /new york/i.test(pitch.audienceNote) && matchesNewYorkPitch(row);
+            const checked = pitch.targetClientIds.includes(row.id);
             return (
-              <option key={row.id} value={row.id}>
-                {row.ref} · age {row.age} · {formatLocation(row)} · {formatUsd(row.householdAum, true)}
-                {matched ? " · matches this draft" : ""}
-              </option>
+              <li key={row.id}>
+                <label>
+                  <input type="checkbox" checked={checked} onChange={() => toggleHousehold(row.id)} />
+                  <span>
+                    {row.ref} · age {row.age} · {formatLocation(row)} · {formatUsd(row.householdAum, true)}
+                    {matched ? " · matches this draft" : ""}
+                  </span>
+                </label>
+              </li>
             );
           })}
-        </select>
-        </label>
-      </div>
-      {/new york/i.test(pitch.audienceNote) ? (
-        <p className="desk-price">
-          {ordered
-            .filter((row) => matchesNewYorkPitch(row))
-            .map((row) => row.ref)
-            .join(", ") || "No household"}{" "}
-          matches this draft. Targeting stays open until you choose one.
-        </p>
-      ) : null}
+        </ul>
+        {/new york/i.test(pitch.audienceNote) ? (
+          <p className="desk-price">
+            {ordered.filter((row) => matchesNewYorkPitch(row)).map((row) => row.ref).join(", ") || "No household"} matches
+            this draft. Select every household that should receive it.
+          </p>
+        ) : null}
+      </section>
       <div className="desk-send">
         <button type="submit" className="text-button">
           Send pitch
         </button>
         <span className="desk-price">${PITCH_SEND_USD.toLocaleString("en-US")}</span>
       </div>
-      {pitch.sent.length > 0 ? (
-        <p className="desk-price">
-          Already sent to{" "}
-          {pitch.sent
-            .map((delivery) => refFor(book, delivery.clientId))
-            .filter((ref): ref is string => Boolean(ref))
-            .join(", ")}
-          .
-        </p>
-      ) : null}
       {notice ? <p aria-live="polite">{notice}</p> : null}
     </form>
   );

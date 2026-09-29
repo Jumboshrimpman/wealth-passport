@@ -75,6 +75,29 @@ function summaryFor(name: string, style: string, category: string, esg: boolean)
   return `${name} is a ${style.toLowerCase()} ${role}. A household can set exclusions, tax treatment, and how tightly the account follows its benchmark.${screen}`;
 }
 
+/**
+ * Stable demo all-in fee. The public profile index does not publish bps, and
+ * search still needs a fee range. This is not a manager's schedule.
+ */
+export function illustrativeFeeBps(id: string, category: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < id.length; index += 1) {
+    hash ^= id.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  const span =
+    category === "Fixed income"
+      ? [10, 40]
+      : category === "Equity"
+        ? [15, 70]
+        : category === "Real assets"
+          ? [35, 90]
+          : [20, 75];
+  const [min, max] = span;
+  const steps = Math.floor((max - min) / 5);
+  return min + (Math.abs(hash) % (steps + 1)) * 5;
+}
+
 function profileFromListing(row: UmaListing): StrategyProfile {
   const style = row.style ?? inferStyle(row.name);
   const category = categoryFor(style, row.name);
@@ -86,7 +109,7 @@ function profileFromListing(row: UmaListing): StrategyProfile {
     style,
     manager: row.manager,
     minimum: row.minimum,
-    allInBps: null,
+    allInBps: illustrativeFeeBps(row.id, category),
     feeLabel: null,
     summary: summaryFor(row.name, style, category, esg),
     risk: riskBand(style, row.name),

@@ -4,10 +4,15 @@ import {
   browseStrategies,
   ELIGIBLE_FILTER_LABEL,
   ESG_FILTER_LABEL,
+  FEE_RANGE_OPTIONS,
   meetsStrategyMinimum,
+  MINIMUM_BAND_OPTIONS,
   strategyCategories,
   strategyFeeLine,
+  strategyRisks,
   STRATEGY_UNIVERSE,
+  type FeeRangeId,
+  type MinimumBandId,
   type StrategyProfile,
 } from "../../shared/strategies.ts";
 import { detailFromProfile } from "../../shared/strategyDetail.ts";
@@ -31,20 +36,27 @@ export function StrategiesCatalog({
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
+  const [risk, setRisk] = useState("");
+  const [feeRange, setFeeRange] = useState<FeeRangeId>("");
+  const [minimumBand, setMinimumBand] = useState<MinimumBandId>("");
   const [esgOnly, setEsgOnly] = useState(false);
   const [eligibleOnly, setEligibleOnly] = useState(false);
   const [selected, setSelected] = useState<StrategyProfile | null>(null);
   const universe = useMemo(() => [...added, ...STRATEGY_UNIVERSE], [added]);
   const categories = useMemo(() => strategyCategories(universe), [universe]);
+  const risks = useMemo(() => strategyRisks(universe), [universe]);
   const rows = useMemo(
     () =>
       browseStrategies(universe, investable ?? 0, {
         query,
         category: category || undefined,
+        risk: risk || undefined,
+        feeRange,
+        minimumBand,
         esgOnly,
         eligibleOnly: investable != null && eligibleOnly,
       }),
-    [category, eligibleOnly, esgOnly, investable, query, universe],
+    [category, eligibleOnly, esgOnly, feeRange, investable, minimumBand, query, risk, universe],
   );
 
   return (
@@ -64,17 +76,54 @@ export function StrategiesCatalog({
           />
         </label>
         <div className="strategy-filters">
-          <label className="strategy-filter">
-            <span className="sr-only">Asset class</span>
-            <select value={category} onChange={(event) => setCategory(event.target.value)}>
-              <option value="">All asset classes</option>
-              {categories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="strategy-filter-row">
+            <label className="strategy-filter">
+              <span>Asset class</span>
+              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option value="">All asset classes</option>
+                {categories.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="strategy-filter">
+              <span>Fee</span>
+              <select value={feeRange} onChange={(event) => setFeeRange(event.target.value as FeeRangeId)}>
+                {FEE_RANGE_OPTIONS.map((option) => (
+                  <option key={option.id || "any-fee"} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="strategy-filter">
+              <span>Risk</span>
+              <select value={risk} onChange={(event) => setRisk(event.target.value)}>
+                <option value="">All risks</option>
+                {risks.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="strategy-filter">
+              <span>Minimum</span>
+              <select
+                value={minimumBand}
+                onChange={(event) => setMinimumBand(event.target.value as MinimumBandId)}
+              >
+                {MINIMUM_BAND_OPTIONS.map((option) => (
+                  <option key={option.id || "any-min"} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="strategy-filter-note">Fee bands use all-in basis points. Public catalog fees are illustrative.</p>
           <label className="strategy-eligible">
             <input type="checkbox" checked={esgOnly} onChange={(event) => setEsgOnly(event.target.checked)} />
             <span>

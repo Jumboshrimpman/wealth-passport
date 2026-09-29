@@ -2,7 +2,7 @@ import { InstitutionAssistantPanel } from "../../components/InstitutionAssistant
 
 export function InstitutionHome() {
   return (
-    <div className="assistant-home">
+    <div className="assistant-home is-desk">
       <InstitutionAssistantPanel variant="home" />
     </div>
   );

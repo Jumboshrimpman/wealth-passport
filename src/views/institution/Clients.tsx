@@ -90,9 +90,13 @@ export function InstitutionClients() {
       {selected ? (
         <ClientSheet
           row={selected}
-          pitches={pitches.map((pitch) => ({ id: pitch.id, name: pitch.name, pricing: pitch.pricing }))}
+          pitches={pitches.map((pitch) => ({
+            id: pitch.id,
+            name: pitch.name,
+            fee: `${pitch.solution.feeBps} bps`,
+          }))}
           onClose={() => setSelectedId(null)}
-          onSend={(pitchId) => sendPitch(pitchId, selected.id)}
+          onSend={(pitchId) => sendPitch(pitchId, selected.id).ok}
         />
       ) : null}
     </div>
@@ -106,12 +110,13 @@ function ClientSheet({
   onSend,
 }: {
   row: AnonClient;
-  pitches: { id: string; name: string; pricing: string }[];
+  pitches: { id: string; name: string; fee: string }[];
   onClose: () => void;
-  onSend: (pitchId: string) => string;
+  onSend: (pitchId: string) => boolean;
 }) {
   const [pitchId, setPitchId] = useState(pitches[0]?.id ?? "");
   const [notice, setNotice] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -172,7 +177,14 @@ function ClientSheet({
             onSubmit={(event) => {
               event.preventDefault();
               if (!pitchId) return;
-              setNotice(onSend(pitchId));
+              const ok = onSend(pitchId);
+              if (!ok) {
+                setSent(false);
+                setNotice("Choose a pitch first.");
+                return;
+              }
+              setNotice(null);
+              setSent(true);
             }}
           >
             <label className="desk-field">
@@ -180,7 +192,7 @@ function ClientSheet({
               <select value={pitchId} onChange={(event) => setPitchId(event.target.value)}>
                 {pitches.map((pitch) => (
                   <option key={pitch.id} value={pitch.id}>
-                    {pitch.name} · {pitch.pricing}
+                    {pitch.name} · {pitch.fee}
                   </option>
                 ))}
               </select>
@@ -191,7 +203,13 @@ function ClientSheet({
               </button>
               <span className="desk-price">$1,800</span>
             </div>
-            {notice ? <p aria-live="polite">{notice}</p> : null}
+            {sent ? (
+              <p className="desk-sent" role="status">
+                SENT
+              </p>
+            ) : notice ? (
+              <p aria-live="polite">{notice}</p>
+            ) : null}
           </form>
         )}
       </aside>

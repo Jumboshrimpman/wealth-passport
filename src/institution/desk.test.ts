@@ -12,9 +12,13 @@ import {
   deskGreeting,
   fittingClients,
   LISTING_NOTE,
+  blankStrategy,
   listingDecision,
   matchesNewYorkPitch,
+  newYorkPitch,
+  openStrategyForEdit,
   parseStrategyFile,
+  planPitchSend,
   recommendationsFor,
   SAMPLE_RECONCILE_FILE,
   seedPitches,
@@ -114,6 +118,55 @@ test("strategy upload parses into a profile and the hidden checker posts or hold
   assert.equal(generic.name, "Global Balanced Sleeve");
   assert.equal(sleeveTotal(generic.sleeves), 100);
   assert.equal(listingDecision({ ...generic, name: "", holdingsSummary: "short" }), "human-review");
+});
+
+test("editing a new strategy stays on the draft path, and a reviewed listing saves in place", () => {
+  const draft = blankStrategy("strategy-new");
+  const opened = openStrategyForEdit(draft);
+  assert.equal(opened.status, "editing");
+  assert.equal(opened.resumeStatus, undefined);
+  assert.equal(opened.id, "strategy-new");
+
+  const suggesting = openStrategyForEdit({ ...draft, status: "recommendations" });
+  assert.equal(suggesting.status, "editing");
+  assert.equal(suggesting.resumeStatus, undefined);
+
+  const reviewing = openStrategyForEdit({ ...draft, status: "under-review" });
+  assert.equal(reviewing.status, "editing");
+  assert.equal(reviewing.resumeStatus, "under-review");
+
+  const posted = openStrategyForEdit({ ...draft, status: "posted" });
+  assert.equal(posted.status, "editing");
+  assert.equal(posted.resumeStatus, "posted");
+  const still = openStrategyForEdit(posted);
+  assert.equal(still.resumeStatus, "posted");
+  assert.equal(still.status, "editing");
+});
+
+test("a pitch send targets the selected households once and does not report a stale already-sent list", () => {
+  const pitch = newYorkPitch("pitch-ny");
+  assert.equal(pitch.solution.feeBps, 36);
+  assert.equal(sleeveTotal(pitch.solution.sleeves), 100);
+  assert.equal(pitch.solution.assetClass, "Multi-asset");
+  assert.match(pitch.solution.esgFlags, /not stated/i);
+  const book = [
+    { id: "okafor-trust" },
+    { id: "beaumont-family" },
+    { id: "priya-shah" },
+  ];
+  const first = planPitchSend(pitch, ["okafor-trust", "beaumont-family", "okafor-trust"], book);
+  assert.ok(first);
+  assert.deepEqual(first.addedClientIds, ["okafor-trust", "beaumont-family"]);
+  assert.deepEqual(
+    first.pitch.sent.map((delivery) => delivery.clientId),
+    ["okafor-trust", "beaumont-family"],
+  );
+  const again = planPitchSend(first.pitch, ["okafor-trust", "beaumont-family"], book);
+  assert.ok(again);
+  assert.deepEqual(again.addedClientIds, []);
+  assert.equal(again.pitch.sent.length, 2);
+  assert.equal(planPitchSend(pitch, [], book), null);
+  assert.equal(JSON.stringify(first).toLowerCase().includes("already sent"), false);
 });
 
 test("desk assistant actions stay anonymized and do not sell placement", () => {

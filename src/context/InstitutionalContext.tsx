@@ -14,7 +14,9 @@ import {
   FIRM,
   listingDecision,
   newYorkPitch,
+  openStrategyForEdit,
   PITCH_SEND_USD,
+  planPitchSend,
   recommendationsFor,
   refFor,
   seedCharges,
@@ -24,6 +26,7 @@ import {
   type AnonClient,
   type DeskCharge,
   type DeskPitch,
+  type ListingStatus,
   type OwnedStrategy,
   type StrategyProfileDraft,
 } from "../institution/desk";
@@ -58,13 +61,14 @@ type InstitutionalContextValue = {
   editListedStrategy: (id: string) => void;
   saveListedStrategy: (id: string) => void;
   removeStrategy: (id: string) => void;
+  editorFocus: number;
   preferCreate: boolean;
   clearPreferCreate: () => void;
   activePitchId: string | null;
   openPitch: (id: string | null) => void;
   updatePitch: (id: string, patch: Partial<DeskPitch>) => void;
   startPitch: () => void;
-  sendPitch: (pitchId: string, clientId: string) => string;
+  sendPitch: (pitchId: string, clientIds: string | readonly string[]) => { ok: boolean };
 };
 
 const InstitutionalContext = createContext<InstitutionalContextValue | null>(null);
@@ -86,7 +90,10 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
   const [activeStrategyId, setActiveStrategyId] = useState<string | null>(null);
   const [preferCreate, setPreferCreate] = useState(false);
   const [activePitchId, setActivePitchId] = useState<string | null>(null);
+  const [editorFocus, setEditorFocus] = useState(0);
   const timers = useRef<number[]>([]);
+  const strategiesRef = useRef(strategies);
+  strategiesRef.current = strategies;
 
   useEffect(() => {
     const pending = timers.current;
@@ -186,21 +193,11 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const submitStrategy = useCallback((id: string) => {
-    setStrategies((current) =>
-      current.map((strategy) => {
-        if (strategy.id !== id) return strategy;
-        return {
-          ...strategy,
-          draft: applyDecisions(strategy.draft, strategy.recommendations, strategy.decisions),
-          status: "under-review",
-        };
-      }),
-    );
+  const finishReview = useCallback((id: string) => {
     const timer = window.setTimeout(() => {
       setStrategies((current) =>
         current.map((strategy) => {
-          if (strategy.id !== id || strategy.status !== "under-review") return strategy;
+          if (strategy.id !== id || strategy.status !== "under-review" || strategy.resumeStatus) return strategy;
           return { ...strategy, status: listingDecision(strategy.draft) };
         }),
       );
@@ -208,37 +205,67 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
     timers.current.push(timer);
   }, []);
 
-  const editStrategyAgain = useCallback((id: string) => {
-    setStrategies((current) =>
-      current.map((strategy) => (strategy.id === id ? { ...strategy, status: "editing" } : strategy)),
-    );
-    setActiveStrategyId(id);
-  }, []);
+  const submitStrategy = useCallback(
+    (id: string) => {
+      setStrategies((current) =>
+        current.map((strategy) => {
+          if (strategy.id !== id) return strategy;
+          return {
+            ...strategy,
+            draft: applyDecisions(strategy.draft, strategy.recommendations, strategy.decisions),
+            status: "under-review",
+            resumeStatus: undefined,
+          };
+        }),
+      );
+      setActiveStrategyId((current) => (current === id ? null : current));
+      finishReview(id);
+    },
+    [finishReview],
+  );
 
-  const editListedStrategy = useCallback((id: string) => {
-    setStrategies((current) =>
-      current.map((strategy) => {
-        if (strategy.id !== id) return strategy;
-        if (strategy.status === "recommendations" || strategy.resumeStatus) return strategy;
-        // An open create stays on Review recommendations. Anything already on the list saves in place.
-        if (strategy.status === "editing" && activeStrategyId === id) return strategy;
-        return { ...strategy, resumeStatus: strategy.status };
-      }),
-    );
+  const focusEditor = useCallback((id: string) => {
     setActiveStrategyId(id);
     setPreferCreate(true);
-  }, [activeStrategyId]);
-
-  const saveListedStrategy = useCallback((id: string) => {
-    setStrategies((current) =>
-      current.map((strategy) => {
-        if (strategy.id !== id) return strategy;
-        const status = strategy.resumeStatus ?? strategy.status;
-        return { ...strategy, status, resumeStatus: undefined };
-      }),
-    );
-    setActiveStrategyId((current) => (current === id ? null : current));
+    setEditorFocus((current) => current + 1);
   }, []);
+
+  const editStrategyAgain = useCallback(
+    (id: string) => {
+      setStrategies((current) =>
+        current.map((strategy) => (strategy.id === id ? openStrategyForEdit({ ...strategy, status: "recommendations" }) : strategy)),
+      );
+      focusEditor(id);
+    },
+    [focusEditor],
+  );
+
+  const editListedStrategy = useCallback(
+    (id: string) => {
+      const known = strategiesRef.current.some((strategy) => strategy.id === id);
+      if (!known) return;
+      setStrategies((current) => current.map((strategy) => (strategy.id === id ? openStrategyForEdit(strategy) : strategy)));
+      focusEditor(id);
+    },
+    [focusEditor],
+  );
+
+  const saveListedStrategy = useCallback(
+    (id: string) => {
+      const existing = strategiesRef.current.find((strategy) => strategy.id === id);
+      const restored: ListingStatus | undefined = existing?.resumeStatus;
+      setStrategies((current) =>
+        current.map((strategy) => {
+          if (strategy.id !== id) return strategy;
+          const status = strategy.resumeStatus ?? "editing";
+          return { ...strategy, status, resumeStatus: undefined };
+        }),
+      );
+      setActiveStrategyId((current) => (current === id ? null : current));
+      if (restored === "under-review") finishReview(id);
+    },
+    [finishReview],
+  );
 
   const removeStrategy = useCallback((id: string) => {
     setStrategies((current) => current.filter((strategy) => strategy.id !== id));
@@ -259,30 +286,22 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
   }, [navigate]);
 
   const sendPitch = useCallback(
-    (pitchId: string, clientId: string) => {
-      const ref = refFor(book, clientId);
-      if (!ref) return "That household is not on this desk.";
+    (pitchId: string, clientIds: string | readonly string[]) => {
+      const ids = typeof clientIds === "string" ? [clientIds] : clientIds;
       const pitch = pitches.find((item) => item.id === pitchId);
-      if (!pitch) return "Choose a pitch first.";
-      if (pitch.sent.some((delivery) => delivery.clientId === clientId)) {
-        return `Already sent to ${ref}.`;
+      if (!pitch) return { ok: false };
+      const plan = planPitchSend(pitch, ids, book);
+      if (!plan) return { ok: false };
+      setPitches((current) => current.map((item) => (item.id === pitchId ? plan.pitch : item)));
+      if (plan.addedClientIds.length > 0) {
+        const refs = plan.addedClientIds
+          .map((id) => refFor(book, id))
+          .filter((ref): ref is string => Boolean(ref));
+        const label =
+          refs.length === 1 ? `Pitch sent · ${refs[0]}` : `Pitch sent · ${refs.length} households`;
+        setCharges((current) => [{ id: uid("chg"), when: "Sep 29", label, amount: PITCH_SEND_USD }, ...current]);
       }
-      setPitches((current) =>
-        current.map((item) =>
-          item.id === pitchId
-            ? {
-                ...item,
-                targetClientId: clientId,
-                sent: [...item.sent, { clientId, when: "Sep 29" }],
-              }
-            : item,
-        ),
-      );
-      setCharges((current) => [
-        { id: uid("chg"), when: "Sep 29", label: `Pitch sent · ${ref}`, amount: PITCH_SEND_USD },
-        ...current,
-      ]);
-      return `Sent to ${ref}. ${PITCH_SEND_USD.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })} will appear with billing.`;
+      return { ok: true };
     },
     [book, pitches],
   );
@@ -312,6 +331,7 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
       editListedStrategy,
       saveListedStrategy,
       removeStrategy,
+      editorFocus,
       preferCreate,
       clearPreferCreate,
       activePitchId,
@@ -330,6 +350,7 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
       clearPreferCreate,
       editListedStrategy,
       editStrategyAgain,
+      editorFocus,
       greeting,
       messages,
       openRecommendations,
