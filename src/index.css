@@ -2073,6 +2073,12 @@ button.proposed-name {
   outline: none;
 }
 
+.strategy-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
 .strategy-eligible {
   display: flex;
   align-items: flex-start;
@@ -2154,6 +2160,15 @@ button.proposed-name {
   color: #111;
   font-size: 1.12rem;
   font-weight: 560;
+}
+
+.strategy-esg {
+  display: inline-block;
+  margin-top: 0.28rem;
+  color: #5e5e5e;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .strategy-line {
@@ -2395,6 +2410,71 @@ button.proposed-name {
   margin-top: 1rem;
   color: #111;
   font-size: 0.95rem;
+}
+
+.enroll-role-note {
+  margin: -1.2rem 0 1.4rem;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+}
+
+.enroll-flow h2 {
+  margin-top: 1.6rem;
+  font-size: 1.35rem;
+}
+
+.enroll-flow p.enroll-known {
+  margin: 0.9rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f2f2f2;
+  color: #161616;
+  max-width: 34rem;
+}
+
+.enroll-known small,
+.trustee-sub {
+  display: block;
+  margin-top: 0.2rem;
+  color: #5e5e5e;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.enroll-block {
+  max-width: 34rem;
+}
+
+.trustee-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  max-width: 34rem;
+}
+
+.trustee-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.7rem 0;
+  border-top: 1px solid #f3f3f3;
+  color: #161616;
+}
+
+.trustee-meta {
+  color: #5e5e5e;
+  font-size: 0.86rem;
+  text-align: right;
+}
+
+.enroll-flow .field select {
+  width: 100%;
+  margin-top: 0.35rem;
+  border: 0;
+  border-bottom: 1px solid #e5e5e5;
+  background: transparent;
+  padding: 0.55rem 0;
+  outline: none;
 }
 
 .agent-log {

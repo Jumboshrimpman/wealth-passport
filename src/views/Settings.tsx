@@ -1,6 +1,7 @@
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { enrollmentRoleLabel } from "../../shared/householdContext.ts";
 import { hasClerkKey, usePortalAccess } from "../auth/access";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
@@ -49,7 +50,7 @@ export function Settings() {
         {enrolledHere ? (
           <div>
             <dt>Enrollment</dt>
-            <dd>{enrolledHere.isFinancialAdvisor ? "Financial advisor" : "Client"}</dd>
+            <dd>{enrollmentRoleLabel(enrolledHere)}</dd>
           </div>
         ) : null}
       </dl>

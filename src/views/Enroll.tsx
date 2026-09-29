@@ -1,6 +1,28 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { agentEnrollSteps, enrollProgress, selfEnrollSteps, type DemoEnrollStep } from "../../shared/enrollFlow.ts";
 import { formatUsd } from "../../shared/format.ts";
+import {
+  blankContact,
+  blankLife,
+  blankRepresentedClient,
+  contactReady,
+  householdImportFor,
+  lpoaShareReady,
+  openLifeModules,
+  representedReady,
+  roleActsForClient,
+  roleTitle,
+  type ContactDetails,
+  type EnrolleeRole,
+  type EstateRecord,
+  type FamilyMember,
+  type LifeContext,
+  type LpoaShareChoice,
+  type RepresentedClient,
+  type SectionStatus,
+  type TrustRecord,
+} from "../../shared/householdContext.ts";
 import type {
   AssetConnectResult,
   BalanceChoice,
@@ -16,42 +38,18 @@ import { LegalFooter } from "../components/LegalFooter";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 import { PRODUCT_NAME } from "../data/catalog";
+import {
+  BehalfStep,
+  ContactStep,
+  EstateStep,
+  HouseholdStep,
+  LifeStep,
+  LpoaShareStep,
+  RolePicker,
+} from "../enroll/contextSteps";
 
-type Step =
-  | "fork"
-  | "agent"
-  | "agent-run"
-  | "agent-pause"
-  | "connect"
-  | "returned"
-  | "fundrise"
-  | "coinbase"
-  | "kalshi"
-  | "other"
-  | "irs"
-  | "risk"
-  | "balance"
-  | "motive"
-  | "focus";
-
+type Step = DemoEnrollStep;
 type AgentChoice = "chatgpt" | "anthropic";
-
-const SELF_STEPS: Step[] = [
-  "fork",
-  "connect",
-  "returned",
-  "fundrise",
-  "coinbase",
-  "kalshi",
-  "other",
-  "irs",
-  "risk",
-  "balance",
-  "motive",
-  "focus",
-];
-
-const AGENT_STEPS: Step[] = ["fork", "agent", "agent-run", "agent-pause"];
 
 const AGENTS: { id: AgentChoice; label: string }[] = [
   { id: "chatgpt", label: "ChatGPT Finance" },
@@ -76,23 +74,14 @@ const MOTIVES: { id: MotiveChoice; label: string }[] = [
   { id: "cheaper", label: "I want something cheaper" },
 ];
 
-function enrollProgress(step: Step): number {
-  const flow = step === "agent" || step === "agent-run" || step === "agent-pause" ? AGENT_STEPS : SELF_STEPS;
-  const index = flow.indexOf(step);
-  if (index <= 0 || flow.length < 2) return 0;
-  return Math.round((index / (flow.length - 1)) * 100);
+function mergeByName(current: FamilyMember[], incoming: FamilyMember[]): FamilyMember[] {
+  const names = new Set(current.map((member) => member.name.trim().toLowerCase()));
+  return [...current, ...incoming.filter((member) => !names.has(member.name.trim().toLowerCase()))];
 }
 
-function AdvisorMark({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
-  return (
-    <label className="advisor-mark">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      <span>
-        <span className="advisor-mark-label">I am the financial advisor</span>
-        <span className="advisor-mark-help">Mark this if you are enrolling for a client, not as the client. Demo only.</span>
-      </span>
-    </label>
-  );
+function mergeTrusts(current: TrustRecord[], incoming: TrustRecord[]): TrustRecord[] {
+  const names = new Set(current.map((trust) => trust.name.trim().toLowerCase()));
+  return [...current, ...incoming.filter((trust) => !names.has(trust.name.trim().toLowerCase()))];
 }
 
 /** A log line that stops the agent until the person answers. */
@@ -118,6 +107,7 @@ export function Enroll() {
   const { allowDemo } = usePortalAccess();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("fork");
+  const [pendingPath, setPendingPath] = useState<"self" | "agent" | null>(null);
   const [agent, setAgent] = useState<AgentChoice | null>(null);
   const [agentLines, setAgentLines] = useState<string[]>([]);
   const [provider, setProvider] = useState<"plaid" | "kubera" | null>(null);
@@ -132,13 +122,75 @@ export function Enroll() {
   const [balance, setBalance] = useState<BalanceChoice | null>(null);
   const [motive, setMotive] = useState<MotiveChoice | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
-  const [isFinancialAdvisor, setIsFinancialAdvisor] = useState(false);
+  const [role, setRole] = useState<EnrolleeRole>("client");
+  const [represented, setRepresented] = useState<RepresentedClient>(blankRepresentedClient());
+  const [contact, setContact] = useState<ContactDetails>(blankContact());
+  const [family, setFamily] = useState<FamilyMember[]>([]);
+  const [familyStatus, setFamilyStatus] = useState<SectionStatus>("open");
+  const [trusts, setTrusts] = useState<TrustRecord[]>([]);
+  const [trustStatus, setTrustStatus] = useState<SectionStatus>("open");
+  const [estate, setEstate] = useState<EstateRecord>({ choice: "unset", label: "" });
+  const [life, setLife] = useState<LifeContext>(blankLife());
+  const [lifeImported, setLifeImported] = useState(false);
+  const [lpoaShare, setLpoaShare] = useState<LpoaShareChoice>("unset");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const otherValue = Number(otherAmount.replace(/[^0-9.]/g, ""));
   const otherReady = otherLabel.trim().length > 0 && Number.isFinite(otherValue) && otherValue > 0;
+  const includeLife = step === "life" || openLifeModules(life, lifeImported).length > 0;
+  const onAgentPath =
+    pendingPath === "agent" || step === "agent" || step === "agent-run" || step === "agent-pause";
+  const progressSteps = onAgentPath ? agentEnrollSteps(role) : selfEnrollSteps(role, includeLife);
+  const acting = roleActsForClient(role) && represented.name.trim().length > 0;
+
+  function applyImport(which: "contact" | "household" | "life" | "all") {
+    const packet = householdImportFor(passport);
+    if (which === "contact" || which === "all") {
+      setContact((current) => ({
+        ...current,
+        email: packet.contact.email,
+        mailingAddress: packet.contact.mailingAddress,
+        imported: true,
+      }));
+    }
+    if (which === "household" || which === "all") {
+      const nextFamily = mergeByName(family, packet.family);
+      const nextTrusts = mergeTrusts(trusts, packet.trusts);
+      setFamily(nextFamily);
+      setFamilyStatus(nextFamily.length > 0 ? "saved" : "later");
+      setTrusts(nextTrusts);
+      setTrustStatus(nextTrusts.length > 0 ? "saved" : "later");
+    }
+    if ((which === "life" || which === "all") && packet.retirementPlans) {
+      setLife((current) => ({
+        ...current,
+        retirementPlans: packet.retirementPlans,
+        retirementPlansImported: true,
+      }));
+      setLifeImported(true);
+    }
+    return packet;
+  }
+
+  function choosePath(path: "self" | "agent") {
+    setPendingPath(path);
+    if (roleActsForClient(role)) setStep("behalf");
+    else setStep(path === "agent" ? "agent" : "connect");
+  }
+
+  function continueBehalf() {
+    if (!representedReady(represented)) return;
+    setContact((current) => ({ ...current, email: current.email || represented.email.trim() }));
+    setStep(pendingPath === "agent" ? "agent" : "connect");
+  }
+
+  function afterEstate(next: EstateRecord) {
+    setEstate(next);
+    const stillOpen = openLifeModules(life, lifeImported).length > 0;
+    setStep(stillOpen ? "life" : "risk");
+  }
 
   async function connectBank(next: "plaid" | "kubera") {
     setBusy(true);
@@ -206,14 +258,27 @@ export function Enroll() {
     balance: BalanceChoice;
     motive: MotiveChoice;
     focus: string[];
-    isFinancialAdvisor: boolean;
+    role: EnrolleeRole;
+    represented: RepresentedClient;
+    contact: ContactDetails;
+    family: FamilyMember[];
+    familyStatus: SectionStatus;
+    trusts: TrustRecord[];
+    trustStatus: SectionStatus;
+    estate: EstateRecord;
+    life: LifeContext;
+    lifeImported: boolean;
+    lpoaShare: LpoaShareChoice;
   }) {
     if (input.focus.length === 0) return;
+    if (!contactReady(input.contact) || !lpoaShareReady(input.lpoaShare)) return;
+    if (roleActsForClient(input.role) && !representedReady(input.represented)) return;
+    const forClient = roleActsForClient(input.role);
     const profile: DemoProfile = {
       clientId: passport.id,
       provider: input.provider,
       providerLabel: input.bank.providerLabel,
-      fullName: input.bank.fullName,
+      fullName: forClient ? input.represented.name.trim() : input.bank.fullName,
       pulledAccounts: input.bank.accounts,
       fundrise: input.fundrise
         ? { connected: true, amount: input.fundrise.amount, label: input.fundrise.label }
@@ -226,7 +291,18 @@ export function Enroll() {
         : { connected: false, amount: 0, label: "" },
       other: input.other,
       irsConnected: input.irsConnected,
-      isFinancialAdvisor: input.isFinancialAdvisor,
+      isFinancialAdvisor: forClient,
+      enrolleeRole: input.role,
+      representedClient: forClient ? input.represented : null,
+      contact: input.contact,
+      family: input.family,
+      familyStatus: input.familyStatus,
+      trusts: input.trusts,
+      trustStatus: input.trustStatus,
+      estate: input.estate.choice === "unset" ? { choice: "later", label: "" } : input.estate,
+      life: input.life,
+      lifeImported: input.lifeImported,
+      lpoaShare: input.lpoaShare,
       fit: {
         risk: input.risk,
         balance: input.balance,
@@ -238,6 +314,22 @@ export function Enroll() {
     allowDemo();
     selectClient(passport.id);
     navigate("/assistant");
+  }
+
+  function contextSnapshot() {
+    return {
+      role,
+      represented,
+      contact,
+      family,
+      familyStatus: family.length === 0 && familyStatus === "open" ? ("later" as const) : familyStatus,
+      trusts,
+      trustStatus: trusts.length === 0 && trustStatus === "open" ? ("later" as const) : trustStatus,
+      estate,
+      life,
+      lifeImported,
+      lpoaShare,
+    };
   }
 
   function finish() {
@@ -254,7 +346,7 @@ export function Enroll() {
       balance,
       motive,
       focus,
-      isFinancialAdvisor,
+      ...contextSnapshot(),
     });
   }
 
@@ -306,7 +398,23 @@ export function Enroll() {
       if (irsResult.kind !== "irs") throw new Error("Expected an IRS result.");
       setIrs(irsResult);
       lines.push("IRS connector returned a transcript request. No tax file was uploaded.");
-      lines.push("Paused. How you take risk has to come from you.");
+
+      const packet = applyImport("all");
+      if (packet.family.length > 0) {
+        lines.push(`Family unit on file: ${packet.family.map((member) => member.name).join(", ")}.`);
+      } else {
+        lines.push("No relatives were on file. You can add them later.");
+      }
+      if (packet.trusts.length > 0) {
+        lines.push(`${packet.trusts.map((trust) => trust.name).join(", ")} is on file. Trustees were checked against the family unit.`);
+      } else {
+        lines.push("No trust was on file. You can add one later.");
+      }
+      if (packet.retirementPlans) {
+        lines.push(`Retirement planning window on file: ${packet.retirementPlans}. Age was not, so it can be added later.`);
+      }
+      lines.push("Will and estate documents were not connected. You can add them later.");
+      lines.push("Paused. Risk, contact permission, and LPOA sharing have to come from you.");
       setAgentLines([...lines]);
       setStep("agent-pause");
     } catch {
@@ -318,8 +426,8 @@ export function Enroll() {
     }
   }
 
-  function answerRisk(choice: RiskChoice) {
-    if (!bank || !irs) return;
+  function finishFromAgent() {
+    if (!bank || !irs || !risk || !contactReady(contact) || !lpoaShareReady(lpoaShare)) return;
     const largest = [...bank.accounts].sort((a, b) => b.balance - a.balance)[0];
     completeEnrollment({
       bank,
@@ -329,11 +437,12 @@ export function Enroll() {
       kalshi,
       other: null,
       irsConnected: true,
-      risk: choice,
+      risk,
       balance: "balanced",
       motive: "change",
       focus: largest ? [largest.id] : [],
-      isFinancialAdvisor,
+      ...contextSnapshot(),
+      estate: estate.choice === "unset" ? { choice: "later", label: "" } : estate,
     });
   }
 
@@ -343,28 +452,45 @@ export function Enroll() {
     setStep("irs");
   }
 
+  const emailKnown =
+    (contact.imported && contact.email.trim().length > 0) ||
+    (acting && contact.email.trim().length > 0 && contact.email.trim() === represented.email.trim());
+
   return (
     <div className="public-page">
       <main className="enroll-flow">
         <p className="wordmark">
           <Link to="/">{PRODUCT_NAME}</Link>
         </p>
-        <EnrollProgress value={enrollProgress(step)} />
+        <EnrollProgress value={enrollProgress(step, progressSteps)} />
+        {acting && step !== "fork" && step !== "behalf" ? (
+          <p className="enroll-role-note">
+            {roleTitle(role)} for {represented.name.trim()}.
+          </p>
+        ) : null}
         {step === "fork" ? (
           <section>
             <h1>How do you want to enroll?</h1>
-            <p>Either way stays in this demo. Nothing is sent to a bank, a model, or an advisor.</p>
-            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
+            <p>Either way stays in this demo. Nothing is sent to a bank, a model, or an advisor. Client is the usual path.</p>
+            <RolePicker
+              role={role}
+              onChange={(next) => {
+                setRole(next);
+                if (!roleActsForClient(next)) setRepresented(blankRepresentedClient());
+              }}
+            />
             <div className="enroll-choices" role="listbox" aria-label="How do you want to enroll?">
-              <button type="button" className="enroll-choice enroll-path" onClick={() => setStep("agent")}>
+              <button type="button" className="enroll-choice enroll-path" onClick={() => choosePath("agent")}>
                 <span className="enroll-path-copy">
                   <span className="enroll-path-title">Use my finance agent</span>
                   <span className="enroll-path-note">An agent runs the connections and pauses for you.</span>
                 </span>
               </button>
-              <button type="button" className="enroll-choice enroll-path" onClick={() => setStep("connect")}>
+              <button type="button" className="enroll-choice enroll-path" onClick={() => choosePath("self")}>
                 <span className="enroll-path-copy">
-                  <span className="enroll-path-title">I&rsquo;ll enroll myself</span>
+                  <span className="enroll-path-title">
+                    {roleActsForClient(role) ? "I\u2019ll enroll the client" : "I\u2019ll enroll myself"}
+                  </span>
                   <span className="enroll-path-note">You connect each source yourself, in order.</span>
                 </span>
               </button>
@@ -372,11 +498,14 @@ export function Enroll() {
           </section>
         ) : null}
 
+        {step === "behalf" ? (
+          <BehalfStep role={role} client={represented} onChange={setRepresented} onContinue={continueBehalf} />
+        ) : null}
+
         {step === "agent" ? (
           <section>
             <h1>Which agent should run this?</h1>
             <p>Demo only. Neither product is connected. Pick one to start.</p>
-            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
             <div className="enroll-choices">
               {AGENTS.map((option) => (
                 <button
@@ -398,9 +527,7 @@ export function Enroll() {
           </section>
         ) : null}
 
-        {step === "agent-run" ? (
-          <AgentRun lines={agentLines} />
-        ) : null}
+        {step === "agent-run" ? <AgentRun lines={agentLines} /> : null}
 
         {step === "agent-pause" ? (
           <section>
@@ -409,17 +536,61 @@ export function Enroll() {
               lines={agentLines}
               waiting={agent === "anthropic" ? "The Anthropic RIA dashboard" : "ChatGPT Finance"}
             />
-            <ChoiceList
-              label="How do you take risk?"
-              options={RISKS}
-              value={risk}
-              onChange={setRisk}
-            />
+            {contact.imported ? (
+              <p className="enroll-known">
+                Contact on file
+                <small>
+                  {contact.email}. {contact.mailingAddress}.
+                </small>
+              </p>
+            ) : null}
+            <label className="advisor-mark">
+              <input
+                type="checkbox"
+                checked={contact.commsConsent}
+                onChange={(event) => setContact((current) => ({ ...current, commsConsent: event.target.checked }))}
+              />
+              <span>
+                <span className="advisor-mark-label">You may contact {acting ? "the client" : "me"}</span>
+                <span className="advisor-mark-help">
+                  About this enrollment and about offers you choose to see.
+                </span>
+              </span>
+            </label>
+            <ChoiceList label="How do you take risk?" options={RISKS} value={risk} onChange={setRisk} />
+            <div className="enroll-choices" role="listbox" aria-label="Permission to provide your LPOA">
+              <button
+                type="button"
+                role="option"
+                aria-selected={lpoaShare === "permit"}
+                className={lpoaShare === "permit" ? "enroll-choice is-on" : "enroll-choice"}
+                onClick={() => setLpoaShare("permit")}
+              >
+                <span className="enroll-path-copy">
+                  <span>WealthPass may provide the LPOA</span>
+                  <span className="enroll-path-note">This permission is not an LPOA. The selected manager sets up the Schwab brokerage.</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="option"
+                aria-selected={lpoaShare === "decline"}
+                className={lpoaShare === "decline" ? "enroll-choice is-on" : "enroll-choice"}
+                onClick={() => setLpoaShare("decline")}
+              >
+                <span>Do not provide the LPOA</span>
+              </button>
+            </div>
             <p className="enroll-feedback" role="status">
-              {risk ? `${RISKS.find((option) => option.id === risk)?.label} is saved. Finish when you are ready.` : "Pick a risk posture. Finish stays closed until you do."}
+              {risk && contact.commsConsent && lpoaShareReady(lpoaShare)
+                ? "Those answers are saved. Finish when you are ready."
+                : "Risk, permission to contact, and LPOA sharing are still open. Finish stays closed until each is answered."}
             </p>
             <div className="enroll-actions">
-              <Primary disabled={!risk || !irs} onClick={() => risk && answerRisk(risk)}>
+              <Primary
+                disabled={!risk || !contactReady(contact) || !lpoaShareReady(lpoaShare)}
+                onClick={finishFromAgent}
+              >
                 Finish enrollment
               </Primary>
             </div>
@@ -431,7 +602,6 @@ export function Enroll() {
           <section>
             <h1>Connect a bank or a balance sheet.</h1>
             <p>Simulated. Nothing leaves this demo, and we only ask for what this pull does not return.</p>
-            <AdvisorMark checked={isFinancialAdvisor} onChange={setIsFinancialAdvisor} />
             <div className="enroll-choices">
               <button type="button" className="enroll-choice" disabled={busy} onClick={() => void connectBank("plaid")}>
                 <span>{pending === "plaid" ? "Connecting…" : "Connect Plaid"}</span>
@@ -557,7 +727,7 @@ export function Enroll() {
                   Connected. {irs.detail}
                 </p>
                 <div className="enroll-actions">
-                  <Primary onClick={() => setStep("risk")}>Continue to risk</Primary>
+                  <Primary onClick={() => setStep("contact")}>Continue</Primary>
                 </div>
               </>
             ) : (
@@ -568,6 +738,44 @@ export function Enroll() {
               </div>
             )}
           </section>
+        ) : null}
+
+        {step === "contact" ? (
+          <ContactStep
+            contact={contact}
+            emailKnown={emailKnown}
+            onChange={setContact}
+            onImport={() => applyImport("contact")}
+            onContinue={() => setStep("household")}
+          />
+        ) : null}
+
+        {step === "household" ? (
+          <HouseholdStep
+            enrolleeName={acting ? represented.name.trim() : bank?.fullName || passport.household.principals}
+            family={family}
+            familyStatus={familyStatus}
+            trusts={trusts}
+            trustStatus={trustStatus}
+            onFamily={setFamily}
+            onFamilyStatus={setFamilyStatus}
+            onTrusts={setTrusts}
+            onTrustStatus={setTrustStatus}
+            onImport={() => applyImport("household")}
+            onContinue={() => setStep("estate")}
+          />
+        ) : null}
+
+        {step === "estate" ? <EstateStep estate={estate} onChange={setEstate} onContinue={afterEstate} /> : null}
+
+        {step === "life" ? (
+          <LifeStep
+            life={life}
+            imported={lifeImported}
+            onChange={setLife}
+            onImport={() => applyImport("life")}
+            onContinue={() => setStep("risk")}
+          />
         ) : null}
 
         {step === "risk" ? (
@@ -633,15 +841,19 @@ export function Enroll() {
             </div>
             <p className="enroll-feedback" role="status">
               {focus.length === 0
-                ? "Select at least one account. See your offers stays closed until you do."
+                ? "Select at least one account. Continue stays closed until you do."
                 : `${focus.length} ${focus.length === 1 ? "account" : "accounts"} selected.`}
             </p>
             <div className="enroll-actions">
-              <Primary disabled={focus.length === 0 || !irs} onClick={finish}>
-                See your offers
+              <Primary disabled={focus.length === 0 || !irs} onClick={() => setStep("lpoa")}>
+                Continue
               </Primary>
             </div>
           </section>
+        ) : null}
+
+        {step === "lpoa" ? (
+          <LpoaShareStep choice={lpoaShare} onChange={setLpoaShare} onFinish={finish} />
         ) : null}
 
         {error ? <p className="form-error">{error}</p> : null}

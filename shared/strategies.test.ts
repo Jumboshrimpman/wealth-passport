@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CLIENT_SEEDS } from "./seed/index.ts";
 import { STRATEGY_UNIVERSE } from "./seed/strategies.ts";
-import { browseStrategies, ELIGIBLE_FILTER_LABEL, meetsStrategyMinimum, strategyFeeLine } from "./strategies.ts";
+import { browseStrategies, ELIGIBLE_FILTER_LABEL, ESG_FILTER_LABEL, meetsStrategyMinimum, strategyFeeLine } from "./strategies.ts";
 
 test("the strategy universe is larger than one household's pitches and can be filtered", () => {
   assert.ok(STRATEGY_UNIVERSE.length >= 20);
@@ -30,6 +30,23 @@ test("the strategy universe is larger than one household's pitches and can be fi
   assert.ok(founder);
   assert.equal(meetsStrategyMinimum(founder, elena.household.investable), false);
   assert.equal(meetsStrategyMinimum(founder, 250_000_000), true);
+
+  const esg = browseStrategies(STRATEGY_UNIVERSE, elena.household.investable, { esgOnly: true });
+  assert.ok(esg.length > 0);
+  assert.ok(esg.length < all.length);
+  assert.ok(esg.every((strategy) => strategy.esg === true));
+  assert.ok(esg.some((strategy) => strategy.id === "global-equity"));
+  const esgSearch = browseStrategies(STRATEGY_UNIVERSE, elena.household.investable, { query: "esg" });
+  assert.deepEqual(
+    esgSearch.map((strategy) => strategy.id).sort(),
+    esg.map((strategy) => strategy.id).sort(),
+  );
+  const esgEligible = browseStrategies(STRATEGY_UNIVERSE, priya.household.investable, {
+    esgOnly: true,
+    eligibleOnly: true,
+  });
+  assert.ok(esgEligible.every((strategy) => strategy.esg === true && meetsStrategyMinimum(strategy, priya.household.investable)));
+  assert.equal(ESG_FILTER_LABEL, "ESG");
 
   const blob = JSON.stringify(STRATEGY_UNIVERSE);
   assert.equal(blob.toLowerCase().includes(["paid", "placement"].join(" ")), false);

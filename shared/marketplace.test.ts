@@ -18,6 +18,7 @@ import {
   runDemoConnector,
   type DemoProfile,
 } from "./marketplace.ts";
+import { blankEnrollmentContext } from "./householdContext.ts";
 import { CLIENT_SEEDS } from "./seed/index.ts";
 
 function sampleProfile(clientId: string): DemoProfile {
@@ -45,6 +46,7 @@ function sampleProfile(clientId: string): DemoProfile {
     other: { label: "Art", amount: 500_000 },
     irsConnected: true,
     isFinancialAdvisor: false,
+    ...blankEnrollmentContext(),
     fit: { ...defaultFit(client), motive: "cheaper", focusAccountIds: [bank.accounts[0]?.id ?? ""] },
   };
 }

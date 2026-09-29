@@ -1,4 +1,15 @@
 import { formatUsd } from "./format.ts";
+import type {
+  ContactDetails,
+  EnrolleeRole,
+  EstateRecord,
+  FamilyMember,
+  LifeContext,
+  LpoaShareChoice,
+  RepresentedClient,
+  SectionStatus,
+  TrustRecord,
+} from "./householdContext.ts";
 import { matchInstitution } from "./match.ts";
 import { BID_CUSTOMIZATION, BID_MINIMUM, BID_TEMPLATES, type BidSleeve, type BidTemplate } from "./seed/bids.ts";
 import { INSTITUTION_SEEDS } from "./seed/institutions.ts";
@@ -35,8 +46,20 @@ export interface DemoProfile {
   other: { label: string; amount: number } | null;
   /** True after the simulated IRS connector runs. Wage and return data is not a file upload. */
   irsConnected: boolean;
-  /** True when the person enrolling marked that they are the financial advisor. */
+  /** True when an advisor or associate is enrolling for a client. */
   isFinancialAdvisor: boolean;
+  enrolleeRole: EnrolleeRole;
+  representedClient: RepresentedClient | null;
+  contact: ContactDetails;
+  family: FamilyMember[];
+  familyStatus: SectionStatus;
+  trusts: TrustRecord[];
+  trustStatus: SectionStatus;
+  estate: EstateRecord;
+  life: LifeContext;
+  lifeImported: boolean;
+  /** Permission to provide an existing LPOA. Not an LPOA itself. */
+  lpoaShare: LpoaShareChoice;
   fit: FitInterview;
 }
 

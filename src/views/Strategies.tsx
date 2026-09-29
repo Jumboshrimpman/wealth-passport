@@ -3,6 +3,7 @@ import { formatUsd } from "../../shared/format.ts";
 import {
   browseStrategies,
   ELIGIBLE_FILTER_LABEL,
+  ESG_FILTER_LABEL,
   meetsStrategyMinimum,
   STRATEGY_UNIVERSE,
   strategyFeeLine,
@@ -18,10 +19,11 @@ export function Strategies() {
   const investable = passport.household.investable;
   const [query, setQuery] = useState("");
   const [eligibleOnly, setEligibleOnly] = useState(false);
+  const [esgOnly, setEsgOnly] = useState(false);
   const [selected, setSelected] = useState<StrategyProfile | null>(null);
   const rows = useMemo(
-    () => browseStrategies(STRATEGY_UNIVERSE, investable, { query, eligibleOnly }),
-    [eligibleOnly, investable, query],
+    () => browseStrategies(STRATEGY_UNIVERSE, investable, { query, eligibleOnly, esgOnly }),
+    [eligibleOnly, esgOnly, investable, query],
   );
 
   return (
@@ -41,20 +43,35 @@ export function Strategies() {
             placeholder="Search name, style, or manager"
           />
         </label>
-        <label className="strategy-eligible">
-          <input
-            type="checkbox"
-            checked={eligibleOnly}
-            onChange={(event) => setEligibleOnly(event.target.checked)}
-          />
-          <span>
-            <span className="strategy-eligible-label">{ELIGIBLE_FILTER_LABEL}</span>
-            <span className="strategy-eligible-help">
-              Household investable is {formatUsd(investable, true)}. This keeps strategies whose
-              minimum is at or under that.
+        <div className="strategy-filters">
+          <label className="strategy-eligible">
+            <input
+              type="checkbox"
+              checked={eligibleOnly}
+              onChange={(event) => setEligibleOnly(event.target.checked)}
+            />
+            <span>
+              <span className="strategy-eligible-label">{ELIGIBLE_FILTER_LABEL}</span>
+              <span className="strategy-eligible-help">
+                Household investable is {formatUsd(investable, true)}. This keeps strategies whose
+                minimum is at or under that.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+          <label className="strategy-eligible">
+            <input
+              type="checkbox"
+              checked={esgOnly}
+              onChange={(event) => setEsgOnly(event.target.checked)}
+            />
+            <span>
+              <span className="strategy-eligible-label">{ESG_FILTER_LABEL}</span>
+              <span className="strategy-eligible-help">
+                Strategies tagged for environmental, social, or values alignment.
+              </span>
+            </span>
+          </label>
+        </div>
       </div>
       <p className="strategy-count">
         {rows.length} {rows.length === 1 ? "strategy" : "strategies"}
@@ -70,6 +87,7 @@ export function Strategies() {
               <li key={strategy.id}>
                 <button type="button" className="strategy-row" aria-haspopup="dialog" onClick={() => setSelected(strategy)}>
                   <span className="strategy-name">{strategy.name}</span>
+                  {strategy.esg ? <span className="strategy-esg">ESG</span> : null}
                   <span className="strategy-line">
                     {strategy.category} · {strategy.style}
                   </span>
