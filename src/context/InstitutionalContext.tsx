@@ -55,6 +55,11 @@ type InstitutionalContextValue = {
   decideRecommendation: (strategyId: string, recId: string, decision: "accept" | "decline") => void;
   submitStrategy: (id: string) => void;
   editStrategyAgain: (id: string) => void;
+  editListedStrategy: (id: string) => void;
+  saveListedStrategy: (id: string) => void;
+  removeStrategy: (id: string) => void;
+  preferCreate: boolean;
+  clearPreferCreate: () => void;
   activePitchId: string | null;
   openPitch: (id: string | null) => void;
   updatePitch: (id: string, patch: Partial<DeskPitch>) => void;
@@ -79,6 +84,7 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
   const [charges, setCharges] = useState<DeskCharge[]>(seedCharges);
   const [messages, setMessages] = useState<DeskMessage[]>([]);
   const [activeStrategyId, setActiveStrategyId] = useState<string | null>(null);
+  const [preferCreate, setPreferCreate] = useState(false);
   const [activePitchId, setActivePitchId] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
 
@@ -113,6 +119,7 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
           ...current,
         ]);
         setActiveStrategyId(id);
+        setPreferCreate(true);
         setMinimized(false);
         navigate("/institution/strategies");
       }
@@ -132,6 +139,7 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
       const id = uid("strategy");
       setStrategies((current) => [strategyFromUpload(filename, id), ...current]);
       setActiveStrategyId(id);
+      setPreferCreate(true);
       navigate("/institution/strategies");
     },
     [navigate],
@@ -141,6 +149,7 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
     const id = uid("strategy");
     setStrategies((current) => [blankStrategy(id), ...current]);
     setActiveStrategyId(id);
+    setPreferCreate(true);
     navigate("/institution/strategies");
   }, [navigate]);
 
@@ -206,6 +215,38 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
     setActiveStrategyId(id);
   }, []);
 
+  const editListedStrategy = useCallback((id: string) => {
+    setStrategies((current) =>
+      current.map((strategy) => {
+        if (strategy.id !== id) return strategy;
+        if (strategy.status === "recommendations" || strategy.resumeStatus) return strategy;
+        // An open create stays on Review recommendations. Anything already on the list saves in place.
+        if (strategy.status === "editing" && activeStrategyId === id) return strategy;
+        return { ...strategy, resumeStatus: strategy.status };
+      }),
+    );
+    setActiveStrategyId(id);
+    setPreferCreate(true);
+  }, [activeStrategyId]);
+
+  const saveListedStrategy = useCallback((id: string) => {
+    setStrategies((current) =>
+      current.map((strategy) => {
+        if (strategy.id !== id) return strategy;
+        const status = strategy.resumeStatus ?? strategy.status;
+        return { ...strategy, status, resumeStatus: undefined };
+      }),
+    );
+    setActiveStrategyId((current) => (current === id ? null : current));
+  }, []);
+
+  const removeStrategy = useCallback((id: string) => {
+    setStrategies((current) => current.filter((strategy) => strategy.id !== id));
+    setActiveStrategyId((current) => (current === id ? null : current));
+  }, []);
+
+  const clearPreferCreate = useCallback(() => setPreferCreate(false), []);
+
   const updatePitch = useCallback((id: string, patch: Partial<DeskPitch>) => {
     setPitches((current) => current.map((pitch) => (pitch.id === id ? { ...pitch, ...patch, id: pitch.id } : pitch)));
   }, []);
@@ -268,6 +309,11 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
       decideRecommendation,
       submitStrategy,
       editStrategyAgain,
+      editListedStrategy,
+      saveListedStrategy,
+      removeStrategy,
+      preferCreate,
+      clearPreferCreate,
       activePitchId,
       openPitch: setActivePitchId,
       updatePitch,
@@ -281,11 +327,16 @@ export function InstitutionalProvider({ children }: { children: ReactNode }) {
       book,
       charges,
       decideRecommendation,
+      clearPreferCreate,
+      editListedStrategy,
       editStrategyAgain,
       greeting,
       messages,
       openRecommendations,
       pitches,
+      preferCreate,
+      removeStrategy,
+      saveListedStrategy,
       sendPitch,
       startManual,
       startPitch,

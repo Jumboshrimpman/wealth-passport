@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUsd } from "../../../shared/format.ts";
 import { StrategiesCatalog } from "../../components/StrategiesCatalog";
 import { useInstitutional } from "../../context/InstitutionalContext";
@@ -15,17 +15,24 @@ import {
   SAMPLE_RECONCILE_FILE,
   sleeveTotal,
   statusLabel,
-  statusNote,
   type AllocationSleeve,
   type DeskPitch,
   type OwnedStrategy,
   type StrategyProfileDraft,
 } from "../../institution/desk";
 
+const OWN_LIST_LIMIT = 3;
+
 export function InstitutionStrategies() {
   const desk = useInstitutional();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const active = desk.strategies.find((strategy) => strategy.id === desk.activeStrategyId) ?? null;
+  const [pane, setPane] = useState<"search" | "create">(desk.preferCreate ? "create" : "search");
+
+  useEffect(() => {
+    if (!desk.preferCreate) return;
+    setPane("create");
+    desk.clearPreferCreate();
+  }, [desk.preferCreate, desk.clearPreferCreate]);
+
   const posted = useMemo(
     () => desk.strategies.map(postedCatalogProfile).filter((row) => row != null),
     [desk.strategies],
@@ -34,70 +41,117 @@ export function InstitutionStrategies() {
 
   return (
     <div className="desk-page">
-      <section className="desk-block">
-        <h2>Your strategies</h2>
-        <p className="lede-quiet">List a strategy for free. Upload a PDF or Excel file, check the profile, then take one round of recommendations.</p>
-        <div className="desk-actions">
-          <button type="button" className="text-button" onClick={desk.startManual}>
-            Create manually
-          </button>
-          <button type="button" className="text-button" onClick={() => fileRef.current?.click()}>
-            Upload PDF or Excel
-          </button>
-          <input
-            ref={fileRef}
-            className="sr-only"
-            type="file"
-            accept=".pdf,.xlsx,.xls,.csv,application/pdf"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) desk.startUpload(file.name);
-            }}
-          />
+      <h1>Strategies</h1>
+      <div className="desk-tabs" role="tablist" aria-label="Strategies">
+        <button type="button" role="tab" aria-selected={pane === "search"} onClick={() => setPane("search")}>
+          Search
+        </button>
+        <button type="button" role="tab" aria-selected={pane === "create"} onClick={() => setPane("create")}>
+          Create
+        </button>
+      </div>
+      {pane === "search" ? (
+        <div role="tabpanel">
+          <StrategiesCatalog added={posted} yours={yours} investable={null} heading={false} />
         </div>
-        <p className="desk-price">
-          Or open a file already on the desk:{" "}
-          <button type="button" className="text-button" onClick={() => desk.startUpload(SAMPLE_CLEAN_FILE)}>
-            {SAMPLE_CLEAN_FILE}
-          </button>
-          {" · "}
-          <button type="button" className="text-button" onClick={() => desk.startUpload(SAMPLE_RECONCILE_FILE)}>
-            {SAMPLE_RECONCILE_FILE}
-          </button>
-        </p>
-        {active && (active.status === "editing" || active.status === "recommendations") ? (
-          <StrategyWork strategy={active} />
-        ) : null}
-        {active && active.status !== "editing" && active.status !== "recommendations" ? (
-          <p className="desk-status-line">
-            <span className={`desk-status ${active.status === "posted" ? "is-posted" : ""}`}>{statusLabel(active.status)}</span>
-            {" · "}
-            {active.draft.name || "Untitled strategy"}
-            {". "}
-            {statusNote(active.status)}
-          </p>
-        ) : null}
-        <ul className="desk-own-list">
-          {desk.strategies.map((strategy) => (
-            <li key={strategy.id}>
-              <button type="button" onClick={() => desk.openStrategy(strategy.id)} aria-pressed={strategy.id === desk.activeStrategyId}>
-                <span>{strategy.draft.name || "Untitled strategy"}</span>
-                <span className="desk-status">{statusLabel(strategy.status)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <StrategiesCatalog added={posted} yours={yours} investable={null} />
+      ) : (
+        <div role="tabpanel">
+          <CreatePane />
+        </div>
+      )}
     </div>
   );
 }
 
+function CreatePane() {
+  const desk = useInstitutional();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null);
+  const active = desk.strategies.find((strategy) => strategy.id === desk.activeStrategyId) ?? null;
+  const hidden = Math.max(0, desk.strategies.length - OWN_LIST_LIMIT);
+  const visible = expanded ? desk.strategies : desk.strategies.slice(0, OWN_LIST_LIMIT);
+
+  return (
+    <section className="desk-block">
+      <h2>Your strategies</h2>
+      <p className="lede-quiet">List a strategy for free. Upload a PDF or Excel file, check the profile, then take one round of recommendations.</p>
+      <div className="desk-actions">
+        <button type="button" className="text-button" onClick={desk.startManual}>
+          Create manually
+        </button>
+        <button type="button" className="text-button" onClick={() => fileRef.current?.click()}>
+          Upload PDF or Excel
+        </button>
+        <input
+          ref={fileRef}
+          className="sr-only"
+          type="file"
+          accept=".pdf,.xlsx,.xls,.csv,application/pdf"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) desk.startUpload(file.name);
+          }}
+        />
+      </div>
+      <p className="desk-price">
+        Or open a file already on the desk:{" "}
+        <button type="button" className="text-button" onClick={() => desk.startUpload(SAMPLE_CLEAN_FILE)}>
+          {SAMPLE_CLEAN_FILE}
+        </button>
+        {" · "}
+        <button type="button" className="text-button" onClick={() => desk.startUpload(SAMPLE_RECONCILE_FILE)}>
+          {SAMPLE_RECONCILE_FILE}
+        </button>
+      </p>
+      {active ? <StrategyWork strategy={active} /> : null}
+      <ul className="desk-own-list desk-strategy-list">
+        {visible.map((strategy) => (
+          <li key={strategy.id}>
+            <div className="desk-own-main">
+              <span>{strategy.draft.name || "Untitled strategy"}</span>
+              <span className={`desk-status ${strategy.status === "posted" ? "is-posted" : ""}`}>
+                {statusLabel(strategy.status)}
+              </span>
+            </div>
+            {pendingRemove === strategy.id ? (
+              <div className="desk-own-actions">
+                <span className="desk-price">Remove this strategy?</span>
+                <button type="button" className="text-button" onClick={() => desk.removeStrategy(strategy.id)}>
+                  Remove
+                </button>
+                <button type="button" className="text-button" onClick={() => setPendingRemove(null)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="desk-own-actions">
+                <button type="button" className="text-button" onClick={() => desk.editListedStrategy(strategy.id)}>
+                  Edit
+                </button>
+                <button type="button" className="text-button" onClick={() => setPendingRemove(strategy.id)}>
+                  Remove
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 ? (
+        <button type="button" className="desk-more" onClick={() => setExpanded((current) => !current)}>
+          {expanded ? "Show less" : `Show ${hidden} more`}
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
 function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
-  const { updateDraft, openRecommendations, decideRecommendation, submitStrategy, editStrategyAgain } = useInstitutional();
+  const { updateDraft, openRecommendations, decideRecommendation, submitStrategy, editStrategyAgain, saveListedStrategy } =
+    useInstitutional();
   const draft = strategy.draft;
+  const savingListing = Boolean(strategy.resumeStatus);
   if (strategy.status === "recommendations") {
     const ready = strategy.recommendations.every((rec) => strategy.decisions[rec.id]);
     return (
@@ -169,16 +223,27 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
       className="desk-work"
       onSubmit={(event) => {
         event.preventDefault();
-        openRecommendations(strategy.id);
+        if (savingListing) saveListedStrategy(strategy.id);
+        else openRecommendations(strategy.id);
       }}
     >
-      <p className="desk-steps">
-        <span className="is-current">Edit</span>
-        <span>Recommendations</span>
-        <span>Submit</span>
-      </p>
-      <h2>{draft.sourceFile ? "Check the profile" : "New strategy"}</h2>
+      {savingListing ? null : (
+        <p className="desk-steps">
+          <span className="is-current">Edit</span>
+          <span>Recommendations</span>
+          <span>Submit</span>
+        </p>
+      )}
+      <h2>{savingListing ? "Edit strategy" : draft.sourceFile ? "Check the profile" : "New strategy"}</h2>
       {draft.sourceFile ? <p className="desk-price">Read from {draft.sourceFile}. Correct anything the read got wrong.</p> : null}
+      {savingListing ? (
+        <p className="desk-price">
+          Save updates this listing in place.{" "}
+          <button type="submit" className="text-button">
+            Save
+          </button>
+        </p>
+      ) : null}
 
       <section className="desk-section">
         <h3>Identity</h3>
@@ -343,7 +408,7 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
       </section>
 
       <button type="submit" className="text-button">
-        Review recommendations
+        {savingListing ? "Save" : "Review recommendations"}
       </button>
     </form>
   );

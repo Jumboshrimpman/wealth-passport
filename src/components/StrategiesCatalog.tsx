@@ -21,10 +21,13 @@ export function StrategiesCatalog({
   investable,
   added = [],
   yours,
+  heading = true,
 }: {
   investable: number | null;
   added?: readonly StrategyProfile[];
   yours?: ReadonlySet<string>;
+  /** Page title. Institutional Search sits under its own Strategies heading. */
+  heading?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -46,7 +49,7 @@ export function StrategiesCatalog({
 
   return (
     <div className="strategies-page">
-      <h1>Strategies</h1>
+      {heading ? <h1>Strategies</h1> : null}
       <p className="lede-quiet">
         Search the universe of investment strategies. The assistant stays beside this list if you want to ask about one.
       </p>

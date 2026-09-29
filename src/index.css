@@ -2966,7 +2966,7 @@ button.proposed-name {
 .desk-head,
 .desk-rows button {
   display: grid;
-  grid-template-columns: 4.5rem minmax(11rem, 1fr) auto;
+  grid-template-columns: 4.5rem minmax(0, 1fr) 9rem;
   gap: 1.25rem;
   text-align: left;
   width: 100%;
@@ -3013,6 +3013,41 @@ button.proposed-name {
   padding: 0;
 }
 
+.desk-tabs {
+  display: flex;
+  gap: 1.4rem;
+  margin: 0.4rem 0 1.4rem;
+}
+
+.desk-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 0.15rem 0 0.4rem;
+  font: inherit;
+  color: #9a9a9a;
+  cursor: pointer;
+}
+
+.desk-tabs button[aria-selected="true"] {
+  color: #111;
+  border-bottom-color: #111;
+}
+
+.desk-more {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #5e5e5e;
+  font: inherit;
+  cursor: pointer;
+}
+
+.desk-more:hover {
+  color: #111;
+}
+
 .desk-own-list button {
   width: 100%;
   display: flex;
@@ -3024,6 +3059,36 @@ button.proposed-name {
   border-bottom: 1px solid #f2f2f2;
   padding: 0.75rem 0;
   cursor: pointer;
+}
+
+.desk-strategy-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1.2rem;
+  align-items: baseline;
+  border-bottom: 1px solid #f2f2f2;
+  padding: 0.75rem 0;
+}
+
+.desk-strategy-list .text-button {
+  border-bottom: 0;
+  width: auto;
+  padding: 0;
+}
+
+.desk-own-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 1 1 16rem;
+}
+
+.desk-own-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1rem;
+  align-items: baseline;
 }
 
 .desk-status {

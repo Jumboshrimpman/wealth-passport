@@ -8,6 +8,7 @@ import {
   CANNED_STRATEGY_FILE,
   deskReply,
   filterAnon,
+  deskGreeting,
   fittingClients,
   LISTING_NOTE,
   listingDecision,
@@ -132,4 +133,9 @@ test("desk assistant actions stay anonymized and do not sell placement", () => {
   }
   assert.ok(matchesNewYorkPitch(book.find((row) => row.id === "okafor-trust")!));
   assert.equal(fittingClients(book).some((row) => row.withFirm != null), true);
+  const greeting = deskGreeting(book, pitches);
+  const spokenWithGreeting = `${spoken}\n${greeting.toLowerCase()}`;
+  assert.equal(/sit near/.test(spokenWithGreeting), false);
+  assert.match(greeting, /household AUM of \$25M or more/);
+  assert.match(fit.text, /household AUM of \$25M or more/);
 });

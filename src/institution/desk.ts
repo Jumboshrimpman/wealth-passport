@@ -132,6 +132,8 @@ export interface OwnedStrategy {
   status: ListingStatus;
   recommendations: DeskRecommendation[];
   decisions: Record<string, "accept" | "decline">;
+  /** When set, Save restores this status instead of starting a new review. */
+  resumeStatus?: ListingStatus;
 }
 
 export interface PitchDelivery {
@@ -316,8 +318,11 @@ export function filterAnon(
     .sort((a, b) => b.householdAum - a.householdAum || a.ref.localeCompare(b.ref));
 }
 
+/** Households at or above this AUM are the ones this desk is built for. */
+export const FIT_HOUSEHOLD_AUM = 25_000_000;
+
 export function fittingClients(rows: readonly AnonClient[]): AnonClient[] {
-  return rows.filter((row) => row.withFirm != null || row.householdAum >= 25_000_000);
+  return rows.filter((row) => row.withFirm != null || row.householdAum >= FIT_HOUSEHOLD_AUM);
 }
 
 export function matchesNewYorkPitch(row: AnonClient): boolean {
@@ -764,8 +769,27 @@ const POSTED_SEED: OwnedStrategy = {
   },
 };
 
+function draftSeed(id: string, name: string, assetClass: string): OwnedStrategy {
+  const strategy = blankStrategy(id);
+  return {
+    ...strategy,
+    draft: {
+      ...strategy.draft,
+      name,
+      assetClass,
+      objective: `${name} for households that already keep a taxable account.`,
+      holdingsSummary: `${name}. Weights, the fee, and the household minimum are ready to edit before this lists.`,
+    },
+  };
+}
+
 export function seedStrategies(): OwnedStrategy[] {
-  return [POSTED_SEED];
+  return [
+    POSTED_SEED,
+    draftSeed("own-muni", "Municipal ladder", "Fixed income"),
+    draftSeed("own-intl", "International equity sleeve", "Equity"),
+    draftSeed("own-bond", "Core bond sleeve", "Fixed income"),
+  ];
 }
 
 export function seedPitches(): DeskPitch[] {
@@ -799,12 +823,13 @@ export function seedCharges(): DeskCharge[] {
 }
 
 export function deskGreeting(book: readonly AnonClient[], pitches: readonly DeskPitch[]): string {
-  const near = fittingClients(book).length;
+  const band = book.filter((row) => row.householdAum >= FIT_HOUSEHOLD_AUM).length;
   const here = book.filter((row) => row.withFirm != null).length;
   const sent = pitches.reduce((sum, pitch) => sum + pitch.sent.length, 0);
-  const household = near === 1 ? "household sits" : "households sit";
+  const household = band === 1 ? "household has" : "households have";
+  const account = here === 1 ? "already has an account at this firm" : "already have an account at this firm";
   const pitchWord = sent === 1 ? "pitch has" : "pitches have";
-  return `${near} ${household} near this book, and ${here} already keep an account here. ${sent} ${pitchWord} gone out.`;
+  return `${band} ${household} household AUM of ${formatUsd(FIT_HOUSEHOLD_AUM, true)} or more. ${here} ${account}. ${sent} ${pitchWord} gone out.`;
 }
 
 export function deskReply(
@@ -833,7 +858,7 @@ export function deskReply(
     return {
       effect: null,
       text: [
-        `${rows.length} anonymized households sit near this book. Names stay off this desk.`,
+        `${rows.length} households have household AUM of ${formatUsd(FIT_HOUSEHOLD_AUM, true)} or more, or already have an account at this firm. Names stay off this desk.`,
         ...lines,
         "You can upload a strategy for a free listing, or draft a pitch and confirm who receives it.",
       ].join("\n\n"),
