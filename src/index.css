@@ -1582,6 +1582,12 @@ textarea {
   margin-bottom: 0.6rem;
 }
 
+.offer-page h1 {
+  font-size: clamp(1.7rem, 2.6vw, 2.15rem);
+  font-weight: 400;
+  color: #3a3a3a;
+}
+
 .offers-scroll {
   margin-top: 1.75rem;
   overflow-x: auto;
@@ -1598,13 +1604,15 @@ textarea {
   text-align: left;
   vertical-align: baseline;
   padding: 0.95rem 1.15rem 0.95rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f6f6f6;
   font-weight: 400;
+  color: #5e5e5e;
 }
 
 .offers-table thead th {
-  color: #161616;
-  font-size: 0.95rem;
+  color: #9a9a9a;
+  font-size: 0.82rem;
+  font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
   padding-bottom: 0.55rem;
@@ -1618,15 +1626,15 @@ textarea {
 }
 
 .col-title {
-  color: #111;
-  font-size: 0.95rem;
-  font-weight: 560;
+  color: #6a6a6a;
+  font-size: 0.86rem;
+  font-weight: 400;
 }
 
 .col-note {
   margin-top: 0.18rem;
-  color: #161616;
-  font-size: 0.86rem;
+  color: #9a9a9a;
+  font-size: 0.8rem;
   font-weight: 400;
   line-height: 1.3;
 }
@@ -1637,7 +1645,7 @@ textarea {
 
 .offers-table td.offer-lane,
 .offers-table td.accept-lane {
-  border-left: 1px solid #f0f0f0;
+  border-left: 1px solid #f7f7f7;
   padding-left: 1.15rem;
 }
 
@@ -1649,7 +1657,8 @@ textarea {
 
 .offer-account {
   display: block;
-  color: #161616;
+  color: #5e5e5e;
+  font-weight: 400;
 }
 
 .offer-min {
@@ -1683,10 +1692,10 @@ textarea {
 
 .lane-block .proposed-name {
   margin-top: 0.08rem;
-  color: #161616;
-  font-size: 1.08rem;
-  font-weight: 560;
-  line-height: 1.25;
+  color: #3a3a3a;
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1.35;
 }
 
 button.proposed-name {
@@ -1716,24 +1725,24 @@ button.proposed-name {
 .lane-block .all-in-fee,
 .lane-block .bid-rate {
   margin-top: 0.16rem;
-  color: #161616;
-  font-size: 0.98rem;
-  font-weight: 500;
+  color: #6a6a6a;
+  font-size: 0.9rem;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
 .lane-block .pitch-fact {
   margin-top: 0.28rem;
-  color: #161616;
-  font-size: 0.9rem;
+  color: #6a6a6a;
+  font-size: 0.88rem;
   line-height: 1.4;
 }
 
 .lane-block .pitch-label {
   margin-right: 0.35rem;
-  color: #3a3a3a;
-  font-size: 0.84rem;
-  font-weight: 560;
+  color: #8a8a8a;
+  font-size: 0.82rem;
+  font-weight: 400;
 }
 
 .lane-block .pitch-price {
@@ -1741,14 +1750,14 @@ button.proposed-name {
 }
 
 .lane-block .pitch-price .pitch-value {
-  font-weight: 500;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
 .lane-block .min-line {
   margin-top: 0.12rem;
-  color: #161616;
-  font-size: 0.9rem;
+  color: #8a8a8a;
+  font-size: 0.84rem;
 }
 
 .lane-block .strategy-from {
@@ -1787,14 +1796,14 @@ button.proposed-name {
 .lane-block.is-chosen {
   margin-left: 0;
   padding-left: 0.65rem;
-  border-left: 2px solid #111;
+  border-left: 1px solid #e4e4e4;
 }
 
 .lane-block .accepted-mark {
   margin: 0 0 0.15rem;
-  color: #111;
+  color: #8a8a8a;
   font-size: 0.75rem;
-  font-weight: 560;
+  font-weight: 400;
 }
 
 .lane-block .rank-num {
@@ -1829,16 +1838,16 @@ button.proposed-name {
 
 .accept-picker-label,
 .accepted-kicker {
-  color: #111;
+  color: #8a8a8a;
   font-size: 0.75rem;
-  font-weight: 560;
+  font-weight: 400;
 }
 
 .accept-lane .accepted-copy {
   margin-top: 0.35rem;
-  color: #111;
-  font-size: 0.95rem;
-  font-weight: 500;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  font-weight: 400;
   line-height: 1.4;
 }
 
@@ -1870,15 +1879,15 @@ button.proposed-name {
 }
 
 .accept-choice-strategy {
-  color: #111;
-  font-size: 0.95rem;
-  font-weight: 560;
+  color: #3a3a3a;
+  font-size: 0.92rem;
+  font-weight: 400;
   line-height: 1.3;
 }
 
 .accept-choice-meta {
   margin-top: 0.12rem;
-  color: #161616;
+  color: #8a8a8a;
   font-size: 0.84rem;
 }
 
@@ -2304,6 +2313,78 @@ button.proposed-name {
 
 .wealth-note {
   display: block;
+}
+
+.segment-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.85rem;
+  margin: 0.28rem 0 0;
+}
+
+.doc-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8a8a8a;
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.doc-link:hover {
+  color: #5e5e5e;
+}
+
+.doc-stub {
+  margin: 0.2rem 0 0;
+  color: #9a9a9a;
+  font-size: 0.78rem;
+}
+
+.consent-file {
+  margin-top: 2.75rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid #f3f3f3;
+}
+
+.consent-file h2 {
+  margin: 0 0 0.35rem;
+  color: #5e5e5e;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.consent-file > p {
+  margin: 0 0 0.85rem;
+  max-width: 34rem;
+  color: #8a8a8a;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.consent-file ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.consent-file li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid #f6f6f6;
+}
+
+.consent-file li span {
+  color: #8a8a8a;
+  font-size: 0.82rem;
+  line-height: 1.4;
 }
 
 .advisor-mark {
