@@ -2062,6 +2062,23 @@ button.proposed-name {
   margin-top: 1.6rem;
 }
 
+.strategy-filter select {
+  border: 0;
+  border-bottom: 1px solid #111;
+  background: transparent;
+  padding: 0.4rem 1.4rem 0.4rem 0;
+  font: inherit;
+  color: #111;
+}
+
+.strategy-yours {
+  margin-left: 0.55rem;
+  color: #9a9a9a;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+
 .strategy-search input {
   width: 100%;
   border: 0;

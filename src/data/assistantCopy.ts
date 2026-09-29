@@ -73,10 +73,11 @@ export function answerQuestion(
     const shown = eligible.slice(0, 6);
     const lines = [
       `${first}, household investable is ${formatUsd(investable, true)}. Eligible for me keeps strategies whose minimum is at or under that. The filter starts off, so Strategies shows the full universe until you turn it on.`,
-      ...shown.map(
-        (strategy) =>
-          `${strategy.name} · ${strategy.manager} · ${strategy.category}, ${strategy.style} · minimum ${formatUsd(strategy.minimum, true)} · ${strategyFeeLine(strategy)}. ${strategy.summary}`,
-      ),
+      ...shown.map((strategy) => {
+        const fee = strategyFeeLine(strategy);
+        const minimum = strategy.minimum == null ? "minimum not listed" : `minimum ${formatUsd(strategy.minimum, true)}`;
+        return `${strategy.name} · ${strategy.manager} · ${strategy.category}, ${strategy.style} · ${minimum}${fee ? ` · ${fee}` : ""}. ${strategy.summary}`;
+      }),
     ];
     if (eligible.length > shown.length) {
       lines.push(

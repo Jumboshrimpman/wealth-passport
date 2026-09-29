@@ -43,11 +43,17 @@ export function StrategyDetailModal({ detail, onClose }: { detail: StrategyDetai
           </button>
         </div>
         {kind ? <p className="strategy-detail-line">{kind}</p> : null}
+        {detail.risk ? <p className="strategy-detail-line">{detail.risk}</p> : null}
+        {detail.esg ? <p className="strategy-detail-line">ESG</p> : null}
         {detail.manager ? <p className="strategy-detail-line">{detail.manager}</p> : null}
         {detail.fee ? <p className="strategy-detail-fee">{detail.fee}</p> : null}
         {detail.minimum != null ? (
           <p className="strategy-detail-line">Minimum {formatUsd(detail.minimum, true)}</p>
-        ) : null}
+        ) : (
+          <p className="strategy-detail-line">Minimum not listed</p>
+        )}
+        {detail.inception ? <p className="strategy-detail-line">Inception {detail.inception}</p> : null}
+        {detail.productCode ? <p className="strategy-detail-line">Profile code {detail.productCode}</p> : null}
         {detail.eligibility ? (
           <p className={detail.eligibility === "You meet the minimum" ? "strategy-detail-fit meets" : "strategy-detail-fit above"}>
             {detail.eligibility}

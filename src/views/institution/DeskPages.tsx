@@ -1,13 +1,12 @@
 import { useMemo, useRef, useState } from "react";
 import { formatUsd } from "../../../shared/format.ts";
+import { StrategiesCatalog } from "../../components/StrategiesCatalog";
 import { useInstitutional } from "../../context/InstitutionalContext";
 import {
   ASSET_CLASSES,
-  filterMarket,
   formatLocation,
-  LISTING_NOTE,
-  marketplaceRows,
   matchesNewYorkPitch,
+  postedCatalogProfile,
   PITCH_SEND_USD,
   recommendationPreview,
   refFor,
@@ -27,21 +26,16 @@ export function InstitutionStrategies() {
   const desk = useInstitutional();
   const fileRef = useRef<HTMLInputElement>(null);
   const active = desk.strategies.find((strategy) => strategy.id === desk.activeStrategyId) ?? null;
-  const [query, setQuery] = useState("");
-  const [assetClass, setAssetClass] = useState("");
-  const market = useMemo(() => {
-    const rows = marketplaceRows(desk.strategies);
-    return filterMarket(rows, { query, assetClass });
-  }, [assetClass, desk.strategies, query]);
-  const classes = useMemo(
-    () => [...new Set(marketplaceRows(desk.strategies).map((row) => row.assetClass))].sort(),
+  const posted = useMemo(
+    () => desk.strategies.map(postedCatalogProfile).filter((row) => row != null),
     [desk.strategies],
   );
+  const yours = useMemo(() => new Set(posted.map((row) => row.id)), [posted]);
 
   return (
     <div className="desk-page">
       <section className="desk-block">
-        <h1>Your strategies</h1>
+        <h2>Your strategies</h2>
         <p className="lede-quiet">List a strategy for free. Upload a PDF or Excel file, check the profile, then take one round of recommendations.</p>
         <div className="desk-actions">
           <button type="button" className="text-button" onClick={desk.startManual}>
@@ -96,49 +90,7 @@ export function InstitutionStrategies() {
         </ul>
       </section>
 
-      <section className="desk-block">
-        <h2>All strategies</h2>
-        <p className="lede-quiet">{LISTING_NOTE}</p>
-        <div className="desk-tools">
-          <label className="desk-field desk-search">
-            <span className="sr-only">Search strategies</span>
-            <input
-              type="search"
-              value={query}
-              placeholder="Search name, manager, or style"
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-          <label className="desk-field">
-            <span className="sr-only">Asset class</span>
-            <select value={assetClass} onChange={(event) => setAssetClass(event.target.value)}>
-              <option value="">All asset classes</option>
-              {classes.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <ul className="desk-market">
-          {market.map((row) => (
-            <li key={row.id}>
-              <div>
-                <strong>{row.name}</strong>
-                {row.yours ? <span className="desk-yours">Yours</span> : null}
-                <p>
-                  {row.manager} · {row.assetClass} · {row.style}
-                </p>
-              </div>
-              <div className="desk-market-meta">
-                <span>{formatUsd(row.minimum, true)} min</span>
-                <span>{row.feeLabel}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <StrategiesCatalog added={posted} yours={yours} investable={null} />
     </div>
   );
 }

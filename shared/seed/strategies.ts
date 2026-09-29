@@ -1,7 +1,10 @@
+import { UMA_LISTINGS, type UmaListing } from "./umaListings.ts";
+
 /**
- * The client-facing universe of investment strategies. Larger than the pitches
- * on one household so the Strategies page can be searched. Minimums are household
- * investable assets.
+ * Client and institutional strategy catalog.
+ * Names, managers, styles, minimums, and inception dates come from the public
+ * Select UMA manager-profile index. Summaries, risk bands, and ESG flags are
+ * demo copy inferred from those fields.
  */
 export interface StrategyProfile {
   id: string;
@@ -9,265 +12,91 @@ export interface StrategyProfile {
   category: string;
   style: string;
   manager: string;
-  /** Household investable required, in dollars. */
-  minimum: number;
+  /** Account minimum in dollars. Null when the public profile header did not list one. */
+  minimum: number | null;
   /** All-in management fee in bps when the strategy is priced that way. */
   allInBps: number | null;
   /** Price line when the strategy is not an all-in bps fee. */
   feeLabel: string | null;
   summary: string;
+  risk: string;
   /** Tagged for an environmental, social, or values screen. */
-  esg?: boolean;
+  esg: boolean;
+  inception: string | null;
+  productCode: string | null;
 }
 
-export const STRATEGY_UNIVERSE: StrategyProfile[] = [
-  {
-    id: "meridian-muni",
-    name: "Tax-aware municipal SMA",
-    category: "Fixed income",
-    style: "Municipal",
-    manager: "Meridian Global Asset Management",
-    minimum: 25_000_000,
-    allInBps: 38,
-    feeLabel: null,
-    summary: "Separately managed national and state-preference municipals. Duration and the harvest calendar are set with the household.",
-  },
-  {
-    id: "harbor-equity",
-    name: "Equity SMA",
-    category: "Equity",
-    style: "Core",
-    manager: "Harbor Lane Advisors",
-    minimum: 10_000_000,
-    allInBps: 32,
-    feeLabel: null,
-    summary: "A long-only equity sleeve with sector bands and single-name caps the household can tighten.",
-  },
-  {
-    id: "northbridge-harvest",
-    name: "Tax-loss overlay",
-    category: "Equity",
-    style: "Tax-aware",
-    manager: "Northbridge Wealth",
-    minimum: 15_000_000,
-    allInBps: 28,
-    feeLabel: null,
-    summary: "An overlay that harvests losses around names the household wants left alone.",
-  },
-  {
-    id: "field-direct",
-    name: "Direct indexing",
-    category: "Equity",
-    style: "Index",
-    esg: true,
-    manager: "Field & Co.",
-    minimum: 5_000_000,
-    allInBps: 35,
-    feeLabel: null,
-    summary: "A custom index with factor tilts and a list of holdings that stay out.",
-  },
-  {
-    id: "lark-custom",
-    name: "Custom index sleeve",
-    category: "Equity",
-    style: "Index",
-    esg: true,
-    manager: "Lark Index",
-    minimum: 8_000_000,
-    allInBps: 41,
-    feeLabel: null,
-    summary: "An index family and a tracking range chosen for one taxable account.",
-  },
-  {
-    id: "quince-bond",
-    name: "Core bond SMA",
-    category: "Fixed income",
-    style: "Investment grade",
-    manager: "Quince Advisory",
-    minimum: 10_000_000,
-    allInBps: 40,
-    feeLabel: null,
-    summary: "Investment-grade bonds with a duration target and a credit ceiling set by the household.",
-  },
-  {
-    id: "short-muni",
-    name: "Short municipal ladder",
-    category: "Fixed income",
-    style: "Municipal",
-    manager: "Cedar Retirement",
-    minimum: 5_000_000,
-    allInBps: 24,
-    feeLabel: null,
-    summary: "A short state-preference ladder for cash that still has a tax bill.",
-  },
-  {
-    id: "stillwater-tbill",
-    name: "Treasury ladder",
-    category: "Cash",
-    style: "Treasury",
-    manager: "Stillwater Treasury",
-    minimum: 1_000_000,
+function inferStyle(name: string): string {
+  const text = name.toLowerCase();
+  if (/muni|tax[- ]exempt|tax[- ]free/.test(text)) return "US Tax Free Core";
+  if (/bond|fixed|credit|aggregate|duration/.test(text)) return "US Taxable Core";
+  if (/small/.test(text)) return "US Small Cap";
+  if (/mid/.test(text)) return "US Mid Cap";
+  if (/international|global|emerging|adr/.test(text)) return "Global Equities";
+  if (/value/.test(text)) return "US Large Cap Value";
+  if (/growth/.test(text)) return "US Large Cap Growth";
+  if (/equity|dividend|stock/.test(text)) return "US Large Cap";
+  return "Global Multi Asset";
+}
+
+export function categoryFor(style: string, name: string): string {
+  const blob = `${style} ${name}`.toLowerCase();
+  if (/real estate|reit|commodit|infrastructure|mlp/.test(blob)) return "Real assets";
+  if (/multi asset|multi-strategy|event driven/.test(blob)) return "Multi-asset";
+  if (/fixed|muni|tax free|taxable|yield|govt|preferred|inflation|bond|credit/.test(blob)) return "Fixed income";
+  if (/equit|cap|stock|dividend/.test(blob)) return "Equity";
+  return "Multi-asset";
+}
+
+export function riskBand(style: string, name: string): string {
+  const blob = `${style} ${name}`.toLowerCase();
+  if (/ultra-short|short term|wealth conservation|high quality/.test(blob)) return "Conservative";
+  if (/small cap|emerging|high yield|event driven|mlp|concentrated|disrupt/.test(blob)) return "Aggressive";
+  if (/growth|equit|reit|infrastructure|commodit/.test(blob)) return "Growth";
+  return "Moderate";
+}
+
+function esgListed(style: string, name: string): boolean {
+  return /esg|sustain|responsible|gender lens|impact|catholic|climate|fossil|socially|environmental/.test(
+    `${style} ${name}`.toLowerCase(),
+  );
+}
+
+function summaryFor(name: string, style: string, category: string, esg: boolean): string {
+  const role =
+    category === "Fixed income"
+      ? "bond sleeve"
+      : category === "Real assets"
+        ? "real-asset sleeve"
+        : category === "Multi-asset"
+          ? "multi-asset sleeve"
+          : "equity sleeve";
+  const screen = esg ? " Sustainability is part of the mandate." : "";
+  return `${name} is a ${style.toLowerCase()} ${role}. A household can set exclusions, tax treatment, and how tightly the account follows its benchmark.${screen}`;
+}
+
+function profileFromListing(row: UmaListing): StrategyProfile {
+  const style = row.style ?? inferStyle(row.name);
+  const category = categoryFor(style, row.name);
+  const esg = esgListed(style, row.name);
+  return {
+    id: row.id,
+    name: row.name,
+    category,
+    style,
+    manager: row.manager,
+    minimum: row.minimum,
     allInBps: null,
-    feeLabel: "4.3% yield, 0–12 months",
-    summary: "T-bills rung out over a year. The household picks the longest rung and the reinvestment rule.",
-  },
-  {
-    id: "kindred-sweep",
-    name: "Insured deposit sweep",
-    category: "Cash",
-    style: "Cash",
-    manager: "Kindred Cash",
-    minimum: 1_000_000,
-    allInBps: null,
-    feeLabel: "4.1% APY",
-    summary: "A sweep across insured banks. Coverage and the cash that stays operating are both set.",
-  },
-  {
-    id: "oakridge-secondaries",
-    name: "2026 secondaries sleeve",
-    category: "Private markets",
-    style: "Secondaries",
-    manager: "Oakridge Partners",
-    minimum: 40_000_000,
-    allInBps: null,
-    feeLabel: "1.50% and 15% carry",
-    summary: "A closed-end secondaries sleeve. Vintage, pacing, and co-invest rights are part of the pitch.",
-  },
-  {
-    id: "sable-coinvest",
-    name: "Co-invest access",
-    category: "Private markets",
-    style: "Co-invest",
-    manager: "Sable Partners",
-    minimum: 50_000_000,
-    allInBps: null,
-    feeLabel: "1.00% and 10% carry",
-    summary: "Deal-by-deal access next to an existing private sleeve. Size and information rights are negotiated.",
-  },
-  {
-    id: "halden-overlay",
-    name: "Household overlay",
-    category: "Multi-asset",
-    style: "Overlay",
-    manager: "Halden & Grey",
-    minimum: 50_000_000,
-    allInBps: 22,
     feeLabel: null,
-    summary: "One overlay across custodians. The budget and the constraints are written for this household.",
-  },
-  {
-    id: "vesper-custody",
-    name: "One-bank custody",
-    category: "Multi-asset",
-    style: "Custody",
-    manager: "Vesper Private Bank",
-    minimum: 25_000_000,
-    allInBps: 18,
-    feeLabel: null,
-    summary: "Consolidated custody. The household chooses which accounts move and which services stay.",
-  },
-  {
-    id: "dividend-sma",
-    name: "Quality dividend SMA",
-    category: "Equity",
-    style: "Income",
-    manager: "Pellham Trust",
-    minimum: 20_000_000,
-    allInBps: 42,
-    feeLabel: null,
-    summary: "Dividend growers with a yield floor and a cap on any one sector.",
-  },
-  {
-    id: "global-equity",
-    name: "Global equity SMA",
-    category: "Equity",
-    style: "Global",
-    esg: true,
-    manager: "Harbor Lane Advisors",
-    minimum: 20_000_000,
-    allInBps: 45,
-    feeLabel: null,
-    summary: "Developed and emerging equity in one sleeve. Home-country bias is a setting, not a default.",
-  },
-  {
-    id: "real-estate",
-    name: "Listed real estate sleeve",
-    category: "Real assets",
-    style: "Real estate",
-    esg: true,
-    manager: "Rowan Reserve",
-    minimum: 15_000_000,
-    allInBps: 55,
-    feeLabel: null,
-    summary: "REITs and listed property with a geography mix the household can narrow.",
-  },
-  {
-    id: "private-credit",
-    name: "Private credit sleeve",
-    category: "Private markets",
-    style: "Credit",
-    manager: "Brindle Capital",
-    minimum: 100_000_000,
-    allInBps: 125,
-    feeLabel: null,
-    summary: "Direct lending next to the public book. Seniority and the call pace are part of the terms.",
-  },
-  {
-    id: "founder-sma",
-    name: "Concentrated founder SMA",
-    category: "Equity",
-    style: "Concentrated",
-    manager: "Northbridge Wealth",
-    minimum: 250_000_000,
-    allInBps: 60,
-    feeLabel: null,
-    summary: "A concentrated public sleeve for a household that already holds a large single-stock position.",
-  },
-  {
-    id: "endowment",
-    name: "Endowment-style total fund",
-    category: "Multi-asset",
-    style: "Total fund",
-    manager: "Halden & Grey",
-    minimum: 500_000_000,
-    allInBps: 48,
-    feeLabel: null,
-    summary: "A whole-book mandate. Spending rule, liquidity bucket, and private pacing are designed together.",
-  },
-  {
-    id: "coinvest-club",
-    name: "Co-invest club",
-    category: "Private markets",
-    style: "Co-invest",
-    manager: "Lumen Secondaries",
-    minimum: 300_000_000,
-    allInBps: null,
-    feeLabel: "1.00% and 10% carry",
-    summary: "A closed club for larger co-investments. Seat, information, and the annual pace are limited.",
-  },
-  {
-    id: "collar",
-    name: "Single-stock collar",
-    category: "Equity",
-    style: "Options",
-    manager: "Field & Co.",
-    minimum: 400_000_000,
-    allInBps: 35,
-    feeLabel: null,
-    summary: "A collar on a concentrated holding. Strike, tenor, and how much of the position is covered are chosen.",
-  },
-  {
-    id: "ocio",
-    name: "Family-office OCIO",
-    category: "Multi-asset",
-    style: "OCIO",
-    manager: "Vesper Private Bank",
-    minimum: 1_000_000_000,
-    allInBps: 18,
-    feeLabel: null,
-    summary: "Outsourced chief investment officer for the whole household. Governance and the manager roster are bespoke.",
-  },
-];
+    summary: summaryFor(row.name, style, category, esg),
+    risk: riskBand(style, row.name),
+    esg,
+    inception: row.inception,
+    productCode: row.code,
+  };
+}
+
+export const STRATEGY_UNIVERSE: StrategyProfile[] = UMA_LISTINGS.map(profileFromListing);
 
 {
   const ids = STRATEGY_UNIVERSE.map((row) => row.id);

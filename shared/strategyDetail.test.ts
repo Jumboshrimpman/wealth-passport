@@ -5,27 +5,29 @@ import { detailFromBid, detailFromProfile, detailFromRecommendation } from "./st
 import { STRATEGY_UNIVERSE } from "./seed/strategies.ts";
 
 test("strategy details reuse seed fields and household eligibility", () => {
-  const muni = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "meridian-muni");
-  if (!muni) throw new Error("muni strategy missing");
-  const fromUniverse = detailFromProfile(muni, 10_000_000);
-  assert.equal(fromUniverse.manager, "Meridian Global Asset Management");
-  assert.equal(fromUniverse.fee, "all-in 38 bps");
-  assert.equal(fromUniverse.style, "Municipal");
+  const growth = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-ali-h");
+  if (!growth) throw new Error("growth strategy missing");
+  const fromUniverse = detailFromProfile(growth, 1_000);
+  assert.equal(fromUniverse.manager, "AllianceBernstein");
+  assert.equal(fromUniverse.fee, null);
+  assert.equal(fromUniverse.style, "US Large Cap Growth");
+  assert.equal(fromUniverse.risk, "Aggressive");
+  assert.equal(fromUniverse.productCode, "ALI-H");
   assert.equal(fromUniverse.eligibility, "Above this household");
-  assert.equal(detailFromProfile(muni, 25_000_000).eligibility, "You meet the minimum");
+  assert.equal(detailFromProfile(growth, 5_000).eligibility, "You meet the minimum");
 
   const bid: BiddingOffer = {
-    id: "meridian",
-    bidder: "Meridian Global Asset Management",
-    title: "Tax-aware municipal SMA",
-    terms: "all-in 38 bps",
-    customization: "State preference, duration, and which lots to harvest",
-    minimum: 25_000_000,
+    id: "ali-growth",
+    bidder: "AllianceBernstein",
+    title: "Concentrated U.S. Growth",
+    terms: "Illustrative",
+    customization: "Single-name cap and tax lots",
+    minimum: 5_000,
     matchPct: 94,
   };
-  const fromBid = detailFromBid(bid, 10_000_000);
-  assert.equal(fromBid.key, "meridian-muni");
-  assert.equal(fromBid.summary, muni.summary);
+  const fromBid = detailFromBid(bid, 1_000);
+  assert.equal(fromBid.key, "uma-ali-h");
+  assert.equal(fromBid.summary, growth.summary);
   assert.equal(fromBid.note, bid.customization);
   assert.equal(fromBid.eligibility, "Above this household");
 

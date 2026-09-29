@@ -1,6 +1,6 @@
 import { allInFeeLabel, type BiddingOffer, type Recommendation } from "./marketplace.ts";
 import { STRATEGY_UNIVERSE, type StrategyProfile } from "./seed/strategies.ts";
-import { meetsStrategyMinimum, strategyFeeLine } from "./strategies.ts";
+import { strategyFeeLine } from "./strategies.ts";
 
 export interface StrategyDetail {
   key: string;
@@ -16,6 +16,10 @@ export interface StrategyDetail {
   eligibility: string | null;
   matchPct: number | null;
   currentStrategy: string | null;
+  risk: string | null;
+  esg: boolean;
+  inception: string | null;
+  productCode: string | null;
 }
 
 function profileByName(name: string): StrategyProfile | undefined {
@@ -23,7 +27,8 @@ function profileByName(name: string): StrategyProfile | undefined {
 }
 
 function eligibilityLine(minimum: number | null, investable: number | null): string | null {
-  if (minimum == null || investable == null || !Number.isFinite(investable)) return null;
+  if (investable == null || !Number.isFinite(investable)) return null;
+  if (minimum == null) return "Minimum not listed";
   return investable >= minimum ? "You meet the minimum" : "Above this household";
 }
 
@@ -32,7 +37,7 @@ function blank(value: string | null | undefined): string | null {
   return text ? text : null;
 }
 
-export function detailFromProfile(strategy: StrategyProfile, investable: number): StrategyDetail {
+export function detailFromProfile(strategy: StrategyProfile, investable: number | null): StrategyDetail {
   return {
     key: strategy.id,
     name: strategy.name,
@@ -43,9 +48,13 @@ export function detailFromProfile(strategy: StrategyProfile, investable: number)
     minimum: strategy.minimum,
     summary: strategy.summary,
     note: null,
-    eligibility: meetsStrategyMinimum(strategy, investable) ? "You meet the minimum" : "Above this household",
+    eligibility: investable == null ? null : eligibilityLine(strategy.minimum, investable),
     matchPct: null,
     currentStrategy: null,
+    risk: strategy.risk,
+    esg: strategy.esg,
+    inception: strategy.inception,
+    productCode: strategy.productCode,
   };
 }
 
@@ -74,6 +83,10 @@ export function detailFromRecommendation(recommendation: Recommendation, investa
     eligibility: eligibilityLine(recommendation.strategyMinimum, investable),
     matchPct: recommendation.matchPct,
     currentStrategy: blank(recommendation.currentStrategy),
+    risk: null,
+    esg: false,
+    inception: null,
+    productCode: null,
   };
 }
 
@@ -104,5 +117,9 @@ export function detailFromBid(offer: BiddingOffer, investable: number | null): S
     eligibility: eligibilityLine(offer.minimum, investable),
     matchPct: offer.matchPct,
     currentStrategy: null,
+    risk: null,
+    esg: false,
+    inception: null,
+    productCode: null,
   };
 }

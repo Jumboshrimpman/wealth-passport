@@ -1,5 +1,5 @@
 import { formatUsd } from "../../shared/format.ts";
-import { STRATEGY_UNIVERSE } from "../../shared/strategies.ts";
+import { STRATEGY_UNIVERSE, type StrategyProfile } from "../../shared/strategies.ts";
 import type { ClientPassport } from "../../shared/types.ts";
 
 /**
@@ -162,7 +162,7 @@ export interface MarketStrategy {
   assetClass: string;
   style: string;
   manager: string;
-  minimum: number;
+  minimum: number | null;
   feeLabel: string;
   summary: string;
   yours: boolean;
@@ -657,6 +657,32 @@ export function blankPitch(id: string): DeskPitch {
 
 export function refFor(book: readonly AnonClient[], clientId: string): string | null {
   return book.find((row) => row.id === clientId)?.ref ?? null;
+}
+
+function draftIsEsg(flags: string): boolean {
+  const text = flags.trim();
+  if (!text) return false;
+  return !/not stated|none stated|no dedicated|no esg/i.test(text);
+}
+
+/** A posted listing joins the shared catalog. Drafts stay on the desk only. */
+export function postedCatalogProfile(strategy: OwnedStrategy): StrategyProfile | null {
+  if (strategy.status !== "posted" || !strategy.draft.name.trim()) return null;
+  return {
+    id: strategy.id,
+    name: strategy.draft.name,
+    category: strategy.draft.assetClass || "Multi-asset",
+    style: strategy.draft.style || "Core",
+    manager: FIRM.name,
+    minimum: strategy.draft.minAum,
+    allInBps: strategy.draft.feeBps,
+    feeLabel: null,
+    summary: strategy.draft.objective,
+    risk: strategy.draft.risk || "Moderate",
+    esg: draftIsEsg(strategy.draft.esgFlags),
+    inception: strategy.draft.asOf || null,
+    productCode: null,
+  };
 }
 
 export function marketplaceRows(owned: readonly OwnedStrategy[]): MarketStrategy[] {
