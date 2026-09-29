@@ -2949,10 +2949,16 @@ button.proposed-name {
 .desk-head,
 .desk-rows button {
   display: grid;
-  grid-template-columns: 5rem 1.4fr 0.8fr;
-  gap: 1rem;
+  grid-template-columns: 4.5rem minmax(11rem, 1fr) auto;
+  gap: 1.25rem;
   text-align: left;
   width: 100%;
+}
+
+.desk-head span:last-child,
+.desk-rows button span:last-child {
+  text-align: right;
+  white-space: nowrap;
 }
 
 .desk-head {

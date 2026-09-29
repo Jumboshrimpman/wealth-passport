@@ -423,36 +423,34 @@ function PitchEditor({
           <span>Unique pricing</span>
           <textarea rows={2} value={pitch.pricing} onChange={(event) => onChange({ pricing: event.target.value })} />
         </label>
-      </div>
-      <fieldset className="desk-targets">
-        <legend>Target household</legend>
-        <label className="desk-check">
-          <input
-            type="radio"
-            name={`target-${pitch.id}`}
-            checked={pitch.targetClientId == null}
-            onChange={() => onChange({ targetClientId: null })}
-          />
-          Leave unconfirmed
-        </label>
-        {ordered.map((row) => {
-          const matched = /new york/i.test(pitch.audienceNote) && matchesNewYorkPitch(row);
-          return (
-            <label key={row.id} className="desk-check">
-              <input
-                type="radio"
-                name={`target-${pitch.id}`}
-                checked={pitch.targetClientId === row.id}
-                onChange={() => onChange({ targetClientId: row.id })}
-              />
-              <span>
+        <label className="desk-field is-wide">
+          <span>Target household</span>
+        <select
+          value={pitch.targetClientId ?? ""}
+          onChange={(event) => onChange({ targetClientId: event.target.value || null })}
+        >
+          <option value="">Leave unconfirmed</option>
+          {ordered.map((row) => {
+            const matched = /new york/i.test(pitch.audienceNote) && matchesNewYorkPitch(row);
+            return (
+              <option key={row.id} value={row.id}>
                 {row.ref} · age {row.age} · {formatLocation(row)} · {formatUsd(row.householdAum, true)}
                 {matched ? " · matches this draft" : ""}
-              </span>
-            </label>
-          );
-        })}
-      </fieldset>
+              </option>
+            );
+          })}
+        </select>
+        </label>
+      </div>
+      {/new york/i.test(pitch.audienceNote) ? (
+        <p className="desk-price">
+          {ordered
+            .filter((row) => matchesNewYorkPitch(row))
+            .map((row) => row.ref)
+            .join(", ") || "No household"}{" "}
+          matches this draft. Targeting stays open until you choose one.
+        </p>
+      ) : null}
       <div className="desk-send">
         <button type="submit" className="text-button">
           Send pitch
