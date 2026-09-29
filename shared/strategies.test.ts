@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CLIENT_SEEDS } from "./seed/index.ts";
 import { STRATEGY_UNIVERSE } from "./seed/strategies.ts";
-import { browseStrategies, ELIGIBLE_FILTER_LABEL, ESG_FILTER_LABEL, meetsStrategyMinimum, strategyFeeLine } from "./strategies.ts";
+import {
+  browseStrategies,
+  ELIGIBLE_FILTER_LABEL,
+  ESG_FILTER_LABEL,
+  illustrativeFeeBps,
+  meetsStrategyMinimum,
+  strategyFeeLine,
+} from "./strategies.ts";
 
 test("the strategy universe follows the public UMA profile index and can be filtered", () => {
   assert.ok(STRATEGY_UNIVERSE.length >= 900);
@@ -36,7 +43,9 @@ test("the strategy universe follows the public UMA profile index and can be filt
   assert.equal(growth.style, "US Large Cap Growth");
   assert.equal(growth.minimum, 5_000);
   assert.equal(growth.productCode, "ALI-H");
-  assert.equal(strategyFeeLine(growth), "");
+  assert.equal(growth.allInBps, illustrativeFeeBps(growth.id, growth.category));
+  assert.equal(growth.allInBps != null && growth.allInBps % 5 === 0, true);
+  assert.equal(strategyFeeLine(growth), `all-in ${growth.allInBps} bps`);
   assert.equal(meetsStrategyMinimum(growth, 1_000), false);
   assert.equal(meetsStrategyMinimum(growth, 5_000), true);
 
@@ -61,6 +70,19 @@ test("the strategy universe follows the public UMA profile index and can be filt
   assert.ok(fixed.length > 0);
   assert.ok(fixed.every((strategy) => strategy.category === "Fixed income"));
   assert.equal(ELIGIBLE_FILTER_LABEL, "Eligible for me");
+
+  const midFee = browseStrategies(STRATEGY_UNIVERSE, elena.household.investable, { feeRange: "25-40" });
+  assert.ok(midFee.length > 0);
+  assert.ok(midFee.every((strategy) => strategy.allInBps != null && strategy.allInBps >= 25 && strategy.allInBps <= 40));
+  const cheapEsg = browseStrategies(STRATEGY_UNIVERSE, elena.household.investable, { feeRange: "under-25", esgOnly: true });
+  assert.ok(cheapEsg.every((strategy) => strategy.esg === true && strategy.allInBps != null && strategy.allInBps < 25));
+  const conservative = browseStrategies(STRATEGY_UNIVERSE, elena.household.investable, { risk: "Conservative" });
+  assert.ok(conservative.length > 0);
+  assert.ok(conservative.every((strategy) => strategy.risk === "Conservative"));
+  const smallMin = browseStrategies(STRATEGY_UNIVERSE, elena.household.investable, { minimumBand: "under-100k" });
+  assert.ok(smallMin.length > 0);
+  assert.ok(smallMin.every((strategy) => strategy.minimum != null && strategy.minimum < 100_000));
+  assert.equal(browseStrategies(STRATEGY_UNIVERSE, elena.household.investable, { feeRange: "unlisted" }).length, 0);
 
   const blob = JSON.stringify(STRATEGY_UNIVERSE);
   assert.equal(blob.toLowerCase().includes(["paid", "placement"].join(" ")), false);

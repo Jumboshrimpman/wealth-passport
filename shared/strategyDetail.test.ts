@@ -9,7 +9,7 @@ test("strategy details reuse seed fields and household eligibility", () => {
   if (!growth) throw new Error("growth strategy missing");
   const fromUniverse = detailFromProfile(growth, 1_000);
   assert.equal(fromUniverse.manager, "AllianceBernstein");
-  assert.equal(fromUniverse.fee, null);
+  assert.equal(fromUniverse.fee, `all-in ${growth.allInBps} bps`);
   assert.equal(fromUniverse.style, "US Large Cap Growth");
   assert.equal(fromUniverse.risk, "Aggressive");
   assert.equal(fromUniverse.productCode, "ALI-H");

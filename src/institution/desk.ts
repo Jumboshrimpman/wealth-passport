@@ -141,12 +141,30 @@ export interface PitchDelivery {
   when: string;
 }
 
+/**
+ * A pitch offers a strategy-shaped solution: the same field groups as a listing
+ * (identity, objective, sleeves, fee, minimum, ESG), not a marketing blurb.
+ */
+export interface PitchSolution {
+  vehicle: string;
+  style: string;
+  investorProfile: string;
+  assetClass: string;
+  objective: string;
+  sleeves: AllocationSleeve[];
+  risk: string;
+  feeBps: number;
+  feeNote: string;
+  minAum: number;
+  esgFlags: string;
+}
+
 export interface DeskPitch {
   id: string;
   name: string;
-  solution: string;
-  pricing: string;
-  targetClientId: string | null;
+  solution: PitchSolution;
+  /** Households selected for this send. Internal ids, never rendered. */
+  targetClientIds: string[];
   audienceNote: string;
   sent: PitchDelivery[];
 }
@@ -613,6 +631,24 @@ export function blankStrategy(id: string): OwnedStrategy {
   return { id, draft, status: "editing", recommendations: [], decisions: {} };
 }
 
+const IN_PLACE_STATUSES = new Set<ListingStatus>(["under-review", "posted", "human-review"]);
+
+/**
+ * Open the profile editor for a strategy id.
+ * Drafts and the suggestion step stay on the create path.
+ * A listing already in review or posted saves in place and restores that status.
+ */
+export function openStrategyForEdit(strategy: OwnedStrategy): OwnedStrategy {
+  if (strategy.resumeStatus && IN_PLACE_STATUSES.has(strategy.resumeStatus) && strategy.status === "editing") {
+    return strategy;
+  }
+  if (strategy.status === "editing" || strategy.status === "recommendations") {
+    return { ...strategy, status: "editing", resumeStatus: undefined };
+  }
+  const restore = strategy.resumeStatus && IN_PLACE_STATUSES.has(strategy.resumeStatus) ? strategy.resumeStatus : strategy.status;
+  return { ...strategy, status: "editing", resumeStatus: restore };
+}
+
 export function statusLabel(status: ListingStatus): string {
   switch (status) {
     case "editing":
@@ -635,14 +671,44 @@ export function statusNote(status: ListingStatus): string {
   return "";
 }
 
+export function blankSolution(): PitchSolution {
+  return {
+    vehicle: "Separate account",
+    style: "Core",
+    investorProfile: "Moderate",
+    assetClass: "Equity",
+    objective: "",
+    sleeves: [sleeve("core", "Core sleeve", 100, "SMA", "", "")],
+    risk: "Moderate",
+    feeBps: 35,
+    feeNote: "",
+    minAum: 10_000_000,
+    esgFlags: "Not stated",
+  };
+}
+
 export function newYorkPitch(id: string): DeskPitch {
   return {
     id,
     name: "New York household sleeve",
-    solution:
-      "A state-preference municipal ladder beside a tax-aware US equity SMA, sized for a household that already has at least $10 million.",
-    pricing: "36 bps all-in on the equity sleeve. Municipal ladder at 22 bps. No performance fee.",
-    targetClientId: null,
+    solution: {
+      vehicle: "Hybrid SMA",
+      style: "Tax-aware",
+      investorProfile: "Moderate",
+      assetClass: "Multi-asset",
+      objective:
+        "A state-preference municipal ladder beside a tax-aware US equity SMA, sized for a household that already has at least $10 million.",
+      sleeves: [
+        sleeve("equity", "US equity SMA", 60, "SMA", "50–70%", "Tax-aware large-cap"),
+        sleeve("muni", "New York municipal ladder", 40, "SMA", "30–50%", "State-preference municipals"),
+      ],
+      risk: "Moderate",
+      feeBps: 36,
+      feeNote: "36 bps on the equity sleeve. Municipal ladder at 22 bps. No performance fee.",
+      minAum: 10_000_000,
+      esgFlags: "Not stated",
+    },
+    targetClientIds: [],
     audienceNote: "New York · household AUM at least $10M · not confirmed",
     sent: [],
   };
@@ -652,11 +718,32 @@ export function blankPitch(id: string): DeskPitch {
   return {
     id,
     name: "",
-    solution: "",
-    pricing: "",
-    targetClientId: null,
+    solution: blankSolution(),
+    targetClientIds: [],
     audienceNote: "",
     sent: [],
+  };
+}
+
+/** Apply one send to the selected households. Already-delivered ids are not repeated. */
+export function planPitchSend(
+  pitch: DeskPitch,
+  clientIds: readonly string[],
+  book: readonly { id: string }[],
+  when = "Sep 29",
+): { pitch: DeskPitch; addedClientIds: string[] } | null {
+  const known = new Set(book.map((row) => row.id));
+  const unique = [...new Set(clientIds)].filter((id) => known.has(id));
+  if (unique.length === 0) return null;
+  const already = new Set(pitch.sent.map((delivery) => delivery.clientId));
+  const addedClientIds = unique.filter((id) => !already.has(id));
+  return {
+    addedClientIds,
+    pitch: {
+      ...pitch,
+      targetClientIds: unique,
+      sent: [...pitch.sent, ...addedClientIds.map((clientId) => ({ clientId, when }))],
+    },
   };
 }
 
@@ -797,18 +884,40 @@ export function seedPitches(): DeskPitch[] {
     {
       id: "pitch-muni",
       name: "State-preference municipal sleeve",
-      solution: "A New York municipal ladder with duration set to the household's income window.",
-      pricing: "22 bps. No performance fee.",
-      targetClientId: "okafor-trust",
+      solution: {
+        vehicle: "Separate account",
+        style: "US Tax Free Core",
+        investorProfile: "Moderate",
+        assetClass: "Fixed income",
+        objective: "A New York municipal ladder with duration set to the household's income window.",
+        sleeves: [sleeve("muni", "New York municipal ladder", 100, "SMA", "", "State-preference municipals")],
+        risk: "Conservative",
+        feeBps: 22,
+        feeNote: "Management fee. No performance fee.",
+        minAum: 10_000_000,
+        esgFlags: "Not stated",
+      },
+      targetClientIds: ["okafor-trust"],
       audienceNote: "",
       sent: [{ clientId: "okafor-trust", when: "Sep 12" }],
     },
     {
       id: "pitch-equity",
       name: "Tax-aware equity on an existing account",
-      solution: "Run the tax-aware SMA on the account already held at your firm, and leave the rest of the household untouched.",
-      pricing: "30 bps all-in.",
-      targetClientId: "priya-shah",
+      solution: {
+        vehicle: "Separate account",
+        style: "Tax-aware core",
+        investorProfile: "Growth",
+        assetClass: "Equity",
+        objective: "Run the tax-aware SMA on the account already held at your firm, and leave the rest of the household untouched.",
+        sleeves: [sleeve("equity", "US large-cap equity", 100, "SMA", "96–100%", "Tax-aware large-cap book")],
+        risk: "Moderate",
+        feeBps: 30,
+        feeNote: "Management fee on the equity sleeve.",
+        minAum: 10_000_000,
+        esgFlags: "Excludes thermal coal and civilian firearms.",
+      },
+      targetClientIds: ["priya-shah"],
       audienceNote: "",
       sent: [{ clientId: "priya-shah", when: "Sep 4" }],
     },
@@ -846,7 +955,7 @@ export function deskReply(
   if (/(pitch|prepare)/.test(text) && /(new york|10\s*m|10m|\$10)/.test(text)) {
     return {
       effect: "draft-ny-pitch",
-      text: `I drafted a pitch for New York households with at least ${formatUsd(10_000_000, true)}. Targeting is not confirmed — choose the household before it sends. Sending a pitch is ${formatUsd(PITCH_SEND_USD)}. Listing a strategy is free.`,
+      text: `I drafted a pitch for New York households with at least ${formatUsd(10_000_000, true)}. Targeting is not confirmed — choose the households before it sends. Sending a pitch is ${formatUsd(PITCH_SEND_USD)}. Listing a strategy is free.`,
     };
   }
   if (/(fit|which client|anonym)/.test(text)) {
