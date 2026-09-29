@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { enrollmentContextFromStored } from "../../shared/householdContext.ts";
 import type { DemoProfile } from "../../shared/marketplace.ts";
 
 const PROFILE_KEY = "wealthpass-demo-profile-v1";
@@ -19,9 +20,11 @@ function readProfile(): DemoProfile | null {
     if (!parsed || typeof parsed.clientId !== "string" || !parsed.fit) return null;
     const stored: DemoProfile & { taxDocName?: string } = { ...parsed };
     delete stored.taxDocName;
+    const context = enrollmentContextFromStored(stored);
     return {
       ...stored,
-      isFinancialAdvisor: stored.isFinancialAdvisor === true,
+      ...context,
+      isFinancialAdvisor: stored.isFinancialAdvisor === true || context.enrolleeRole !== "client",
       irsConnected: stored.irsConnected === true,
     };
   } catch {

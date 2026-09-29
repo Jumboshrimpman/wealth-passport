@@ -16,6 +16,8 @@ export interface StrategyProfile {
   /** Price line when the strategy is not an all-in bps fee. */
   feeLabel: string | null;
   summary: string;
+  /** Tagged for an environmental, social, or values screen. */
+  esg?: boolean;
 }
 
 export const STRATEGY_UNIVERSE: StrategyProfile[] = [
@@ -57,6 +59,7 @@ export const STRATEGY_UNIVERSE: StrategyProfile[] = [
     name: "Direct indexing",
     category: "Equity",
     style: "Index",
+    esg: true,
     manager: "Field & Co.",
     minimum: 5_000_000,
     allInBps: 35,
@@ -68,6 +71,7 @@ export const STRATEGY_UNIVERSE: StrategyProfile[] = [
     name: "Custom index sleeve",
     category: "Equity",
     style: "Index",
+    esg: true,
     manager: "Lark Index",
     minimum: 8_000_000,
     allInBps: 41,
@@ -178,6 +182,7 @@ export const STRATEGY_UNIVERSE: StrategyProfile[] = [
     name: "Global equity SMA",
     category: "Equity",
     style: "Global",
+    esg: true,
     manager: "Harbor Lane Advisors",
     minimum: 20_000_000,
     allInBps: 45,
@@ -189,6 +194,7 @@ export const STRATEGY_UNIVERSE: StrategyProfile[] = [
     name: "Listed real estate sleeve",
     category: "Real assets",
     style: "Real estate",
+    esg: true,
     manager: "Rowan Reserve",
     minimum: 15_000_000,
     allInBps: 55,
