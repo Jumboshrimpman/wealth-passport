@@ -1,3 +1,8 @@
+/**
+ * Later pass, not this screen: let the client assistant connect or import,
+ * draft, and prepare — the same kind of step the institutional desk already
+ * takes. Keep that follow-up out of this client layout.
+ */
 import { formatUsd } from "../../shared/format.ts";
 import { greetingLine, type OfferBoard, type WealthPicture } from "../../shared/marketplace.ts";
 import { browseStrategies, STRATEGY_UNIVERSE, strategyFeeLine } from "../../shared/strategies.ts";
@@ -133,5 +138,6 @@ export function answerQuestion(
       ? `The largest account is ${largest.name} at ${largest.custodian} (${formatUsd(largest.balance, true)}).`
       : `${client.household.name} is the household on file.`,
     `Ask about strategies, pitches, accounts, financials, or the household. For example: which strategies do I qualify for.`,
+    "Connecting an account, importing what is verified, or drafting the next step can come later.",
   ].join("\n\n");
 }

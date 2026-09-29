@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { MODE_HOMES, type AppMode } from "../data/catalog";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { MODE_HOMES, modeFromPath, type AppMode } from "../data/catalog";
 
 const MODE_KEY = "wealthpass-mode";
 
@@ -37,8 +37,18 @@ function persistMode(mode: AppMode) {
 export function ModeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<AppMode>(readStoredMode);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const implied = modeFromPath(location.pathname);
+    if (!implied || implied === mode) return;
+    persistMode(implied);
+    setModeState(implied);
+  }, [location.pathname, mode]);
 
   function setMode(next: AppMode) {
+    const current = modeFromPath(location.pathname) ?? mode;
+    if (next === current) return;
     persistMode(next);
     setModeState(next);
     navigate(MODE_HOMES[next]);

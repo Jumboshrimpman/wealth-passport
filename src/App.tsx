@@ -7,16 +7,20 @@ import { ConsentProvider } from "./context/ConsentContext";
 import { DemoProvider } from "./context/DemoContext";
 import { OfferDecisionProvider } from "./context/OfferDecisionContext";
 import { OfferProvider } from "./context/OfferContext";
+import { ModeProvider } from "./context/ModeContext";
+import { InstitutionalProvider } from "./context/InstitutionalContext";
 import { Admin } from "./views/Admin";
 import { Assistant } from "./views/Assistant";
 import { Enroll } from "./views/Enroll";
 import { Financials } from "./views/Financials";
-import { Institution } from "./views/Institution";
 import { Offers } from "./views/Offers";
 import { PublicHome } from "./views/PublicHome";
 import { Settings } from "./views/Settings";
 import { Strategies } from "./views/Strategies";
 import { SignInScreen } from "./views/SignInScreen";
+import { InstitutionHome } from "./views/institution/Home";
+import { InstitutionClients } from "./views/institution/Clients";
+import { InstitutionPitches, InstitutionSettings, InstitutionStrategies } from "./views/institution/DeskPages";
 
 export default function App() {
   return (
@@ -26,6 +30,8 @@ export default function App() {
           <OfferDecisionProvider>
             <DemoProvider>
               <AssistantProvider>
+                <ModeProvider>
+                <InstitutionalProvider>
                 <Routes>
                   <Route path="/" element={<Landing />} />
                   <Route path="/sign-in" element={<SignInScreen />} />
@@ -38,7 +44,11 @@ export default function App() {
                       <Route path="/financials" element={<Financials />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/admin" element={<Admin />} />
-                      <Route path="/institution" element={<Institution />} />
+                      <Route path="/institution" element={<InstitutionHome />} />
+                      <Route path="/institution/clients" element={<InstitutionClients />} />
+                      <Route path="/institution/strategies" element={<InstitutionStrategies />} />
+                      <Route path="/institution/pitches" element={<InstitutionPitches />} />
+                      <Route path="/institution/settings" element={<InstitutionSettings />} />
                     </Route>
                   </Route>
                   <Route path="/chat" element={<Navigate to="/assistant" replace />} />
@@ -48,6 +58,8 @@ export default function App() {
                   <Route path="/ops" element={<Navigate to="/settings" replace />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
+                </InstitutionalProvider>
+                </ModeProvider>
               </AssistantProvider>
             </DemoProvider>
           </OfferDecisionProvider>
