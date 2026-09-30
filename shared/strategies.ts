@@ -141,6 +141,7 @@ export function taxPostureLabel(flag: TaxPostureFlag): string {
 
 export function securitiesLine(strategy: { securitiesMin: number | null; securitiesMax: number | null }): string | null {
   if (strategy.securitiesMin == null || strategy.securitiesMax == null) return null;
+  if (strategy.securitiesMin === strategy.securitiesMax) return `${strategy.securitiesMin}`;
   return `${strategy.securitiesMin}–${strategy.securitiesMax}`;
 }
 

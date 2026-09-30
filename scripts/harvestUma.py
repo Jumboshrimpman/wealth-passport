@@ -3,7 +3,10 @@
 
 Reads the public manager-profile index (no login) and, for each live PDF,
 the structured header on the profile: style, minimum, inception, vehicle,
-holdings range, turnover, ADR use, and fixed-income averages when printed.
+holdings count or range, turnover, ADR use, and fixed-income averages when
+printed. A header may give a range ("11 to 21") or a single figure ("15.89").
+An em dash stays empty. Eligible-investments lines that sit in front of
+"Strategy Overview" (common on MAPS profiles) are kept; overview prose is not.
 
 Does not store overview narrative, holdings lists, or performance tables.
 
@@ -58,16 +61,25 @@ STYLE_RE = re.compile(
     r"Style:\s*(.+?)\s+GIMA Status:\s*(.+?)\s+Program Inception:\s*(\d{2}/\d{2}/\d{4}|—|-)\s+Strategy Minimum:\s*(\$[\d,]+|—|-|None|N/A)",
     re.I,
 )
-HOLDINGS_RE = re.compile(r"Number of security holdings:\s*([\d,]+)\s+to\s+([\d,]+)", re.I)
-TURNOVER_RE = re.compile(r"Average turnover rate:\s*([\d.]+)\s+to\s+([\d.]+)\s*%", re.I)
-ADR_RE = re.compile(r"Use ADRs:\s*(?:—|--|-|([\d.]+)\s+to\s+([\d.]+)\s*%)", re.I)
-MATURITY_RE = re.compile(r"Average maturity:\s*([\d.]+)\s+to\s+([\d.]+)\s+years", re.I)
-DURATION_RE = re.compile(r"Average duration:\s*([\d.]+)\s+to\s+([\d.]+)\s+years", re.I)
-COUPON_RE = re.compile(r"Average coupon:\s*([\d.]+)\s+to\s+([\d.]+)\s*%", re.I)
+NUMBER = r"[\d,]+(?:\.\d+)?"
+# Stop before the next section. MAPS profiles put "Strategy Overview" here
+# instead of "Manager Name", which used to swallow the vehicle line.
 VEHICLE_RE = re.compile(
-    r"Eligible Investments:\s*(.+?)(?:\s+Manager Name|\s+Style:|\s+\d*\s*Portfolio Manager|\s+Manager's Investment)",
+    r"Eligible Investments:\s*(.+?)(?:"
+    r"\s+Strategy Overview|\s+Manager Name|\s+Style:|"
+    r"\s+\d*\s*Portfolio Manager|\s+Manager's Investment"
+    r")",
     re.I,
 )
+YIELD_LABELS = (
+    "Average dividend yield",
+    "Average current yield",
+    "Yield to worst",
+    "Yield to maturity",
+    "Current yield",
+    "Average yield",
+)
+ADR_RE = re.compile(rf"Use ADRs:\s*(?:—|--|-|({NUMBER})\s+to\s+({NUMBER})\s*%|({NUMBER})\s*%)", re.I)
 CLOSED_RE = re.compile(r"Strategy Status:\s*Closed", re.I)
 LISTING_RE = re.compile(
     r'\{ id: "(?P<id>[^"]+)", manager: "(?P<manager>(?:\\.|[^"\\])*)", name: "(?P<name>(?:\\.|[^"\\])*)", code: "(?P<code>[^"]+)", style: (?:"(?P<style>(?:\\.|[^"\\])*)"|null), minimum: (?P<minimum>\d+|null), inception: (?:"(?P<inception>[^"]+)"|null) \}'
@@ -126,9 +138,94 @@ def load_previous() -> dict[str, dict[str, str | int | None]]:
     return previous
 
 
+def parse_number(token: str) -> float:
+    return float(token.replace(",", ""))
+
+
 def midpoint(low: str, high: str, digits: int) -> float:
-    value = (float(low.replace(",", "")) + float(high.replace(",", ""))) / 2
+    value = (parse_number(low) + parse_number(high)) / 2
     return round(value, digits)
+
+
+def labeled_span(label: str, text: str) -> tuple[float, float] | None:
+    match = re.search(rf"{re.escape(label)}:\s*({NUMBER})\s+to\s+({NUMBER})", text, re.I)
+    if not match:
+        return None
+    return parse_number(match.group(1)), parse_number(match.group(2))
+
+
+def labeled_single(label: str, text: str) -> float | None:
+    match = re.search(rf"{re.escape(label)}:\s*({NUMBER})(?!\s+to\b)", text, re.I)
+    if not match:
+        return None
+    return parse_number(match.group(1))
+
+
+def labeled_midpoint(label: str, text: str, digits: int) -> float | None:
+    span = labeled_span(label, text)
+    if span:
+        return round((span[0] + span[1]) / 2, digits)
+    single = labeled_single(label, text)
+    if single is None:
+        return None
+    return round(single, digits)
+
+
+def holdings_bounds(text: str) -> tuple[int | None, int | None]:
+    span = labeled_span("Number of security holdings", text)
+    if span:
+        return int(span[0]), int(span[1])
+    single = labeled_single("Number of security holdings", text)
+    if single is None:
+        return None, None
+    value = int(single)
+    return value, value
+
+
+def yield_pct(text: str) -> float | None:
+    for label in YIELD_LABELS:
+        value = labeled_midpoint(label, text, 1)
+        if value is not None:
+            return value
+    return None
+
+
+# Some profile PDFs print the strategy title between the vehicle and
+# "Manager Name" ("ETFs First Trust … MAPS (FIR-1) Manager Name").
+# Keep only the investment types that start the line. An em dash stays empty.
+VEHICLE_TOKENS = (
+    "Individual Stocks",
+    "Individual Bonds",
+    "Mutual Funds",
+    "Exchange-Traded Funds",
+    "Exchange Traded Funds",
+    "Closed-End Funds",
+    "Preferred Securities",
+    "Municipal Bonds",
+    "ETFs",
+    "ADRs",
+    "Options",
+    "Cash",
+    "UITs",
+)
+
+
+def vehicle_label(text: str) -> str | None:
+    match = VEHICLE_RE.search(text)
+    if not match:
+        return None
+    rest = clean(match.group(1))
+    found: list[str] = []
+    while rest:
+        rest = rest.lstrip(" ,;/")
+        hit = next((token for token in sorted(VEHICLE_TOKENS, key=len, reverse=True) if rest.lower().startswith(token.lower())), None)
+        if hit is None:
+            break
+        found.append("ETFs" if hit.lower() in {"etfs", "exchange-traded funds", "exchange traded funds"} else hit)
+        rest = rest[len(hit) :]
+    if not found:
+        return None
+    return ", ".join(found)
 
 
 def characteristics_slice(text: str) -> str:
@@ -179,6 +276,7 @@ def parse_pdf(data: bytes) -> dict | None:
         "maturityYears": None,
         "durationYears": None,
         "couponPct": None,
+        "yieldPct": None,
         "referenceIndexes": reference_indexes(text),
     }
     if style_match:
@@ -188,33 +286,25 @@ def parse_pdf(data: bytes) -> dict | None:
         header["inception"] = None if inception in {"—", "-"} else inception
         if minimum.startswith("$"):
             header["minimum"] = int(minimum[1:].replace(",", ""))
-    holdings = HOLDINGS_RE.search(text)
-    if holdings:
-        header["securitiesMin"] = int(holdings.group(1).replace(",", ""))
-        header["securitiesMax"] = int(holdings.group(2).replace(",", ""))
-    turnover = TURNOVER_RE.search(text)
-    if turnover:
-        header["turnoverPct"] = int(round(midpoint(turnover.group(1), turnover.group(2), 1)))
+    securities_min, securities_max = holdings_bounds(text)
+    header["securitiesMin"] = securities_min
+    header["securitiesMax"] = securities_max
+    turnover = labeled_midpoint("Average turnover rate", text, 1)
+    if turnover is not None:
+        header["turnoverPct"] = int(round(turnover))
     adr = ADR_RE.search(text)
-    if adr and adr.group(1) is not None:
-        high = float(adr.group(2))
-        low = float(adr.group(1))
-        header["adrUse"] = high > 0 or low > 0
-    maturity = MATURITY_RE.search(text)
-    if maturity:
-        header["maturityYears"] = midpoint(maturity.group(1), maturity.group(2), 1)
-    duration = DURATION_RE.search(text)
-    if duration:
-        header["durationYears"] = midpoint(duration.group(1), duration.group(2), 1)
-    coupon = COUPON_RE.search(text)
-    if coupon:
-        header["couponPct"] = midpoint(coupon.group(1), coupon.group(2), 1)
-    vehicle = VEHICLE_RE.search(text)
-    if vehicle:
-        label = clean(vehicle.group(1))
-        label = re.split(r"\s{2,}| For more information", label)[0].strip(" .")
-        if 0 < len(label) <= 80:
-            header["vehicle"] = label
+    if adr:
+        if adr.group(1) is not None:
+            low = float(adr.group(1))
+            high = float(adr.group(2))
+            header["adrUse"] = high > 0 or low > 0
+        elif adr.group(3) is not None:
+            header["adrUse"] = float(adr.group(3).replace(",", "")) > 0
+    header["maturityYears"] = labeled_midpoint("Average maturity", text, 1)
+    header["durationYears"] = labeled_midpoint("Average duration", text, 1)
+    header["couponPct"] = labeled_midpoint("Average coupon", text, 1)
+    header["yieldPct"] = yield_pct(text)
+    header["vehicle"] = vehicle_label(text)
     if header["style"] is None and header["vehicle"] is None and header["securitiesMin"] is None:
         return None
     return header
@@ -293,6 +383,7 @@ def write_listings(rows: list[dict], headers: dict[str, dict], previous: dict[st
 
 
 def write_headers(headers: dict[str, dict]) -> None:
+    include_yield = any(item.get("yieldPct") is not None for item in headers.values())
     lines = [
         "/** Structured fields read from public Select UMA profile headers. No narrative or performance tables. */",
         "export interface UmaPublicHeader {",
@@ -310,11 +401,18 @@ def write_headers(headers: dict[str, dict]) -> None:
         "  maturityYears: number | null;",
         "  durationYears: number | null;",
         "  couponPct: number | null;",
-        "  referenceIndexes: string[];",
-        "}",
-        "",
-        "export const UMA_HEADERS: Readonly<Record<string, UmaPublicHeader>> = {",
     ]
+    if include_yield:
+        lines.append("  /** Header yield figure when the profile printed one. Not a performance table. */")
+        lines.append("  yieldPct: number | null;")
+    lines.extend(
+        [
+            "  referenceIndexes: string[];",
+            "}",
+            "",
+            "export const UMA_HEADERS: Readonly<Record<string, UmaPublicHeader>> = {",
+        ]
+    )
     for code in sorted(headers):
         header = headers[code]
         parts = [
@@ -331,8 +429,10 @@ def write_headers(headers: dict[str, dict]) -> None:
             f"maturityYears: {ts_value(header['maturityYears'])}",
             f"durationYears: {ts_value(header['durationYears'])}",
             f"couponPct: {ts_value(header['couponPct'])}",
-            f"referenceIndexes: {ts_value(header['referenceIndexes'])}",
         ]
+        if include_yield:
+            parts.append(f"yieldPct: {ts_value(header.get('yieldPct'))}")
+        parts.append(f"referenceIndexes: {ts_value(header['referenceIndexes'])}")
         lines.append(f"  {ts_string(code)}: {{ {', '.join(parts)} }},")
     lines.append("};")
     lines.append("")
@@ -391,6 +491,9 @@ def main() -> None:
         "withVehicle": sum(1 for header in headers.values() if header["vehicle"]),
         "withAdrKnown": sum(1 for header in headers.values() if header["adrUse"] is not None),
         "withMaturity": sum(1 for header in headers.values() if header["maturityYears"] is not None),
+        "withDuration": sum(1 for header in headers.values() if header["durationYears"] is not None),
+        "withCoupon": sum(1 for header in headers.values() if header["couponPct"] is not None),
+        "withYield": sum(1 for header in headers.values() if header["yieldPct"] is not None),
         "withTurnover": sum(1 for header in headers.values() if header["turnoverPct"] is not None),
         "withSecurities": sum(1 for header in headers.values() if header["securitiesMin"] is not None),
         "withBenchmarkIndex": sum(1 for header in headers.values() if header["referenceIndexes"]),

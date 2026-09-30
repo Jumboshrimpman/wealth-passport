@@ -8,6 +8,7 @@ import {
   ESG_FILTER_LABEL,
   illustrativeFeeBps,
   meetsStrategyMinimum,
+  securitiesLine,
   strategyFeeLine,
 } from "./strategies.ts";
 
@@ -122,7 +123,28 @@ test("the strategy universe follows the public UMA profile index and can be filt
   assert.equal(adr.usesAdrs, true);
   assert.equal(maps.additionalFundFees, true);
   assert.equal(maps.benchmarkKind, "blended");
+  assert.equal(maps.vehicle, "Individual Stocks, Individual Bonds, Mutual Funds, ETFs");
+  assert.equal(maps.fromPublicHeader.includes("vehicle"), true);
   assert.deepEqual(indexed.taxPosture, ["direct-indexing", "tax-aware"]);
+
+  const pointEstimate = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-ali-b");
+  const singleCount = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-apd-1");
+  const mapsVehicle = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-fir-1");
+  if (!pointEstimate || !singleCount || !mapsVehicle) throw new Error("header sample rows missing");
+  assert.equal(pointEstimate.fixedIncome?.avgMaturityYears, 15.9);
+  assert.equal(pointEstimate.fixedIncome?.avgDurationYears, 6.5);
+  assert.equal(pointEstimate.fixedIncome?.avgCouponPct, 5);
+  assert.equal(pointEstimate.fixedIncome?.avgYieldPct, null);
+  assert.equal(pointEstimate.vehicle, "Individual Bonds, Mutual Funds");
+  assert.equal(pointEstimate.fromPublicHeader.includes("maturity"), true);
+  assert.equal(pointEstimate.fromPublicHeader.includes("securities"), false);
+  assert.equal(pointEstimate.fromPublicHeader.includes("turnover"), false);
+  assert.equal(singleCount.securitiesMin, 9198);
+  assert.equal(singleCount.securitiesMax, 9198);
+  assert.equal(singleCount.fromPublicHeader.includes("securities"), true);
+  assert.equal(securitiesLine(singleCount), "9198");
+  assert.equal(securitiesLine(growth), "0–20");
+  assert.equal(mapsVehicle.vehicle, "ETFs");
 
   const withHousehold = STRATEGY_UNIVERSE.filter((strategy) => strategy.householdMinimum != null);
   const withoutHousehold = STRATEGY_UNIVERSE.filter((strategy) => strategy.householdMinimum == null);
