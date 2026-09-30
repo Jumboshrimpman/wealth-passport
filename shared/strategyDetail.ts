@@ -1,5 +1,11 @@
 import { allInFeeLabel, type BiddingOffer, type Recommendation } from "./marketplace.ts";
-import { STRATEGY_UNIVERSE, type StrategyProfile } from "./seed/strategies.ts";
+import {
+  STRATEGY_UNIVERSE,
+  type BenchmarkKind,
+  type FixedIncomeStats,
+  type StrategyProfile,
+  type TaxPostureFlag,
+} from "./seed/strategies.ts";
 import { strategyFeeLine } from "./strategies.ts";
 
 export interface StrategyDetail {
@@ -10,6 +16,8 @@ export interface StrategyDetail {
   style: string | null;
   fee: string | null;
   minimum: number | null;
+  householdMinimum: number | null;
+  accountMinimum: number | null;
   summary: string | null;
   /** Pitch-specific tailoring, when it is separate from the summary. */
   note: string | null;
@@ -20,6 +28,47 @@ export interface StrategyDetail {
   esg: boolean;
   inception: string | null;
   productCode: string | null;
+  usesAdrs: boolean | null;
+  fixedIncome: FixedIncomeStats | null;
+  turnoverPct: number | null;
+  securitiesMin: number | null;
+  securitiesMax: number | null;
+  benchmark: string | null;
+  benchmarkKind: BenchmarkKind | null;
+  additionalFundFees: boolean;
+  additionalFeesNote: string | null;
+  taxPosture: TaxPostureFlag[];
+}
+
+function emptyCharacteristics(): Pick<
+  StrategyDetail,
+  | "householdMinimum"
+  | "accountMinimum"
+  | "usesAdrs"
+  | "fixedIncome"
+  | "turnoverPct"
+  | "securitiesMin"
+  | "securitiesMax"
+  | "benchmark"
+  | "benchmarkKind"
+  | "additionalFundFees"
+  | "additionalFeesNote"
+  | "taxPosture"
+> {
+  return {
+    householdMinimum: null,
+    accountMinimum: null,
+    usesAdrs: null,
+    fixedIncome: null,
+    turnoverPct: null,
+    securitiesMin: null,
+    securitiesMax: null,
+    benchmark: null,
+    benchmarkKind: null,
+    additionalFundFees: false,
+    additionalFeesNote: null,
+    taxPosture: [],
+  };
 }
 
 function profileByName(name: string): StrategyProfile | undefined {
@@ -55,6 +104,18 @@ export function detailFromProfile(strategy: StrategyProfile, investable: number 
     esg: strategy.esg,
     inception: strategy.inception,
     productCode: strategy.productCode,
+    householdMinimum: strategy.householdMinimum,
+    accountMinimum: strategy.accountMinimum,
+    usesAdrs: strategy.usesAdrs,
+    fixedIncome: strategy.fixedIncome,
+    turnoverPct: strategy.turnoverPct,
+    securitiesMin: strategy.securitiesMin,
+    securitiesMax: strategy.securitiesMax,
+    benchmark: strategy.benchmark,
+    benchmarkKind: strategy.benchmarkKind,
+    additionalFundFees: strategy.additionalFundFees,
+    additionalFeesNote: strategy.additionalFeesNote,
+    taxPosture: strategy.taxPosture,
   };
 }
 
@@ -87,6 +148,7 @@ export function detailFromRecommendation(recommendation: Recommendation, investa
     esg: false,
     inception: null,
     productCode: null,
+    ...emptyCharacteristics(),
   };
 }
 
@@ -121,5 +183,6 @@ export function detailFromBid(offer: BiddingOffer, investable: number | null): S
     esg: false,
     inception: null,
     productCode: null,
+    ...emptyCharacteristics(),
   };
 }

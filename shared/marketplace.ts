@@ -4,6 +4,8 @@ import type {
   EnrolleeRole,
   EstateRecord,
   FamilyMember,
+  FixedIncomePreference,
+  InvestmentRestrictions,
   LifeContext,
   LpoaShareChoice,
   RepresentedClient,
@@ -58,6 +60,8 @@ export interface DemoProfile {
   estate: EstateRecord;
   life: LifeContext;
   lifeImported: boolean;
+  restrictions: InvestmentRestrictions;
+  fixedIncome: FixedIncomePreference;
   /** Permission to provide an existing LPOA. Not an LPOA itself. */
   lpoaShare: LpoaShareChoice;
   fit: FitInterview;

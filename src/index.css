@@ -2012,6 +2012,14 @@ button.proposed-name {
   color: #8a8a8a;
 }
 
+.strategy-detail-note {
+  margin: 0.7rem 0 0;
+  color: #8a8a8a;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  max-width: 36rem;
+}
+
 .accept-modal .strategy-detail-summary {
   margin: 0.45rem 0 0;
   color: #5e5e5e;
@@ -2159,6 +2167,21 @@ button.proposed-name {
   margin: 0;
   color: #9a9a9a;
   font-size: 0.8rem;
+  max-width: 40rem;
+}
+
+.strategy-more {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8a8a8a;
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.16rem;
 }
 
 .strategy-eligible {
@@ -2621,7 +2644,8 @@ button.proposed-name {
   text-align: right;
 }
 
-.enroll-flow .field select {
+.enroll-flow .field select,
+.enroll-flow .field textarea {
   width: 100%;
   margin-top: 0.35rem;
   border: 0;
@@ -2629,6 +2653,67 @@ button.proposed-name {
   background: transparent;
   padding: 0.55rem 0;
   outline: none;
+  resize: vertical;
+}
+
+.enroll-quiet {
+  margin: 1rem 0 0.35rem;
+  color: #8a8a8a;
+  font-size: 0.8rem;
+}
+
+.ticker-add {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.8rem;
+}
+
+.ticker-add input {
+  flex: 1;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: 36rem;
+}
+
+.enroll-flow button.chip {
+  background: #fff;
+  color: #161616;
+  border: 1px solid #e7e7e7;
+  padding: 0.32rem 0.6rem;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.enroll-flow button.chip.is-on {
+  border-color: #111;
+  background: #fafafa;
+}
+
+.desk-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.4rem;
+  margin-top: 1rem;
+}
+
+.desk-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #161616;
+  font-size: 0.9rem;
+}
+
+.desk-check input {
+  accent-color: #111;
 }
 
 .agent-log {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUsd } from "../../../shared/format.ts";
+import { TAX_POSTURE_OPTIONS, type TaxPostureFlag } from "../../../shared/strategies.ts";
 import { StrategiesCatalog } from "../../components/StrategiesCatalog";
 import { useInstitutional } from "../../context/InstitutionalContext";
 import {
@@ -405,7 +406,7 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
             numeric
           />
           <Field
-            label="Minimum AUM"
+            label="Strategy minimum"
             value={String(draft.minAum)}
             onChange={(value) => updateDraft(strategy.id, { minAum: Number(value) })}
             numeric
@@ -420,6 +421,8 @@ function StrategyWork({ strategy }: { strategy: OwnedStrategy }) {
           />
         </div>
       </section>
+
+      <CatalogFields strategyId={strategy.id} draft={draft} updateDraft={updateDraft} />
 
       <button type="submit" className="text-button">
         {savingListing ? "Save" : "Review recommendations"}
@@ -480,7 +483,28 @@ function ProfileRead({ draft }: { draft: StrategyProfileDraft }) {
         <div>
           <dt>Fee</dt>
           <dd>
-            {draft.feeBps} bps · minimum {formatUsd(draft.minAum, true)}. {draft.feeNote}
+            {draft.feeBps} bps · strategy minimum {formatUsd(draft.minAum, true)}
+            {draft.householdMinimum != null ? ` · household minimum ${formatUsd(draft.householdMinimum, true)}` : ""}
+            {draft.accountMinimum != null ? ` · account minimum ${formatUsd(draft.accountMinimum, true)}` : ""}. {draft.feeNote}
+            {draft.additionalFundFees
+              ? ` Underlying fund fees can apply.${draft.additionalFeesNote ? ` ${draft.additionalFeesNote}` : ""}`
+              : ""}
+          </dd>
+        </div>
+        <div>
+          <dt>Catalog</dt>
+          <dd>
+            {draft.assetManager || "Asset manager not set"}. {draft.usesAdrs ? "Uses ADRs" : "No ADRs"}.{" "}
+            {draft.benchmarkKind === "blended" ? "Blended" : "Single"} benchmark {draft.benchmark}.{" "}
+            {draft.taxFlags.length > 0 ? draft.taxFlags.join(", ") : "No tax-posture flags"}.
+            {draft.turnoverPct != null ? ` Turnover ${draft.turnoverPct}%.` : ""}
+            {draft.securitiesMin != null && draft.securitiesMax != null
+              ? ` ${draft.securitiesMin}–${draft.securitiesMax} securities.`
+              : ""}
+            {draft.avgMaturityYears != null ? ` Avg maturity ${draft.avgMaturityYears} years.` : ""}
+            {draft.avgDurationYears != null ? ` Avg duration ${draft.avgDurationYears} years.` : ""}
+            {draft.avgCouponPct != null ? ` Avg coupon ${draft.avgCouponPct}%.` : ""}
+            {draft.avgYieldPct != null ? ` Avg yield ${draft.avgYieldPct}%.` : ""}
           </dd>
         </div>
         <div>
@@ -489,6 +513,132 @@ function ProfileRead({ draft }: { draft: StrategyProfileDraft }) {
         </div>
       </dl>
     </>
+  );
+}
+
+function CatalogFields({
+  strategyId,
+  draft,
+  updateDraft,
+}: {
+  strategyId: string;
+  draft: StrategyProfileDraft;
+  updateDraft: (id: string, patch: Partial<StrategyProfileDraft>) => void;
+}) {
+  function setNullable(key: "householdMinimum" | "accountMinimum" | "avgMaturityYears" | "avgDurationYears" | "avgCouponPct" | "turnoverPct" | "securitiesMin" | "securitiesMax" | "avgYieldPct", raw: string) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      updateDraft(strategyId, { [key]: null });
+      return;
+    }
+    const parsed = Number(trimmed);
+    updateDraft(strategyId, { [key]: Number.isFinite(parsed) ? parsed : null });
+  }
+
+  function toggleFlag(flag: TaxPostureFlag, on: boolean) {
+    const next = on ? [...draft.taxFlags, flag] : draft.taxFlags.filter((item) => item !== flag);
+    updateDraft(strategyId, { taxFlags: next });
+  }
+
+  return (
+    <section className="desk-section">
+      <h3>Catalog</h3>
+      <p className="desk-price">
+        These fields publish to search. Fixed-income statistics can stay blank. Demo copy, not a factsheet or legal advice.
+      </p>
+      <div className="desk-form-grid">
+        <Field
+          label="Asset manager"
+          value={draft.assetManager}
+          onChange={(assetManager) => updateDraft(strategyId, { assetManager })}
+        />
+        <Field
+          label="Household minimum"
+          value={draft.householdMinimum == null ? "" : String(draft.householdMinimum)}
+          onChange={(value) => setNullable("householdMinimum", value)}
+        />
+        <Field
+          label="Account minimum"
+          value={draft.accountMinimum == null ? "" : String(draft.accountMinimum)}
+          onChange={(value) => setNullable("accountMinimum", value)}
+        />
+        <SelectField
+          label="Benchmark type"
+          value={draft.benchmarkKind === "blended" ? "Blended" : "Single"}
+          options={["Single", "Blended"]}
+          onChange={(value) => updateDraft(strategyId, { benchmarkKind: value === "Blended" ? "blended" : "single" })}
+        />
+        <Field
+          label="Avg maturity (years)"
+          value={draft.avgMaturityYears == null ? "" : String(draft.avgMaturityYears)}
+          onChange={(value) => setNullable("avgMaturityYears", value)}
+        />
+        <Field
+          label="Avg duration (years)"
+          value={draft.avgDurationYears == null ? "" : String(draft.avgDurationYears)}
+          onChange={(value) => setNullable("avgDurationYears", value)}
+        />
+        <Field
+          label="Avg coupon (%)"
+          value={draft.avgCouponPct == null ? "" : String(draft.avgCouponPct)}
+          onChange={(value) => setNullable("avgCouponPct", value)}
+        />
+        <Field
+          label="Avg yield (%)"
+          value={draft.avgYieldPct == null ? "" : String(draft.avgYieldPct)}
+          onChange={(value) => setNullable("avgYieldPct", value)}
+        />
+        <Field
+          label="Turnover (%)"
+          value={draft.turnoverPct == null ? "" : String(draft.turnoverPct)}
+          onChange={(value) => setNullable("turnoverPct", value)}
+        />
+        <Field
+          label="Securities from"
+          value={draft.securitiesMin == null ? "" : String(draft.securitiesMin)}
+          onChange={(value) => setNullable("securitiesMin", value)}
+        />
+        <Field
+          label="Securities to"
+          value={draft.securitiesMax == null ? "" : String(draft.securitiesMax)}
+          onChange={(value) => setNullable("securitiesMax", value)}
+        />
+        <Field
+          label="Underlying fee note"
+          value={draft.additionalFeesNote}
+          onChange={(additionalFeesNote) => updateDraft(strategyId, { additionalFeesNote })}
+          long
+        />
+      </div>
+      <div className="desk-checks">
+        <label className="desk-check">
+          <input
+            type="checkbox"
+            checked={draft.usesAdrs}
+            onChange={(event) => updateDraft(strategyId, { usesAdrs: event.target.checked })}
+          />
+          <span>Uses ADRs</span>
+        </label>
+        <label className="desk-check">
+          <input
+            type="checkbox"
+            checked={draft.additionalFundFees}
+            onChange={(event) => updateDraft(strategyId, { additionalFundFees: event.target.checked })}
+          />
+          <span>Underlying fund fees</span>
+        </label>
+        {TAX_POSTURE_OPTIONS.map((option) => (
+          <label key={option.id} className="desk-check">
+            <input
+              type="checkbox"
+              checked={draft.taxFlags.includes(option.id)}
+              onChange={(event) => toggleFlag(option.id, event.target.checked)}
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </div>
+    </section>
   );
 }
 

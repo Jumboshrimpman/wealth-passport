@@ -77,6 +77,99 @@ export type LifeModuleId = "retirement" | "education" | "life-events" | "elderca
 /** Permission to provide an existing LPOA. This choice is not itself an LPOA. */
 export type LpoaShareChoice = "unset" | "permit" | "decline";
 
+export const RESTRICTION_SECTORS = [
+  "Communication services",
+  "Consumer discretionary",
+  "Consumer staples",
+  "Energy",
+  "Financials",
+  "Health care",
+  "Industrials",
+  "Information technology",
+  "Materials",
+  "Real estate",
+  "Utilities",
+] as const;
+
+export type RestrictionSector = (typeof RESTRICTION_SECTORS)[number];
+
+/** Client-stated or custodian-imported names the household cannot be enrolled in. Not a legal determination. */
+export interface InvestmentRestrictions {
+  tickers: string[];
+  sectors: string[];
+  notes: string;
+  imported: boolean;
+  status: SectionStatus;
+}
+
+/** Municipal state preference. Not tax advice. */
+export interface FixedIncomePreference {
+  inState: boolean;
+  states: string[];
+  imported: boolean;
+  status: SectionStatus;
+}
+
+export const RESTRICTION_COPY =
+  "These are restrictions stated by the client or imported from a custodian. WealthPass does not give legal, tax, or compliance advice.";
+
+export const FIXED_INCOME_PREF_COPY =
+  "A preference for municipal bonds of certain states, including an in-state preference. For matching later. This is not tax advice.";
+
+export const US_STATES: { code: string; name: string }[] = [
+  ["AL", "Alabama"],
+  ["AK", "Alaska"],
+  ["AZ", "Arizona"],
+  ["AR", "Arkansas"],
+  ["CA", "California"],
+  ["CO", "Colorado"],
+  ["CT", "Connecticut"],
+  ["DE", "Delaware"],
+  ["DC", "District of Columbia"],
+  ["FL", "Florida"],
+  ["GA", "Georgia"],
+  ["HI", "Hawaii"],
+  ["ID", "Idaho"],
+  ["IL", "Illinois"],
+  ["IN", "Indiana"],
+  ["IA", "Iowa"],
+  ["KS", "Kansas"],
+  ["KY", "Kentucky"],
+  ["LA", "Louisiana"],
+  ["ME", "Maine"],
+  ["MD", "Maryland"],
+  ["MA", "Massachusetts"],
+  ["MI", "Michigan"],
+  ["MN", "Minnesota"],
+  ["MS", "Mississippi"],
+  ["MO", "Missouri"],
+  ["MT", "Montana"],
+  ["NE", "Nebraska"],
+  ["NV", "Nevada"],
+  ["NH", "New Hampshire"],
+  ["NJ", "New Jersey"],
+  ["NM", "New Mexico"],
+  ["NY", "New York"],
+  ["NC", "North Carolina"],
+  ["ND", "North Dakota"],
+  ["OH", "Ohio"],
+  ["OK", "Oklahoma"],
+  ["OR", "Oregon"],
+  ["PA", "Pennsylvania"],
+  ["RI", "Rhode Island"],
+  ["SC", "South Carolina"],
+  ["SD", "South Dakota"],
+  ["TN", "Tennessee"],
+  ["TX", "Texas"],
+  ["UT", "Utah"],
+  ["VT", "Vermont"],
+  ["VA", "Virginia"],
+  ["WA", "Washington"],
+  ["WV", "West Virginia"],
+  ["WI", "Wisconsin"],
+  ["WY", "Wyoming"],
+].map(([code, name]) => ({ code, name }));
+
 export interface EnrollmentContext {
   enrolleeRole: EnrolleeRole;
   representedClient: RepresentedClient | null;
@@ -88,6 +181,8 @@ export interface EnrollmentContext {
   estate: EstateRecord;
   life: LifeContext;
   lifeImported: boolean;
+  restrictions: InvestmentRestrictions;
+  fixedIncome: FixedIncomePreference;
   lpoaShare: LpoaShareChoice;
 }
 
@@ -97,6 +192,10 @@ export interface HouseholdImport {
   trusts: TrustRecord[];
   /** Planning window already on the household record, when there is one. */
   retirementPlans: string;
+  /** Present only when a custodian or prior import already has restrictions. */
+  restrictions: InvestmentRestrictions | null;
+  /** Present only when a custodian or prior import already has a municipal state preference. */
+  fixedIncome: FixedIncomePreference | null;
 }
 
 export const ROLE_OPTIONS: { id: EnrolleeRole; label: string; note: string }[] = [
@@ -195,6 +294,14 @@ export function blankRepresentedClient(): RepresentedClient {
   return { name: "", email: "", authorityAcknowledged: false };
 }
 
+export function blankRestrictions(): InvestmentRestrictions {
+  return { tickers: [], sectors: [], notes: "", imported: false, status: "open" };
+}
+
+export function blankFixedIncome(): FixedIncomePreference {
+  return { inState: false, states: [], imported: false, status: "open" };
+}
+
 export function blankEnrollmentContext(): EnrollmentContext {
   return {
     enrolleeRole: "client",
@@ -207,7 +314,54 @@ export function blankEnrollmentContext(): EnrollmentContext {
     estate: { choice: "unset", label: "" },
     life: blankLife(),
     lifeImported: false,
+    restrictions: blankRestrictions(),
+    fixedIncome: blankFixedIncome(),
     lpoaShare: "unset",
+  };
+}
+
+export function normalizeTicker(raw: string): string | null {
+  const ticker = raw.trim().toUpperCase().replace(/\s+/g, "");
+  if (!/^[A-Z]{1,5}(?:[.-][A-Z]{1,2})?$/.test(ticker)) return null;
+  return ticker;
+}
+
+export function domicileStateCode(domicile: string): string | null {
+  const match = /,\s*([A-Z]{2})\b/.exec(domicile.trim());
+  if (!match) return null;
+  return US_STATES.some((state) => state.code === match[1]) ? match[1] : null;
+}
+
+export function stateName(code: string): string {
+  return US_STATES.find((state) => state.code === code)?.name ?? code;
+}
+
+/** What a later match or filter can read. Skipped and deferred answers stay off. */
+export function statedConstraints(input: {
+  restrictions: InvestmentRestrictions;
+  fixedIncome: FixedIncomePreference;
+  domicile: string;
+}): {
+  restrictedTickers: string[];
+  restrictedSectors: string[];
+  notes: string;
+  preferInStateMunis: boolean;
+  muniStates: string[];
+} {
+  const restrictionsActive = input.restrictions.status === "saved" || input.restrictions.imported;
+  const preferenceActive = input.fixedIncome.status === "saved" || input.fixedIncome.imported;
+  const states = new Set<string>();
+  if (preferenceActive) {
+    for (const code of input.fixedIncome.states) states.add(code.toUpperCase());
+    const home = domicileStateCode(input.domicile);
+    if (input.fixedIncome.inState && home) states.add(home);
+  }
+  return {
+    restrictedTickers: restrictionsActive ? input.restrictions.tickers : [],
+    restrictedSectors: restrictionsActive ? input.restrictions.sectors : [],
+    notes: restrictionsActive ? input.restrictions.notes.trim() : "",
+    preferInStateMunis: preferenceActive && input.fixedIncome.inState,
+    muniStates: preferenceActive ? [...states] : [],
   };
 }
 
@@ -317,7 +471,38 @@ export function householdImportFor(client: ClientRecord): HouseholdImport {
     family,
     trusts,
     retirementPlans: client.household.risk.horizon.trim(),
+    restrictions: importedRestrictions(client.id),
+    fixedIncome: importedFixedIncome(client.id),
   };
+}
+
+/**
+ * Demo custodian packets. Only households whose seed already carries a restriction
+ * or a municipal preference are returned. Everyone else is asked, and can skip.
+ */
+function importedRestrictions(clientId: string): InvestmentRestrictions | null {
+  if (clientId === "elena-whitmore") {
+    return {
+      tickers: ["MS", "GS"],
+      sectors: ["Financials"],
+      notes: "Board service, as stated on the Merrill relationship.",
+      imported: true,
+      status: "saved",
+    };
+  }
+  return null;
+}
+
+function importedFixedIncome(clientId: string): FixedIncomePreference | null {
+  if (clientId === "elena-whitmore") {
+    return {
+      inState: true,
+      states: ["NY"],
+      imported: true,
+      status: "saved",
+    };
+  }
+  return null;
 }
 
 export function trustHouseholdView(
@@ -398,6 +583,43 @@ export function enrollmentContextFromStored(
       values: typeof life.values === "string" ? life.values : "",
     },
     lifeImported: stored.lifeImported === true,
+    restrictions: normalizeRestrictions(stored.restrictions),
+    fixedIncome: normalizeFixedIncome(stored.fixedIncome),
     lpoaShare: LPOA.has(stored.lpoaShare as LpoaShareChoice) ? (stored.lpoaShare as LpoaShareChoice) : "unset",
+  };
+}
+
+function normalizeRestrictions(value: InvestmentRestrictions | undefined): InvestmentRestrictions {
+  const blank = blankRestrictions();
+  if (!value) return blank;
+  const tickers = Array.isArray(value.tickers)
+    ? [...new Set(value.tickers.map((ticker) => normalizeTicker(String(ticker))).filter((ticker): ticker is string => Boolean(ticker)))]
+    : [];
+  const sectors = Array.isArray(value.sectors)
+    ? value.sectors.filter((sector): sector is RestrictionSector =>
+        RESTRICTION_SECTORS.includes(sector as RestrictionSector),
+      )
+    : [];
+  return {
+    tickers,
+    sectors,
+    notes: typeof value.notes === "string" ? value.notes : "",
+    imported: value.imported === true,
+    status: SECTION.has(value.status) ? value.status : "open",
+  };
+}
+
+function normalizeFixedIncome(value: FixedIncomePreference | undefined): FixedIncomePreference {
+  const blank = blankFixedIncome();
+  if (!value) return blank;
+  const known = new Set(US_STATES.map((state) => state.code));
+  const states = Array.isArray(value.states)
+    ? [...new Set(value.states.map((code) => String(code).toUpperCase()).filter((code) => known.has(code)))]
+    : [];
+  return {
+    inState: value.inState === true,
+    states,
+    imported: value.imported === true,
+    status: SECTION.has(value.status) ? value.status : "open",
   };
 }

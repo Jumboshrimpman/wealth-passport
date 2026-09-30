@@ -4,6 +4,7 @@ import { schwabLpoaLines } from "./acceptOffer.ts";
 import {
   blankEnrollmentContext,
   contactReady,
+  domicileStateCode,
   enrollmentContextFromStored,
   enrollmentRoleLabel,
   householdImportFor,
@@ -12,6 +13,7 @@ import {
   LPOA_SHARE_LINES,
   openLifeModules,
   representedReady,
+  statedConstraints,
   trustHouseholdView,
   trusteeLinkLabel,
 } from "./householdContext.ts";
@@ -36,6 +38,24 @@ test("household import builds a family unit and checks trustees against it", () 
   assert.equal(packet.trusts.length, 1);
   assert.equal(packet.trusts[0].name, "Whitmore Family Revocable Trust");
   assert.equal(packet.retirementPlans, "7-year planning window");
+  assert.deepEqual(packet.restrictions?.tickers, ["MS", "GS"]);
+  assert.equal(packet.restrictions?.imported, true);
+  assert.equal(packet.restrictions?.sectors.includes("Financials"), true);
+  assert.equal(packet.fixedIncome?.inState, true);
+  assert.deepEqual(packet.fixedIncome?.states, ["NY"]);
+  const constraints = statedConstraints({
+    restrictions: packet.restrictions!,
+    fixedIncome: packet.fixedIncome!,
+    domicile: elena.household.domicile,
+  });
+  assert.deepEqual(constraints.restrictedTickers, ["MS", "GS"]);
+  assert.equal(constraints.preferInStateMunis, true);
+  assert.deepEqual(constraints.muniStates, ["NY", "CT"]);
+  assert.equal(domicileStateCode(elena.household.domicile), "CT");
+
+  const priya = householdImportFor(client("priya-shah"));
+  assert.equal(priya.restrictions, null);
+  assert.equal(priya.fixedIncome, null);
 
   const view = trustHouseholdView("Elena Whitmore", packet.family, packet.trusts);
   assert.equal(view.length, 1);
@@ -137,6 +157,9 @@ test("stored profiles without the new context still read as a client enrollment"
   assert.equal(context.enrolleeRole, "client");
   assert.equal(context.lpoaShare, "unset");
   assert.equal(context.contact.commsConsent, false);
+  assert.equal(context.restrictions.imported, false);
+  assert.equal(context.restrictions.status, "open");
+  assert.equal(context.fixedIncome.inState, false);
   assert.equal(enrollmentRoleLabel({ isFinancialAdvisor: true }), "Financial advisor");
   assert.equal(
     enrollmentRoleLabel({
