@@ -887,6 +887,9 @@ export function postedCatalogProfile(strategy: OwnedStrategy): StrategyProfile |
     additionalFundFees: draft.additionalFundFees,
     additionalFeesNote: draft.additionalFeesNote.trim() || null,
     taxPosture: draft.taxFlags,
+    vehicle: draft.vehicle.trim() || null,
+    closedToNewAccounts: false,
+    fromPublicHeader: [],
   };
 }
 

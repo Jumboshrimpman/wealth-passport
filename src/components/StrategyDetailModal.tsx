@@ -58,6 +58,8 @@ export function StrategyDetailModal({ detail, onClose }: { detail: StrategyDetai
         {detail.risk ? <p className="strategy-detail-line">{detail.risk}</p> : null}
         {detail.esg ? <p className="strategy-detail-line">ESG</p> : null}
         {detail.manager ? <p className="strategy-detail-line">Asset manager {detail.manager}</p> : null}
+        {detail.vehicle ? <p className="strategy-detail-line">Vehicle {detail.vehicle}</p> : null}
+        {detail.closedToNewAccounts ? <p className="strategy-detail-line">Closed to new accounts</p> : null}
         {detail.fee ? <p className="strategy-detail-fee">{detail.fee}</p> : null}
         {detail.minimum != null ? (
           <p className="strategy-detail-line">Strategy minimum {formatUsd(detail.minimum, true)}</p>
@@ -65,10 +67,10 @@ export function StrategyDetailModal({ detail, onClose }: { detail: StrategyDetai
           <p className="strategy-detail-line">Strategy minimum not listed</p>
         )}
         {detail.householdMinimum != null ? (
-          <p className="strategy-detail-line">Household minimum {formatUsd(detail.householdMinimum, true)}</p>
+          <p className="strategy-detail-line">Household minimum {formatUsd(detail.householdMinimum, true)} · illustrative</p>
         ) : null}
         {detail.accountMinimum != null ? (
-          <p className="strategy-detail-line">Account minimum {formatUsd(detail.accountMinimum, true)}</p>
+          <p className="strategy-detail-line">Account minimum {formatUsd(detail.accountMinimum, true)} · illustrative</p>
         ) : null}
         {detail.usesAdrs != null ? (
           <p className="strategy-detail-line">{detail.usesAdrs ? "Uses ADRs" : "No ADRs"}</p>
@@ -76,6 +78,7 @@ export function StrategyDetailModal({ detail, onClose }: { detail: StrategyDetai
         {detail.benchmark ? (
           <p className="strategy-detail-line">
             {detail.benchmarkKind === "blended" ? "Blended benchmark" : "Single benchmark"} · {detail.benchmark}
+            {detail.fromPublicHeader.includes("benchmark") ? "" : " · illustrative"}
           </p>
         ) : null}
         {detail.taxPosture.length > 0 ? (
@@ -91,13 +94,20 @@ export function StrategyDetailModal({ detail, onClose }: { detail: StrategyDetai
             ]
               .filter(Boolean)
               .join(" · ")}
+            {detail.fromPublicHeader.some((field) => field === "maturity" || field === "duration" || field === "coupon")
+              ? ""
+              : " · illustrative"}
           </p>
         ) : null}
         {detail.turnoverPct != null || securitiesLine(detail) ? (
           <p className="strategy-detail-line">
             {[
-              detail.turnoverPct != null ? `Turnover ${pct(detail.turnoverPct)}` : "",
-              securitiesLine(detail) ? `${securitiesLine(detail)} securities` : "",
+              detail.turnoverPct != null
+                ? `Turnover ${pct(detail.turnoverPct)}${detail.fromPublicHeader.includes("turnover") ? "" : " · illustrative"}`
+                : "",
+              securitiesLine(detail)
+                ? `${securitiesLine(detail)} securities${detail.fromPublicHeader.includes("securities") ? "" : " · illustrative"}`
+                : "",
             ]
               .filter(Boolean)
               .join(" · ")}

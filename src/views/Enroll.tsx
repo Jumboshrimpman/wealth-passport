@@ -38,6 +38,7 @@ import type {
 } from "../../shared/marketplace.ts";
 import { connectDemo } from "../api/connect";
 import { usePortalAccess } from "../auth/access";
+import { EnrollAssistant } from "../enroll/EnrollAssistant";
 import { LegalFooter } from "../components/LegalFooter";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
@@ -107,7 +108,7 @@ function splitAgentLines(lines: string[]): { status: string[]; prompts: string[]
   return { status, prompts };
 }
 
-export function Enroll() {
+function ClassicEnroll({ onAssistant }: { onAssistant: () => void }) {
   const { passport, selectClient } = useClient();
   const { saveProfile } = useDemo();
   const { allowDemo } = usePortalAccess();
@@ -498,6 +499,11 @@ export function Enroll() {
       <main className="enroll-flow">
         <p className="wordmark">
           <Link to="/">{PRODUCT_NAME}</Link>
+        </p>
+        <p className="enroll-switch">
+          <button type="button" className="text-button" onClick={onAssistant}>
+            Use the assistant
+          </button>
         </p>
         <EnrollProgress value={enrollProgress(step, progressSteps)} />
         {acting && step !== "fork" && step !== "behalf" ? (
@@ -921,6 +927,12 @@ export function Enroll() {
       <LegalFooter />
     </div>
   );
+}
+
+export function Enroll() {
+  const [surface, setSurface] = useState<"assistant" | "steps">("assistant");
+  if (surface === "steps") return <ClassicEnroll onAssistant={() => setSurface("assistant")} />;
+  return <EnrollAssistant onSteps={() => setSurface("steps")} />;
 }
 
 function EnrollProgress({ value }: { value: number }) {

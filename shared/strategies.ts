@@ -5,7 +5,7 @@ export type { BenchmarkKind, StrategyProfile, TaxPostureFlag };
 export { illustrativeFeeBps, STRATEGY_UNIVERSE };
 
 export const CATALOG_SOURCE_NOTE =
-  "Manager, style, and strategy minimum follow the public Morgan Stanley Select UMA manager-profile index. Other characteristics are illustrative demo copy.";
+  "Manager, style, strategy minimum, and figures taken from a public profile header follow the Morgan Stanley Select UMA manager-profile index. Fees, household minimums, and any figure not on that header are illustrative demo copy. This is not an official Morgan Stanley product.";
 
 export const ADDITIONAL_FUND_FEE_NOTE =
   "Strategies that hold mutual funds can incur fund-level expenses in addition to the wrap or management fee, including inside a wrap-fee program. This is demo copy, not a fee schedule or legal advice.";
