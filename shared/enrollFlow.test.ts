@@ -6,8 +6,10 @@ test("demo enroll stays a short flow and the bar moves with the active path", ()
   const client = selfEnrollSteps("client", true);
   const advisor = selfEnrollSteps("advisor", true);
   const associate = selfEnrollSteps("associate", false);
-  assert.ok(client.length <= 18);
+  assert.ok(client.length < 20);
   assert.ok(client.length < 24);
+  assert.equal(client.includes("restrictions"), true);
+  assert.equal(client.includes("preferences"), true);
   assert.equal(advisor.length, client.length + 1);
   assert.equal(advisor[1], "behalf");
   assert.equal(associate.includes("life"), false);

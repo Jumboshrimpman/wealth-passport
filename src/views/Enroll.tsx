@@ -4,8 +4,10 @@ import { agentEnrollSteps, enrollProgress, selfEnrollSteps, type DemoEnrollStep 
 import { formatUsd } from "../../shared/format.ts";
 import {
   blankContact,
+  blankFixedIncome,
   blankLife,
   blankRepresentedClient,
+  blankRestrictions,
   contactReady,
   householdImportFor,
   lpoaShareReady,
@@ -17,6 +19,8 @@ import {
   type EnrolleeRole,
   type EstateRecord,
   type FamilyMember,
+  type FixedIncomePreference,
+  type InvestmentRestrictions,
   type LifeContext,
   type LpoaShareChoice,
   type RepresentedClient,
@@ -45,6 +49,8 @@ import {
   HouseholdStep,
   LifeStep,
   LpoaShareStep,
+  PreferencesStep,
+  RestrictionsStep,
   RolePicker,
 } from "../enroll/contextSteps";
 
@@ -132,6 +138,8 @@ export function Enroll() {
   const [estate, setEstate] = useState<EstateRecord>({ choice: "unset", label: "" });
   const [life, setLife] = useState<LifeContext>(blankLife());
   const [lifeImported, setLifeImported] = useState(false);
+  const [restrictions, setRestrictions] = useState<InvestmentRestrictions>(blankRestrictions());
+  const [fixedIncome, setFixedIncome] = useState<FixedIncomePreference>(blankFixedIncome());
   const [lpoaShare, setLpoaShare] = useState<LpoaShareChoice>("unset");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -171,6 +179,13 @@ export function Enroll() {
       }));
       setLifeImported(true);
     }
+    if (which === "all") applyCustodianPacket(packet);
+    return packet;
+  }
+
+  function applyCustodianPacket(packet = householdImportFor(passport)) {
+    if (packet.restrictions) setRestrictions(packet.restrictions);
+    if (packet.fixedIncome) setFixedIncome(packet.fixedIncome);
     return packet;
   }
 
@@ -189,7 +204,7 @@ export function Enroll() {
   function afterEstate(next: EstateRecord) {
     setEstate(next);
     const stillOpen = openLifeModules(life, lifeImported).length > 0;
-    setStep(stillOpen ? "life" : "risk");
+    setStep(stillOpen ? "life" : "restrictions");
   }
 
   async function connectBank(next: "plaid" | "kubera") {
@@ -203,6 +218,7 @@ export function Enroll() {
       setProvider(next);
       setBank(result);
       setFocus(largest ? [largest.id] : []);
+      applyCustodianPacket();
       setStep("returned");
     } catch {
       setError("The demo connection did not return. Try again.");
@@ -268,6 +284,8 @@ export function Enroll() {
     estate: EstateRecord;
     life: LifeContext;
     lifeImported: boolean;
+    restrictions: InvestmentRestrictions;
+    fixedIncome: FixedIncomePreference;
     lpoaShare: LpoaShareChoice;
   }) {
     if (input.focus.length === 0) return;
@@ -302,6 +320,8 @@ export function Enroll() {
       estate: input.estate.choice === "unset" ? { choice: "later", label: "" } : input.estate,
       life: input.life,
       lifeImported: input.lifeImported,
+      restrictions: input.restrictions,
+      fixedIncome: input.fixedIncome,
       lpoaShare: input.lpoaShare,
       fit: {
         risk: input.risk,
@@ -328,6 +348,8 @@ export function Enroll() {
       estate,
       life,
       lifeImported,
+      restrictions,
+      fixedIncome,
       lpoaShare,
     };
   }
@@ -412,6 +434,21 @@ export function Enroll() {
       }
       if (packet.retirementPlans) {
         lines.push(`Retirement planning window on file: ${packet.retirementPlans}. Age was not, so it can be added later.`);
+      }
+      if (packet.restrictions) {
+        const tickers = packet.restrictions.tickers.join(", ");
+        lines.push(
+          `Restrictions on file from the custodian${tickers ? `: ${tickers}` : ""}. They are not asked again.`,
+        );
+      } else {
+        setRestrictions((current) => (current.imported ? current : { ...current, status: "later" }));
+        lines.push("No investment restrictions were on file. You can add them later.");
+      }
+      if (packet.fixedIncome) {
+        lines.push("A municipal state preference is on file. It is not asked again.");
+      } else {
+        setFixedIncome((current) => (current.imported ? current : { ...current, status: "later" }));
+        lines.push("No municipal state preference was on file. You can add it later.");
       }
       lines.push("Will and estate documents were not connected. You can add them later.");
       lines.push("Paused. Risk, contact permission, and LPOA sharing have to come from you.");
@@ -774,7 +811,30 @@ export function Enroll() {
             imported={lifeImported}
             onChange={setLife}
             onImport={() => applyImport("life")}
-            onContinue={() => setStep("risk")}
+            onContinue={() => setStep("restrictions")}
+          />
+        ) : null}
+
+        {step === "restrictions" ? (
+          <RestrictionsStep
+            value={restrictions}
+            onChange={setRestrictions}
+            onContinue={(next) => {
+              setRestrictions(next);
+              setStep("preferences");
+            }}
+          />
+        ) : null}
+
+        {step === "preferences" ? (
+          <PreferencesStep
+            value={fixedIncome}
+            domicile={passport.household.domicile}
+            onChange={setFixedIncome}
+            onContinue={(next) => {
+              setFixedIncome(next);
+              setStep("risk");
+            }}
           />
         ) : null}
 

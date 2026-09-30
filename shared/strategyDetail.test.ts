@@ -13,6 +13,9 @@ test("strategy details reuse seed fields and household eligibility", () => {
   assert.equal(fromUniverse.style, "US Large Cap Growth");
   assert.equal(fromUniverse.risk, "Aggressive");
   assert.equal(fromUniverse.productCode, "ALI-H");
+  assert.equal(fromUniverse.usesAdrs, false);
+  assert.equal(fromUniverse.benchmarkKind, "single");
+  assert.equal(fromUniverse.additionalFundFees, growth.additionalFundFees);
   assert.equal(fromUniverse.eligibility, "Above this household");
   assert.equal(detailFromProfile(growth, 5_000).eligibility, "You meet the minimum");
 

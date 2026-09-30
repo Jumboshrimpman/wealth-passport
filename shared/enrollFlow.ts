@@ -18,6 +18,8 @@ export type DemoEnrollStep =
   | "household"
   | "estate"
   | "life"
+  | "restrictions"
+  | "preferences"
   | "risk"
   | "balance"
   | "motive"
@@ -36,6 +38,8 @@ const SELF_TAIL: DemoEnrollStep[] = [
   "household",
   "estate",
   "life",
+  "restrictions",
+  "preferences",
   "risk",
   "balance",
   "motive",
@@ -43,7 +47,7 @@ const SELF_TAIL: DemoEnrollStep[] = [
   "lpoa",
 ];
 
-/** Self-enroll stays under twenty screens, including the existing connectors. */
+/** The client path stays under twenty screens, including the existing connectors. */
 export function selfEnrollSteps(role: EnrolleeRole, includeLife: boolean): DemoEnrollStep[] {
   const steps: DemoEnrollStep[] = ["fork"];
   if (roleActsForClient(role)) steps.push("behalf");

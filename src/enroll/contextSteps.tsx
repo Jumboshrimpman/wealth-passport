@@ -1,13 +1,20 @@
 import { useState, type ReactNode } from "react";
 import {
   FAMILY_RELATIONS,
+  FIXED_INCOME_PREF_COPY,
   LIFE_MODULES,
   LPOA_SHARE_LINES,
+  RESTRICTION_COPY,
+  RESTRICTION_SECTORS,
   ROLE_OPTIONS,
+  US_STATES,
   contactReady,
+  domicileStateCode,
+  normalizeTicker,
   openLifeModules,
   relationLabel,
   representedReady,
+  stateName,
   trustHouseholdView,
   trusteeLinkLabel,
   type ContactDetails,
@@ -15,6 +22,8 @@ import {
   type EstateRecord,
   type FamilyMember,
   type FamilyRelation,
+  type FixedIncomePreference,
+  type InvestmentRestrictions,
   type LifeContext,
   type LifeModuleId,
   type LpoaShareChoice,
@@ -646,6 +655,264 @@ function setLifeValue(life: LifeContext, id: LifeModuleId, value: string): LifeC
   if (id === "eldercare") return { ...life, eldercare: value };
   if (id === "values") return { ...life, values: value };
   return life;
+}
+
+export function RestrictionsStep({
+  value,
+  onChange,
+  onContinue,
+}: {
+  value: InvestmentRestrictions;
+  onChange: (next: InvestmentRestrictions) => void;
+  onContinue: (next: InvestmentRestrictions) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [tickerNote, setTickerNote] = useState("");
+  const onFile =
+    value.imported &&
+    !editing &&
+    (value.tickers.length > 0 || value.sectors.length > 0 || value.notes.trim().length > 0);
+
+  function addTicker() {
+    const ticker = normalizeTicker(draft);
+    if (!ticker) {
+      setTickerNote("Enter a ticker, such as MS.");
+      return;
+    }
+    setTickerNote("");
+    setDraft("");
+    if (value.tickers.includes(ticker)) return;
+    onChange({ ...value, tickers: [...value.tickers, ticker] });
+  }
+
+  function finish(status: InvestmentRestrictions["status"]) {
+    onContinue({ ...value, status });
+  }
+
+  if (onFile) {
+    return (
+      <section>
+        <h1>Restrictions are already on file.</h1>
+        <p>{RESTRICTION_COPY}</p>
+        <p className="enroll-known">
+          From the custodian
+          <small>
+            {[
+              value.tickers.length > 0 ? `Tickers ${value.tickers.join(", ")}` : "",
+              value.sectors.length > 0 ? value.sectors.join(", ") : "",
+              value.notes.trim(),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </small>
+        </p>
+        <p className="enroll-feedback" role="status">
+          Nothing else to ask. Edit only if a line should change.
+        </p>
+        <div className="enroll-actions">
+          <Primary onClick={() => finish("saved")}>Continue</Primary>
+          <Secondary onClick={() => setEditing(true)}>Edit</Secondary>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <h1>Anything you cannot be enrolled in?</h1>
+      <p>
+        Stocks, sectors, or a short note about work, conflicts, or compliance. This is asked only when it did not come
+        in from the custodian. {RESTRICTION_COPY}
+      </p>
+      <label className="field">
+        Ticker
+        <span className="ticker-add">
+          <input
+            value={draft}
+            aria-label="Ticker"
+            placeholder="MS"
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              addTicker();
+            }}
+          />
+          <button type="button" className="enroll-secondary" onClick={addTicker}>
+            Add
+          </button>
+        </span>
+      </label>
+      {tickerNote ? (
+        <p className="enroll-feedback" role="status">
+          {tickerNote}
+        </p>
+      ) : null}
+      {value.tickers.length > 0 ? (
+        <ul className="chip-row" aria-label="Restricted tickers">
+          {value.tickers.map((ticker) => (
+            <li key={ticker}>
+              <button
+                type="button"
+                className="chip is-on"
+                onClick={() => onChange({ ...value, tickers: value.tickers.filter((item) => item !== ticker) })}
+              >
+                {ticker} · Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="enroll-quiet">Sectors</p>
+      <ul className="chip-row" aria-label="Restricted sectors">
+        {RESTRICTION_SECTORS.map((sector) => {
+          const on = value.sectors.includes(sector);
+          return (
+            <li key={sector}>
+              <button
+                type="button"
+                className={on ? "chip is-on" : "chip"}
+                aria-pressed={on}
+                onClick={() =>
+                  onChange({
+                    ...value,
+                    sectors: on ? value.sectors.filter((item) => item !== sector) : [...value.sectors, sector],
+                  })
+                }
+              >
+                {sector}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <label className="field">
+        Note, if you want one
+        <textarea
+          rows={3}
+          value={value.notes}
+          onChange={(event) => onChange({ ...value, notes: event.target.value })}
+        />
+      </label>
+      <div className="enroll-actions">
+        <Primary onClick={() => finish("saved")}>Continue</Primary>
+        {value.imported ? null : (
+          <>
+            <Secondary onClick={() => finish("later")}>Add later</Secondary>
+            <Secondary onClick={() => finish("skipped")}>Skip</Secondary>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function PreferencesStep({
+  value,
+  domicile,
+  onChange,
+  onContinue,
+}: {
+  value: FixedIncomePreference;
+  domicile: string;
+  onChange: (next: FixedIncomePreference) => void;
+  onContinue: (next: FixedIncomePreference) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const home = domicileStateCode(domicile);
+  const onFile = value.imported && !editing && (value.inState || value.states.length > 0);
+
+  function finish(status: FixedIncomePreference["status"]) {
+    onContinue({ ...value, status });
+  }
+
+  if (onFile) {
+    const named = [
+      value.inState && home ? `In-state ${stateName(home)}` : value.inState ? "In-state" : "",
+      ...value.states.map((code) => stateName(code)),
+    ].filter(Boolean);
+    return (
+      <section>
+        <h1>A municipal state preference is already on file.</h1>
+        <p>{FIXED_INCOME_PREF_COPY}</p>
+        <p className="enroll-known">
+          From the custodian
+          <small>{named.join(" · ")}</small>
+        </p>
+        <p className="enroll-feedback" role="status">
+          Nothing else to ask. Edit only if a state should change.
+        </p>
+        <div className="enroll-actions">
+          <Primary onClick={() => finish("saved")}>Continue</Primary>
+          <Secondary onClick={() => setEditing(true)}>Edit</Secondary>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <h1>Any state preference for fixed income?</h1>
+      <p>
+        For municipal bonds, you can prefer your home state or name others. Skip this, or add it later.{" "}
+        {FIXED_INCOME_PREF_COPY}
+      </p>
+      <label className="advisor-mark">
+        <input
+          type="checkbox"
+          checked={value.inState}
+          onChange={(event) => onChange({ ...value, inState: event.target.checked })}
+        />
+        <span>
+          <span className="advisor-mark-label">Prefer in-state municipals{home ? ` (${stateName(home)})` : ""}</span>
+        </span>
+      </label>
+      <label className="field">
+        Add a state
+        <select
+          aria-label="Add a state"
+          value=""
+          onChange={(event) => {
+            const code = event.target.value;
+            if (!code || value.states.includes(code)) return;
+            onChange({ ...value, states: [...value.states, code] });
+          }}
+        >
+          <option value="">Select</option>
+          {US_STATES.filter((state) => !value.states.includes(state.code)).map((state) => (
+            <option key={state.code} value={state.code}>
+              {state.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {value.states.length > 0 ? (
+        <ul className="chip-row" aria-label="Preferred states">
+          {value.states.map((code) => (
+            <li key={code}>
+              <button
+                type="button"
+                className="chip is-on"
+                onClick={() => onChange({ ...value, states: value.states.filter((item) => item !== code) })}
+              >
+                {stateName(code)} · Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="enroll-actions">
+        <Primary onClick={() => finish("saved")}>Continue</Primary>
+        {value.imported ? null : (
+          <>
+            <Secondary onClick={() => finish("later")}>Add later</Secondary>
+            <Secondary onClick={() => finish("skipped")}>Skip</Secondary>
+          </>
+        )}
+      </div>
+    </section>
+  );
 }
 
 export function LpoaShareStep({

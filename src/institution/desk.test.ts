@@ -19,9 +19,11 @@ import {
   openStrategyForEdit,
   parseStrategyFile,
   planPitchSend,
+  postedCatalogProfile,
   recommendationsFor,
   SAMPLE_RECONCILE_FILE,
   seedPitches,
+  seedStrategies,
   sleeveTotal,
 } from "./desk.ts";
 
@@ -90,6 +92,15 @@ test("strategy upload parses into a profile and the hidden checker posts or hold
   assert.equal(sleeveTotal(clean.sleeves), 100);
   assert.equal(clean.feeBps, 32);
   assert.equal(clean.minAum, 10_000_000);
+  assert.equal(clean.additionalFundFees, true);
+  assert.deepEqual(clean.taxFlags, ["tax-aware"]);
+  assert.equal(clean.benchmarkKind, "blended");
+  const posted = seedStrategies().find((row) => row.id === "own-tax-aware");
+  const catalog = posted ? postedCatalogProfile(posted) : null;
+  assert.equal(catalog?.taxPosture.includes("tax-aware"), true);
+  assert.equal(catalog?.benchmark, "S&P 500");
+  assert.equal(catalog?.benchmarkKind, "single");
+  assert.equal(catalog?.turnoverPct, 20);
   assert.equal(clean.sourceFile, CANNED_STRATEGY_FILE);
   assert.ok(clean.objective.length > 40);
   assert.ok(clean.process.length > 20);

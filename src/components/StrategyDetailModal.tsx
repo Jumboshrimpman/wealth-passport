@@ -1,7 +1,19 @@
 import { useEffect, useRef } from "react";
 import { formatUsd } from "../../shared/format.ts";
 import { illustrativeNav } from "../../shared/illustrativePath.ts";
+import { ADDITIONAL_FUND_FEE_NOTE, CATALOG_SOURCE_NOTE, securitiesLine, taxPostureLabel } from "../../shared/strategies.ts";
 import type { StrategyDetail } from "../../shared/strategyDetail.ts";
+
+function pct(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(1)}%`;
+}
+
+function years(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${text} years`;
+}
 
 function matchColor(pct: number): string {
   if (pct >= 95) return "#0b4f2a";
@@ -45,13 +57,58 @@ export function StrategyDetailModal({ detail, onClose }: { detail: StrategyDetai
         {kind ? <p className="strategy-detail-line">{kind}</p> : null}
         {detail.risk ? <p className="strategy-detail-line">{detail.risk}</p> : null}
         {detail.esg ? <p className="strategy-detail-line">ESG</p> : null}
-        {detail.manager ? <p className="strategy-detail-line">{detail.manager}</p> : null}
+        {detail.manager ? <p className="strategy-detail-line">Asset manager {detail.manager}</p> : null}
         {detail.fee ? <p className="strategy-detail-fee">{detail.fee}</p> : null}
         {detail.minimum != null ? (
-          <p className="strategy-detail-line">Minimum {formatUsd(detail.minimum, true)}</p>
+          <p className="strategy-detail-line">Strategy minimum {formatUsd(detail.minimum, true)}</p>
         ) : (
-          <p className="strategy-detail-line">Minimum not listed</p>
+          <p className="strategy-detail-line">Strategy minimum not listed</p>
         )}
+        {detail.householdMinimum != null ? (
+          <p className="strategy-detail-line">Household minimum {formatUsd(detail.householdMinimum, true)}</p>
+        ) : null}
+        {detail.accountMinimum != null ? (
+          <p className="strategy-detail-line">Account minimum {formatUsd(detail.accountMinimum, true)}</p>
+        ) : null}
+        {detail.usesAdrs != null ? (
+          <p className="strategy-detail-line">{detail.usesAdrs ? "Uses ADRs" : "No ADRs"}</p>
+        ) : null}
+        {detail.benchmark ? (
+          <p className="strategy-detail-line">
+            {detail.benchmarkKind === "blended" ? "Blended benchmark" : "Single benchmark"} · {detail.benchmark}
+          </p>
+        ) : null}
+        {detail.taxPosture.length > 0 ? (
+          <p className="strategy-detail-line">{detail.taxPosture.map(taxPostureLabel).join(" · ")}</p>
+        ) : null}
+        {detail.fixedIncome ? (
+          <p className="strategy-detail-line">
+            {[
+              detail.fixedIncome.avgMaturityYears != null ? `Avg maturity ${years(detail.fixedIncome.avgMaturityYears)}` : "",
+              detail.fixedIncome.avgDurationYears != null ? `avg duration ${years(detail.fixedIncome.avgDurationYears)}` : "",
+              detail.fixedIncome.avgCouponPct != null ? `avg coupon ${pct(detail.fixedIncome.avgCouponPct)}` : "",
+              detail.fixedIncome.avgYieldPct != null ? `avg yield ${pct(detail.fixedIncome.avgYieldPct)}` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        ) : null}
+        {detail.turnoverPct != null || securitiesLine(detail) ? (
+          <p className="strategy-detail-line">
+            {[
+              detail.turnoverPct != null ? `Turnover ${pct(detail.turnoverPct)}` : "",
+              securitiesLine(detail) ? `${securitiesLine(detail)} securities` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        ) : null}
+        {detail.additionalFundFees ? (
+          <p className="strategy-detail-note">
+            {ADDITIONAL_FUND_FEE_NOTE}
+            {detail.additionalFeesNote ? ` ${detail.additionalFeesNote}` : ""}
+          </p>
+        ) : null}
         {detail.inception ? <p className="strategy-detail-line">Inception {detail.inception}</p> : null}
         {detail.productCode ? <p className="strategy-detail-line">Profile code {detail.productCode}</p> : null}
         {detail.eligibility ? (
@@ -73,6 +130,7 @@ export function StrategyDetailModal({ detail, onClose }: { detail: StrategyDetai
             </span>
           </p>
         ) : null}
+        <p className="strategy-detail-note">{CATALOG_SOURCE_NOTE}</p>
         <p className="accept-modal-kicker">Illustrative path</p>
         <PerformanceChart seed={detail.name} name={detail.name} />
       </div>

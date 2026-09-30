@@ -1,5 +1,10 @@
 import { formatUsd } from "../../shared/format.ts";
-import { STRATEGY_UNIVERSE, type StrategyProfile } from "../../shared/strategies.ts";
+import {
+  STRATEGY_UNIVERSE,
+  type BenchmarkKind,
+  type StrategyProfile,
+  type TaxPostureFlag,
+} from "../../shared/strategies.ts";
 import type { ClientPassport } from "../../shared/types.ts";
 
 /**
@@ -115,6 +120,58 @@ export interface StrategyProfileDraft {
   holdingsSummary: string;
   assetClass: string;
   sourceFile: string | null;
+  assetManager: string;
+  householdMinimum: number | null;
+  accountMinimum: number | null;
+  usesAdrs: boolean;
+  avgMaturityYears: number | null;
+  avgDurationYears: number | null;
+  avgCouponPct: number | null;
+  turnoverPct: number | null;
+  securitiesMin: number | null;
+  securitiesMax: number | null;
+  avgYieldPct: number | null;
+  benchmarkKind: BenchmarkKind;
+  additionalFundFees: boolean;
+  additionalFeesNote: string;
+  taxFlags: TaxPostureFlag[];
+}
+
+export function blankCatalogTraits(assetManager = ""): Pick<
+  StrategyProfileDraft,
+  | "assetManager"
+  | "householdMinimum"
+  | "accountMinimum"
+  | "usesAdrs"
+  | "avgMaturityYears"
+  | "avgDurationYears"
+  | "avgCouponPct"
+  | "turnoverPct"
+  | "securitiesMin"
+  | "securitiesMax"
+  | "avgYieldPct"
+  | "benchmarkKind"
+  | "additionalFundFees"
+  | "additionalFeesNote"
+  | "taxFlags"
+> {
+  return {
+    assetManager,
+    householdMinimum: null,
+    accountMinimum: null,
+    usesAdrs: false,
+    avgMaturityYears: null,
+    avgDurationYears: null,
+    avgCouponPct: null,
+    turnoverPct: null,
+    securitiesMin: null,
+    securitiesMax: null,
+    avgYieldPct: null,
+    benchmarkKind: "single",
+    additionalFundFees: false,
+    additionalFeesNote: "",
+    taxFlags: [],
+  };
 }
 
 export interface DeskRecommendation {
@@ -431,6 +488,21 @@ const CLEAN_PROFILE: Omit<StrategyProfileDraft, "id" | "sourceFile"> = {
   holdingsSummary:
     "Four sleeves. US equity is the core separate account. International equity is an ETF. Municipals are their own account. Cash is a reserve, not a return engine.",
   assetClass: "Multi-asset",
+  ...blankCatalogTraits("Northline"),
+  householdMinimum: 15_000_000,
+  accountMinimum: 2_000_000,
+  usesAdrs: true,
+  turnoverPct: 25,
+  securitiesMin: 120,
+  securitiesMax: 160,
+  benchmarkKind: "blended",
+  additionalFundFees: true,
+  additionalFeesNote: "The international sleeve is an ETF. That fund can charge its own expenses.",
+  taxFlags: ["tax-aware"],
+  avgMaturityYears: 7.5,
+  avgDurationYears: 5.8,
+  avgCouponPct: 3.6,
+  avgYieldPct: 3.4,
 };
 
 const RECONCILE_PROFILE: Omit<StrategyProfileDraft, "id" | "sourceFile"> = {
@@ -464,6 +536,15 @@ const RECONCILE_PROFILE: Omit<StrategyProfileDraft, "id" | "sourceFile"> = {
   holdingsSummary:
     "Three sleeves were read from the workbook. Their weights do not add to the whole portfolio. Confirm the missing share before this lists.",
   assetClass: "Fixed income",
+  ...blankCatalogTraits("Cedar"),
+  usesAdrs: false,
+  avgMaturityYears: 6.5,
+  avgDurationYears: 5.1,
+  avgCouponPct: 4.2,
+  avgYieldPct: 5.4,
+  benchmarkKind: "single",
+  additionalFundFees: true,
+  additionalFeesNote: "The high-yield sleeve is an ETF and can charge its own expenses.",
 };
 
 function genericProfile(base: string): Omit<StrategyProfileDraft, "id" | "sourceFile"> {
@@ -497,6 +578,11 @@ function genericProfile(base: string): Omit<StrategyProfileDraft, "id" | "source
     esgFlags: "Not stated",
     holdingsSummary: `Holdings were read from ${base}. Weights are summarized here for a manager to confirm.`,
     assetClass: "Multi-asset",
+    ...blankCatalogTraits(),
+    turnoverPct: 20,
+    securitiesMin: 80,
+    securitiesMax: 120,
+    benchmarkKind: "blended",
   };
 }
 
@@ -627,6 +713,7 @@ export function blankStrategy(id: string): OwnedStrategy {
     holdingsSummary: "",
     assetClass: "Equity",
     sourceFile: null,
+    ...blankCatalogTraits(),
   };
   return { id, draft, status: "editing", recommendations: [], decisions: {} };
 }
@@ -760,20 +847,46 @@ function draftIsEsg(flags: string): boolean {
 /** A posted listing joins the shared catalog. Drafts stay on the desk only. */
 export function postedCatalogProfile(strategy: OwnedStrategy): StrategyProfile | null {
   if (strategy.status !== "posted" || !strategy.draft.name.trim()) return null;
+  const draft = strategy.draft;
+  const fixedIncome =
+    draft.avgMaturityYears == null &&
+    draft.avgDurationYears == null &&
+    draft.avgCouponPct == null &&
+    draft.avgYieldPct == null
+      ? null
+      : {
+          avgMaturityYears: draft.avgMaturityYears,
+          avgDurationYears: draft.avgDurationYears,
+          avgCouponPct: draft.avgCouponPct,
+          avgYieldPct: draft.avgYieldPct,
+        };
+  const benchmark = draft.benchmark.trim() && draft.benchmark !== "To be confirmed" ? draft.benchmark.trim() : null;
   return {
     id: strategy.id,
-    name: strategy.draft.name,
-    category: strategy.draft.assetClass || "Multi-asset",
-    style: strategy.draft.style || "Core",
-    manager: FIRM.name,
-    minimum: strategy.draft.minAum,
-    allInBps: strategy.draft.feeBps,
+    name: draft.name,
+    category: draft.assetClass || "Multi-asset",
+    style: draft.style || "Core",
+    manager: draft.assetManager.trim() || FIRM.name,
+    minimum: draft.minAum,
+    householdMinimum: draft.householdMinimum,
+    accountMinimum: draft.accountMinimum,
+    allInBps: draft.feeBps,
     feeLabel: null,
-    summary: strategy.draft.objective,
-    risk: strategy.draft.risk || "Moderate",
-    esg: draftIsEsg(strategy.draft.esgFlags),
-    inception: strategy.draft.asOf || null,
+    summary: draft.objective,
+    risk: draft.risk || "Moderate",
+    esg: draftIsEsg(draft.esgFlags),
+    inception: draft.asOf || null,
     productCode: null,
+    usesAdrs: draft.usesAdrs,
+    fixedIncome,
+    turnoverPct: draft.turnoverPct,
+    securitiesMin: draft.securitiesMin,
+    securitiesMax: draft.securitiesMax,
+    benchmark,
+    benchmarkKind: benchmark ? draft.benchmarkKind : null,
+    additionalFundFees: draft.additionalFundFees,
+    additionalFeesNote: draft.additionalFeesNote.trim() || null,
+    taxPosture: draft.taxFlags,
   };
 }
 
@@ -853,6 +966,12 @@ const POSTED_SEED: OwnedStrategy = {
     holdingsSummary: "A large-cap US equity separate account with a 2% single-name cap, and cash under 4%. No municipal bonds in this book.",
     assetClass: "Equity",
     sourceFile: null,
+    ...blankCatalogTraits(FIRM.name),
+    turnoverPct: 20,
+    securitiesMin: 150,
+    securitiesMax: 175,
+    benchmarkKind: "single",
+    taxFlags: ["tax-aware"],
   },
 };
 
