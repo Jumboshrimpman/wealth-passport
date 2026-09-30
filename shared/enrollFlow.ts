@@ -70,3 +70,29 @@ export function enrollProgress(step: DemoEnrollStep, steps: readonly DemoEnrollS
   if (index <= 0 || steps.length < 2) return 0;
   return Math.round((index / (steps.length - 1)) * 100);
 }
+
+/**
+ * Gaps the assistant asks on one screen. The step-by-step wizard stays available
+ * as a fallback; this list is the default progress.
+ */
+export const ASSISTANT_CHECKLIST = [
+  "custodian",
+  "irs",
+  "restrictions",
+  "preferences",
+  "contact",
+  "household",
+  "estate",
+  "risk",
+  "balance",
+  "motive",
+  "focus",
+  "lpoa",
+] as const;
+
+export type AssistantGap = (typeof ASSISTANT_CHECKLIST)[number];
+
+export function assistantProgress(done: Readonly<Record<AssistantGap, boolean>>): number {
+  const finished = ASSISTANT_CHECKLIST.filter((gap) => done[gap]).length;
+  return Math.round((finished / ASSISTANT_CHECKLIST.length) * 100);
+}

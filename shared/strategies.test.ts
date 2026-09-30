@@ -8,11 +8,12 @@ import {
   ESG_FILTER_LABEL,
   illustrativeFeeBps,
   meetsStrategyMinimum,
+  securitiesLine,
   strategyFeeLine,
 } from "./strategies.ts";
 
 test("the strategy universe follows the public UMA profile index and can be filtered", () => {
-  assert.ok(STRATEGY_UNIVERSE.length >= 900);
+  assert.equal(STRATEGY_UNIVERSE.length, 953);
   const elena = CLIENT_SEEDS.find((row) => row.id === "elena-whitmore");
   const priya = CLIENT_SEEDS.find((row) => row.id === "priya-shah");
   if (!elena || !priya) throw new Error("seed clients missing");
@@ -21,9 +22,14 @@ test("the strategy universe follows the public UMA profile index and can be filt
   const eligible = browseStrategies(STRATEGY_UNIVERSE, elena.household.investable, { eligibleOnly: true });
   assert.equal(all.length, STRATEGY_UNIVERSE.length);
   assert.ok(eligible.length > 0);
-  assert.ok(eligible.length < all.length);
+  assert.equal(eligible.length, all.length);
   assert.ok(eligible.every((strategy) => meetsStrategyMinimum(strategy, elena.household.investable)));
-  assert.ok(all.some((strategy) => strategy.minimum == null));
+  assert.equal(
+    all.every((strategy) => strategy.minimum != null),
+    true,
+  );
+  const midHousehold = browseStrategies(STRATEGY_UNIVERSE, 100_000, { eligibleOnly: true });
+  assert.ok(midHousehold.length > 0 && midHousehold.length < all.length);
 
   const priyaEligible = browseStrategies(STRATEGY_UNIVERSE, priya.household.investable, { eligibleOnly: true });
   assert.equal(priyaEligible.length, eligible.length);
@@ -96,7 +102,19 @@ test("the strategy universe follows the public UMA profile index and can be filt
   const maps = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-afv-6");
   const indexed = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-apr-a");
   if (!ladder || !adr || !maps || !indexed) throw new Error("catalog rows missing");
-  assert.equal(ladder.fixedIncome?.avgMaturityYears, 6.4);
+  assert.equal(ladder.fixedIncome?.avgMaturityYears, 5.3);
+  assert.equal(ladder.fixedIncome?.avgDurationYears, 5);
+  assert.equal(ladder.fixedIncome?.avgCouponPct, 2.6);
+  assert.equal(ladder.fixedIncome?.avgYieldPct, null);
+  assert.equal(ladder.fromPublicHeader.includes("maturity"), true);
+  assert.equal(growth.benchmark, "S&P 500");
+  assert.equal(growth.vehicle, "Individual Stocks");
+  assert.equal(growth.securitiesMin, 0);
+  assert.equal(growth.securitiesMax, 20);
+  assert.equal(growth.turnoverPct, 35);
+  assert.equal(growth.additionalFundFees, false);
+  assert.equal(adr.benchmark, "MSCI EAFE");
+  assert.equal(adr.closedToNewAccounts, true);
   assert.equal(ladder.taxPosture.includes("tax-sensitive"), true);
   assert.equal(ladder.usesAdrs, false);
   assert.equal(growth.usesAdrs, false);
@@ -105,7 +123,28 @@ test("the strategy universe follows the public UMA profile index and can be filt
   assert.equal(adr.usesAdrs, true);
   assert.equal(maps.additionalFundFees, true);
   assert.equal(maps.benchmarkKind, "blended");
+  assert.equal(maps.vehicle, "Individual Stocks, Individual Bonds, Mutual Funds, ETFs");
+  assert.equal(maps.fromPublicHeader.includes("vehicle"), true);
   assert.deepEqual(indexed.taxPosture, ["direct-indexing", "tax-aware"]);
+
+  const pointEstimate = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-ali-b");
+  const singleCount = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-apd-1");
+  const mapsVehicle = STRATEGY_UNIVERSE.find((strategy) => strategy.id === "uma-fir-1");
+  if (!pointEstimate || !singleCount || !mapsVehicle) throw new Error("header sample rows missing");
+  assert.equal(pointEstimate.fixedIncome?.avgMaturityYears, 15.9);
+  assert.equal(pointEstimate.fixedIncome?.avgDurationYears, 6.5);
+  assert.equal(pointEstimate.fixedIncome?.avgCouponPct, 5);
+  assert.equal(pointEstimate.fixedIncome?.avgYieldPct, null);
+  assert.equal(pointEstimate.vehicle, "Individual Bonds, Mutual Funds");
+  assert.equal(pointEstimate.fromPublicHeader.includes("maturity"), true);
+  assert.equal(pointEstimate.fromPublicHeader.includes("securities"), false);
+  assert.equal(pointEstimate.fromPublicHeader.includes("turnover"), false);
+  assert.equal(singleCount.securitiesMin, 9198);
+  assert.equal(singleCount.securitiesMax, 9198);
+  assert.equal(singleCount.fromPublicHeader.includes("securities"), true);
+  assert.equal(securitiesLine(singleCount), "9198");
+  assert.equal(securitiesLine(growth), "0–20");
+  assert.equal(mapsVehicle.vehicle, "ETFs");
 
   const withHousehold = STRATEGY_UNIVERSE.filter((strategy) => strategy.householdMinimum != null);
   const withoutHousehold = STRATEGY_UNIVERSE.filter((strategy) => strategy.householdMinimum == null);

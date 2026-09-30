@@ -3624,3 +3624,111 @@ button.proposed-name {
     border-left: 0;
   }
 }
+
+.enroll-flow.is-assistant {
+  max-width: 40rem;
+  padding-top: 7vh;
+}
+
+.enroll-flow.is-assistant h1 {
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  font-weight: 450;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.45rem;
+}
+
+.enroll-flow.is-assistant .enroll-progress {
+  margin: 1.1rem 0 0.2rem;
+}
+
+.assist-kicker {
+  margin: 0;
+  color: #8a8a8a;
+  font-size: 0.92rem;
+}
+
+.assist-log {
+  list-style: none;
+  margin: 0.4rem 0 0.2rem;
+  padding: 0;
+}
+
+.assist-log li {
+  margin: 0;
+  padding: 0.45rem 0;
+  border-top: 1px solid #f3f3f3;
+  color: #5e5e5e;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.gap-card {
+  padding: 1.05rem 0 0.15rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.enroll-flow .gap-card h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.02rem;
+  font-weight: 560;
+}
+
+.enroll-flow .gap-card p {
+  margin: 0.15rem 0 0.45rem;
+  font-size: 0.95rem;
+}
+
+.demo-switch,
+.role-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.85rem;
+}
+
+.demo-switch {
+  margin: 1rem 0 0.35rem;
+  color: #8a8a8a;
+  font-size: 0.82rem;
+}
+
+.demo-switch button,
+.enroll-switch .text-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: #5e5e5e;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+}
+
+.demo-switch button.is-on {
+  color: #111;
+  text-decoration: none;
+}
+
+.role-row {
+  margin: 0.85rem 0 0.2rem;
+}
+
+.more-accounts {
+  margin-top: 0.4rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.more-accounts summary {
+  cursor: pointer;
+  color: #111;
+  font-size: 0.98rem;
+}
+
+.enroll-flow .more-accounts p {
+  margin-top: 0.7rem;
+}
+
+.enroll-switch {
+  margin: 1.6rem 0 0;
+}

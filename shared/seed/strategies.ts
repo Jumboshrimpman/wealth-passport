@@ -1,3 +1,4 @@
+import { UMA_HEADERS, type UmaPublicHeader } from "./umaHeaders.ts";
 import { UMA_LISTINGS, type UmaListing } from "./umaListings.ts";
 
 /**
@@ -64,6 +65,15 @@ export interface StrategyProfile {
   /** Optional manager sentence shown with the standard fund-fee note. */
   additionalFeesNote: string | null;
   taxPosture: TaxPostureFlag[];
+  /** Eligible investments line from a public profile header, when it parsed. */
+  vehicle: string | null;
+  /** Public header said the strategy is closed to new accounts. */
+  closedToNewAccounts: boolean;
+  /**
+   * Characteristics copied from a public profile header.
+   * Anything else on the row is illustrative demo copy.
+   */
+  fromPublicHeader: string[];
 }
 
 function inferStyle(name: string): string {
@@ -179,11 +189,9 @@ function distinctMinimums(
   return { householdMinimum, accountMinimum };
 }
 
-function usesAdrs(name: string, style: string, category: string): boolean {
-  const blob = `${name} ${style}`.toLowerCase();
-  if (/\badr\b/.test(blob)) return true;
-  if (category === "Fixed income") return false;
-  return /international|global|emerging|eafe|world|ex-us|ex u\.s|foreign|developed/.test(blob);
+function usesAdrs(name: string, style: string, adrUse: boolean | null): boolean {
+  if (adrUse != null) return adrUse;
+  return /\badr\b/.test(`${name} ${style}`.toLowerCase());
 }
 
 function maturityYears(name: string, hash: number): number {
@@ -197,7 +205,20 @@ function maturityYears(name: string, hash: number): number {
   return choices[hash % choices.length];
 }
 
-function fixedIncomeStats(name: string, category: string, id: string): FixedIncomeStats | null {
+function fixedIncomeStats(
+  name: string,
+  category: string,
+  id: string,
+  header: UmaPublicHeader | undefined,
+): FixedIncomeStats | null {
+  if (header && (header.maturityYears != null || header.durationYears != null || header.couponPct != null)) {
+    return {
+      avgMaturityYears: header.maturityYears,
+      avgDurationYears: header.durationYears,
+      avgCouponPct: header.couponPct,
+      avgYieldPct: null,
+    };
+  }
   if (category !== "Fixed income") return null;
   const hash = demoHash(id, "fi");
   const avgMaturityYears = maturityYears(name, hash);
@@ -271,28 +292,67 @@ function taxPostureFor(name: string, style: string): TaxPostureFlag[] {
   return flags;
 }
 
-function additionalFundFeesFor(name: string, style: string, id: string): boolean {
-  if (/mutual fund|\bfunds\b|\betf\b|\bmaps\b|american funds|vanguard/.test(`${name} ${style}`.toLowerCase())) {
-    return true;
+function additionalFundFeesFor(name: string, style: string, vehicle: string | null): boolean {
+  return /mutual fund|\bfunds\b|\betfs?\b|\bmaps\b|american funds|vanguard/.test(
+    `${name} ${style} ${vehicle ?? ""}`.toLowerCase(),
+  );
+}
+
+function headerBenchmark(
+  name: string,
+  style: string,
+  category: string,
+  id: string,
+  indexes: readonly string[],
+): { benchmark: string; benchmarkKind: BenchmarkKind; fromHeader: boolean } {
+  // "Similar to the S&P 500" on a characteristics row is a risk comparison.
+  // Use it as the benchmark only for a U.S. large-cap equity mandate.
+  const specific = indexes.filter((index) => index !== "S&P 500");
+  if (specific.length >= 2) {
+    return { benchmark: specific.join(" / "), benchmarkKind: "blended", fromHeader: true };
   }
-  return demoHash(id, "fee") % 8 === 0;
+  if (specific.length === 1 && category !== "Multi-asset") {
+    return { benchmark: specific[0], benchmarkKind: "single", fromHeader: true };
+  }
+  const largeCapEquity = category === "Equity" && /us large cap/i.test(style) && !/small|mid/i.test(style);
+  if (indexes.includes("S&P 500") && specific.length === 0 && largeCapEquity) {
+    return { benchmark: "S&P 500", benchmarkKind: "single", fromHeader: true };
+  }
+  return { ...benchmarkFor(name, style, category, id), fromHeader: false };
 }
 
 function profileFromListing(row: UmaListing): StrategyProfile {
   const name = decodeEntities(row.name);
-  const style = row.style ?? inferStyle(name);
+  const header = UMA_HEADERS[row.code];
+  const style = header?.style ?? row.style ?? inferStyle(name);
   const category = categoryFor(style, name);
   const esg = esgListed(style, name);
   const { householdMinimum, accountMinimum } = distinctMinimums(row.id, row.minimum);
-  const range = securitiesRange(row.id);
-  const benchmark = benchmarkFor(name, style, category, row.id);
+  const range =
+    header?.securitiesMin != null && header.securitiesMax != null
+      ? { securitiesMin: header.securitiesMin, securitiesMax: header.securitiesMax }
+      : securitiesRange(row.id);
+  const benchmark = headerBenchmark(name, style, category, row.id, header?.referenceIndexes ?? []);
+  const fixedIncome = fixedIncomeStats(name, category, row.id, header);
+  const fromPublicHeader: string[] = [];
+  if (header?.style) fromPublicHeader.push("style");
+  if (header?.minimum != null) fromPublicHeader.push("minimum");
+  if (header?.inception) fromPublicHeader.push("inception");
+  if (header?.vehicle) fromPublicHeader.push("vehicle");
+  if (header?.securitiesMin != null && header.securitiesMax != null) fromPublicHeader.push("securities");
+  if (header?.turnoverPct != null) fromPublicHeader.push("turnover");
+  if (header?.adrUse != null || /\badr\b/i.test(name)) fromPublicHeader.push("adrs");
+  if (header?.maturityYears != null) fromPublicHeader.push("maturity");
+  if (header?.durationYears != null) fromPublicHeader.push("duration");
+  if (header?.couponPct != null) fromPublicHeader.push("coupon");
+  if (benchmark.fromHeader) fromPublicHeader.push("benchmark");
   return {
     id: row.id,
     name,
     category,
     style,
     manager: decodeEntities(row.manager),
-    minimum: row.minimum,
+    minimum: header?.minimum ?? row.minimum,
     householdMinimum,
     accountMinimum,
     allInBps: illustrativeFeeBps(row.id, category),
@@ -300,18 +360,21 @@ function profileFromListing(row: UmaListing): StrategyProfile {
     summary: summaryFor(name, style, category, esg),
     risk: riskBand(style, name),
     esg,
-    inception: row.inception,
+    inception: header?.inception ?? row.inception,
     productCode: row.code,
-    usesAdrs: usesAdrs(name, style, category),
-    fixedIncome: fixedIncomeStats(name, category, row.id),
-    turnoverPct: turnoverPctFor(row.id),
+    usesAdrs: usesAdrs(name, style, header?.adrUse ?? null),
+    fixedIncome,
+    turnoverPct: header?.turnoverPct ?? turnoverPctFor(row.id),
     securitiesMin: range.securitiesMin,
     securitiesMax: range.securitiesMax,
     benchmark: benchmark.benchmark,
     benchmarkKind: benchmark.benchmarkKind,
-    additionalFundFees: additionalFundFeesFor(name, style, row.id),
+    additionalFundFees: additionalFundFeesFor(name, style, header?.vehicle ?? null),
     additionalFeesNote: null,
     taxPosture: taxPostureFor(name, style),
+    vehicle: header?.vehicle ?? null,
+    closedToNewAccounts: header?.closed ?? false,
+    fromPublicHeader,
   };
 }
 

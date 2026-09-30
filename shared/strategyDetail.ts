@@ -38,6 +38,9 @@ export interface StrategyDetail {
   additionalFundFees: boolean;
   additionalFeesNote: string | null;
   taxPosture: TaxPostureFlag[];
+  vehicle: string | null;
+  closedToNewAccounts: boolean;
+  fromPublicHeader: string[];
 }
 
 function emptyCharacteristics(): Pick<
@@ -54,6 +57,9 @@ function emptyCharacteristics(): Pick<
   | "additionalFundFees"
   | "additionalFeesNote"
   | "taxPosture"
+  | "vehicle"
+  | "closedToNewAccounts"
+  | "fromPublicHeader"
 > {
   return {
     householdMinimum: null,
@@ -68,6 +74,9 @@ function emptyCharacteristics(): Pick<
     additionalFundFees: false,
     additionalFeesNote: null,
     taxPosture: [],
+    vehicle: null,
+    closedToNewAccounts: false,
+    fromPublicHeader: [],
   };
 }
 
@@ -116,6 +125,9 @@ export function detailFromProfile(strategy: StrategyProfile, investable: number 
     additionalFundFees: strategy.additionalFundFees,
     additionalFeesNote: strategy.additionalFeesNote,
     taxPosture: strategy.taxPosture,
+    vehicle: strategy.vehicle,
+    closedToNewAccounts: strategy.closedToNewAccounts,
+    fromPublicHeader: strategy.fromPublicHeader,
   };
 }
 
