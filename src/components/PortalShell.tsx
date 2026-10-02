@@ -6,9 +6,11 @@ import { clerkAppearance } from "../auth/clerk";
 import { MODE_HOMES, MODE_NAV, modeFromPath, PRODUCT_NAME } from "../data/catalog";
 import { useAssistant } from "../context/AssistantContext";
 import { useMode } from "../context/ModeContext";
+import { AppInvite } from "./AppInvite";
 import { AssistantPanel } from "./AssistantPanel";
 import { CompanionMark } from "./CompanionMark";
 import { InstitutionAssistantPanel } from "./InstitutionAssistantPanel";
+import { PhoneDemoSheet } from "./PhoneDemoSheet";
 import { RoleSwitcher } from "./RoleSwitcher";
 
 const OPEN_DOCK = new Set([
@@ -24,10 +26,12 @@ export function PortalShell() {
   const location = useLocation();
   const { mode } = useMode();
   const { clerkSignedIn } = usePortalAccess();
-  const { minimized, setMinimized } = useAssistant();
+  const { minimized, setMinimized, expandNonce } = useAssistant();
   const routeMode = modeFromPath(location.pathname) ?? mode;
   const institutional = routeMode === "institution";
-  const chatHome = location.pathname === "/assistant" || location.pathname === "/institution";
+  const institutionHome = location.pathname === "/institution";
+  const clientHome = location.pathname === "/assistant";
+  const chatHome = institutionHome || clientHome;
   const showDock = !chatHome;
   const wide =
     location.pathname === "/admin" ||
@@ -47,6 +51,12 @@ export function PortalShell() {
     }
     setMinimized(!OPEN_DOCK.has(location.pathname));
   }, [location.pathname, setMinimized, showDock]);
+
+  useEffect(() => {
+    if (!showDock || expandNonce === 0) return;
+    pinned.current = { path: location.pathname, minimized: false };
+    setMinimized(false);
+  }, [expandNonce, location.pathname, setMinimized, showDock]);
 
   function minimize() {
     pinned.current = { path: location.pathname, minimized: true };
@@ -116,6 +126,8 @@ export function PortalShell() {
           </aside>
         ) : null}
       </div>
+      {routeMode === "client" ? <PhoneDemoSheet /> : null}
+      {routeMode === "client" ? <AppInvite /> : null}
     </div>
   );
 }

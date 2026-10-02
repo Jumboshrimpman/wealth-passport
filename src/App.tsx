@@ -1,12 +1,14 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { usePortalAccess } from "./auth/access";
 import { PortalShell } from "./components/PortalShell";
+import { AcceptedOffersProvider } from "./context/AcceptedOffersContext";
 import { AssistantProvider } from "./context/AssistantContext";
 import { ClientProvider } from "./context/ClientContext";
 import { ConsentProvider } from "./context/ConsentContext";
 import { DemoProvider } from "./context/DemoContext";
 import { OfferDecisionProvider } from "./context/OfferDecisionContext";
 import { OfferProvider } from "./context/OfferContext";
+import { ServiceRequestProvider } from "./context/ServiceRequestContext";
 import { ModeProvider } from "./context/ModeContext";
 import { InstitutionalProvider } from "./context/InstitutionalContext";
 import { Admin } from "./views/Admin";
@@ -29,6 +31,8 @@ export default function App() {
         <OfferProvider>
           <OfferDecisionProvider>
             <DemoProvider>
+              <AcceptedOffersProvider>
+              <ServiceRequestProvider>
               <AssistantProvider>
                 <ModeProvider>
                 <InstitutionalProvider>
@@ -61,6 +65,8 @@ export default function App() {
                 </InstitutionalProvider>
                 </ModeProvider>
               </AssistantProvider>
+              </ServiceRequestProvider>
+              </AcceptedOffersProvider>
             </DemoProvider>
           </OfferDecisionProvider>
         </OfferProvider>

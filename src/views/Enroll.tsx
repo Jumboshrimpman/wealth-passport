@@ -108,7 +108,7 @@ function splitAgentLines(lines: string[]): { status: string[]; prompts: string[]
   return { status, prompts };
 }
 
-function ClassicEnroll({ onAssistant }: { onAssistant: () => void }) {
+function ClassicEnroll({ onAssistant, onAgentic }: { onAssistant: () => void; onAgentic: () => void }) {
   const { passport, selectClient } = useClient();
   const { saveProfile } = useDemo();
   const { allowDemo } = usePortalAccess();
@@ -562,6 +562,16 @@ function ClassicEnroll({ onAssistant }: { onAssistant: () => void }) {
                 </button>
               ))}
             </div>
+            <div className="enroll-choices">
+              <button type="button" className="enroll-choice enroll-path" disabled={busy} onClick={onAgentic}>
+                <span className="enroll-path-copy">
+                  <span className="enroll-path-title">WealthPass browser helper</span>
+                  <span className="enroll-path-note">
+                    Agentic discovery. A simulated local helper, then Plaid for gaps. Demo only. Passwords stay on the device.
+                  </span>
+                </span>
+              </button>
+            </div>
             <div className="enroll-actions">
               <Secondary disabled={busy} onClick={() => setStep("connect")}>
                 I&rsquo;ll enroll myself instead
@@ -930,9 +940,11 @@ function ClassicEnroll({ onAssistant }: { onAssistant: () => void }) {
 }
 
 export function Enroll() {
-  const [surface, setSurface] = useState<"assistant" | "steps">("assistant");
-  if (surface === "steps") return <ClassicEnroll onAssistant={() => setSurface("assistant")} />;
-  return <EnrollAssistant onSteps={() => setSurface("steps")} />;
+  const [surface, setSurface] = useState<"assistant" | "steps" | "agentic">("assistant");
+  if (surface === "steps") {
+    return <ClassicEnroll onAssistant={() => setSurface("assistant")} onAgentic={() => setSurface("agentic")} />;
+  }
+  return <EnrollAssistant startAt={surface === "agentic" ? "consent" : "discover"} onSteps={() => setSurface("steps")} />;
 }
 
 function EnrollProgress({ value }: { value: number }) {

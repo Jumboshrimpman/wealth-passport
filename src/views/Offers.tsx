@@ -1,17 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   acceptChoicesFor,
-  acceptOnRow,
   choicePrice,
-  clientAgreementLines,
   listsAfterAccept,
   REVOKE_LIQUIDATION_ACKNOWLEDGMENT,
   revokeConsentAcknowledgment,
   revokeConsentLines,
   revokeLiquidationLines,
-  revokeOnRow,
   rowCanAccept,
-  schwabLpoaLines,
   type AcceptableChoice,
   type RowAcceptance,
 } from "../../shared/acceptOffer.ts";
@@ -28,16 +24,20 @@ import {
   type Recommendation,
 } from "../../shared/marketplace.ts";
 import { detailFromBid, detailFromRecommendation, type StrategyDetail } from "../../shared/strategyDetail.ts";
+import { ServiceWaitingNote } from "../components/ServiceWaitingNote";
 import { StrategyDetailModal } from "../components/StrategyDetailModal";
+import { useAssistant } from "../context/AssistantContext";
+import { useAcceptedOffers } from "../context/AcceptedOffersContext";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 import { useOffers } from "../context/OfferContext";
-import { readAcceptedOffers, writeAcceptedOffers } from "../offers/acceptedOffers";
 
 export function Offers() {
   const { passport } = useClient();
   const { profile } = useDemo();
   const { eligible } = useOffers();
+  const { accepted, beginSign, revoke } = useAcceptedOffers();
+  const { spotlight } = useAssistant();
   const fit = profile && profile.clientId === passport.id ? profile.fit : defaultFit(passport);
   const board = useMemo(
     () =>
@@ -50,42 +50,23 @@ export function Offers() {
   );
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [picking, setPicking] = useState<string | null>(null);
-  const [signing, setSigning] = useState<{ rowKey: string; choice: AcceptableChoice } | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
-  const [accepted, setAccepted] = useState<Record<string, RowAcceptance>>(() => readAcceptedOffers(passport.id));
   const [strategy, setStrategy] = useState<StrategyDetail | null>(null);
   const investable = passport.household.investable;
 
   useEffect(() => {
     setOpen({});
     setPicking(null);
-    setSigning(null);
     setRevoking(null);
     setStrategy(null);
-    setAccepted(readAcceptedOffers(passport.id));
   }, [passport.id]);
 
   function toggle(key: string) {
     setOpen((current) => ({ ...current, [key]: !current[key] }));
   }
 
-  function accept(rowKey: string, choice: AcceptableChoice) {
-    const matchesOpen = Boolean(open[`${rowKey}:matches`]);
-    const offersOpen = Boolean(open[`${rowKey}:offers`]);
-    setAccepted((current) => {
-      const next = acceptOnRow(current, rowKey, choice, { matchesOpen, offersOpen });
-      writeAcceptedOffers(passport.id, next);
-      return next;
-    });
-    setPicking(null);
-  }
-
-  function revoke(rowKey: string) {
-    setAccepted((current) => {
-      const next = revokeOnRow(current, rowKey);
-      writeAcceptedOffers(passport.id, next);
-      return next;
-    });
+  function revokeRow(rowKey: string) {
+    revoke(rowKey);
     setRevoking(null);
   }
 
@@ -93,6 +74,7 @@ export function Offers() {
     <div className="offer-page">
       <h1>Pitches</h1>
       <p className="lede-quiet offer-lede">Each account opens on its top basic strategy and top pitch.</p>
+      <ServiceWaitingNote />
       <div className="offers-scroll">
         <table className="offers-table">
           <thead>
@@ -120,10 +102,17 @@ export function Offers() {
                 offersOpen={Boolean(open[`${row.key}:offers`])}
                 onToggle={toggle}
                 accepted={accepted[row.key] ?? null}
+                recommendedId={spotlight?.rowKey === row.key ? spotlight.choiceId : null}
                 picking={picking === row.key}
                 onStartPick={() => setPicking(row.key)}
                 onCancelPick={() => setPicking(null)}
-                onChoose={(choice) => setSigning({ rowKey: row.key, choice })}
+                onChoose={(choice) => {
+                  setPicking(null);
+                  beginSign(row.key, choice, {
+                    matchesOpen: Boolean(open[`${row.key}:matches`]),
+                    offersOpen: Boolean(open[`${row.key}:offers`]),
+                  });
+                }}
                 onRevoke={() => setRevoking(row.key)}
                 onOpenMatch={(recommendation) => setStrategy(detailFromRecommendation(recommendation, investable))}
                 onOpenBid={(offer) => setStrategy(detailFromBid(offer, investable))}
@@ -132,21 +121,11 @@ export function Offers() {
           </tbody>
         </table>
       </div>
-      {signing ? (
-        <SignModal
-          choice={signing.choice}
-          onCancel={() => setSigning(null)}
-          onSign={() => {
-            accept(signing.rowKey, signing.choice);
-            setSigning(null);
-          }}
-        />
-      ) : null}
       {revoking && accepted[revoking] ? (
         <RevokeModal
           acceptance={accepted[revoking]}
           onCancel={() => setRevoking(null)}
-          onRevoke={() => revoke(revoking)}
+          onRevoke={() => revokeRow(revoking)}
         />
       ) : null}
       {strategy ? <StrategyDetailModal detail={strategy} onClose={() => setStrategy(null)} /> : null}
@@ -160,6 +139,7 @@ function OfferRow({
   offersOpen,
   onToggle,
   accepted,
+  recommendedId,
   picking,
   onStartPick,
   onCancelPick,
@@ -173,6 +153,7 @@ function OfferRow({
   offersOpen: boolean;
   onToggle: (key: string) => void;
   accepted: RowAcceptance | null;
+  recommendedId: string | null;
   picking: boolean;
   onStartPick: () => void;
   onCancelPick: () => void;
@@ -188,8 +169,10 @@ function OfferRow({
   const offerLabel = accepted ? null : revealLabel("offers", row.offers.length, offersOpen);
   const choices = acceptChoicesFor(row, matchesOpen, offersOpen);
   return (
-    <tr className={accepted ? "is-accepted" : undefined}>
+    <tr className={[accepted ? "is-accepted is-enrolled" : "", recommendedId ? "is-recommended" : ""].filter(Boolean).join(" ") || undefined}>
       <th scope="row">
+        {accepted ? <span className="enrolled-flag">Enrolled</span> : recommendedId ? <span className="recommended-flag">Recommended</span> : null}
+        {accepted ? <span className="enrolled-account-line">Enrolled in {accepted.strategy}</span> : null}
         <span className="offer-account">{row.accountName}</span>
         <span className="offer-meta">{row.meta}</span>
         {row.householdMinimum != null ? (
@@ -207,6 +190,7 @@ function OfferRow({
             rank={index + 1}
             compact={Boolean(accepted)}
             chosen={accepted?.choiceId === `match:${recommendation.id}`}
+            recommended={recommendedId === `match:${recommendation.id}`}
             onOpen={() => onOpenMatch(recommendation)}
           />
         ))}
@@ -229,6 +213,7 @@ function OfferRow({
             rank={index + 1}
             compact={Boolean(accepted)}
             chosen={accepted?.choiceId === `bid:${offer.id}`}
+            recommended={recommendedId === `bid:${offer.id}`}
             onOpen={() => onOpenBid(offer)}
           />
         ))}
@@ -283,7 +268,7 @@ function AcceptCell({
     return (
       <div className="accepted-offer">
         <div role="status">
-          <p className="accepted-kicker">Accepted</p>
+          <p className="accepted-kicker">Enrolled</p>
           <p className="accepted-copy">{accepted.confirmation}</p>
         </div>
         <button type="button" className="text-button revoke-consent" onClick={onRevoke}>
@@ -319,57 +304,6 @@ function AcceptCell({
       <button type="button" className="reveal-next" onClick={onCancelPick}>
         Cancel
       </button>
-    </div>
-  );
-}
-
-function SignModal({
-  choice,
-  onCancel,
-  onSign,
-}: {
-  choice: AcceptableChoice;
-  onCancel: () => void;
-  onSign: () => void;
-}) {
-  const [agreement, setAgreement] = useState(false);
-  const [lpoa, setLpoa] = useState(false);
-  const ready = agreement && lpoa;
-  return (
-    <div className="accept-modal-backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="accept-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="accept-modal-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 id="accept-modal-title">Sign with {choice.party}</h2>
-        <p className="accept-modal-kicker">Client agreement</p>
-        {clientAgreementLines(choice).map((line) => (
-          <p key={line}>{line}</p>
-        ))}
-        <label className="accept-modal-check">
-          <input type="checkbox" checked={agreement} onChange={(event) => setAgreement(event.target.checked)} />
-          <span>I agree to the client agreement with {choice.party}</span>
-        </label>
-        <p className="accept-modal-kicker">LPOA</p>
-        {schwabLpoaLines(choice).map((line) => (
-          <p key={line}>{line}</p>
-        ))}
-        <label className="accept-modal-check">
-          <input type="checkbox" checked={lpoa} onChange={(event) => setLpoa(event.target.checked)} />
-          <span>I agree to the limited power of attorney for a Schwab brokerage</span>
-        </label>
-        <div className="accept-modal-actions">
-          <button type="button" className="text-button" disabled={!ready} onClick={onSign}>
-            Sign
-          </button>
-          <button type="button" className="reveal-next" onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -430,12 +364,14 @@ function AlgorithmicMatch({
   rank,
   compact = false,
   chosen = false,
+  recommended = false,
   onOpen,
 }: {
   recommendation: Recommendation;
   rank: number;
   compact?: boolean;
   chosen?: boolean;
+  recommended?: boolean;
   onOpen: () => void;
 }) {
   const [details, setDetails] = useState(false);
@@ -443,7 +379,7 @@ function AlgorithmicMatch({
   return (
     <div className={`lane-block strategy-open${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`} onClick={onOpen}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
-      {chosen ? <p className="accepted-mark">Accepted</p> : null}
+      {chosen ? <p className="accepted-mark">Enrolled</p> : recommended ? <p className="recommended-flag">Recommended</p> : null}
       <button type="button" className="proposed-name" aria-haspopup="dialog" onClick={onOpen}>
         {recommendation.nextStrategy}
       </button>
@@ -491,12 +427,14 @@ function BidBlock({
   rank,
   compact = false,
   chosen = false,
+  recommended = false,
   onOpen,
 }: {
   offer: BiddingOffer;
   rank: number;
   compact?: boolean;
   chosen?: boolean;
+  recommended?: boolean;
   onOpen: () => void;
 }) {
   const [details, setDetails] = useState(false);
@@ -504,7 +442,7 @@ function BidBlock({
   return (
     <div className={`lane-block strategy-open${compact ? " is-compact" : ""}${chosen ? " is-chosen" : ""}`} onClick={onOpen}>
       {rank > 1 ? <p className="rank-num">{rank}</p> : null}
-      {chosen ? <p className="accepted-mark">Accepted</p> : null}
+      {chosen ? <p className="accepted-mark">Enrolled</p> : recommended ? <p className="recommended-flag">Recommended</p> : null}
       <button type="button" className="proposed-name" aria-haspopup="dialog" onClick={onOpen}>
         {offer.title}
       </button>

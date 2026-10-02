@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { SERVICE_PRODUCTS } from "../data/assistantFlow";
 import { useAssistant } from "../context/AssistantContext";
 
 export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" }) {
-  const { greeting, messages, prompts, ask } = useAssistant();
+  const { greeting, messages, prompts, servicesOpen, typing, ask } = useAssistant();
   const [draft, setDraft] = useState("");
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -10,7 +11,7 @@ export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" 
     const node = threadRef.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
-  }, [messages]);
+  }, [messages, servicesOpen, typing]);
 
   function submit(text: string) {
     ask(text);
@@ -19,18 +20,44 @@ export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" 
 
   return (
     <div className={`assistant-panel ${variant}`}>
-      {variant === "home" ? <h1>{greeting}</h1> : <p className="assistant-greeting">{greeting}</p>}
+      {variant === "home" ? (
+        <h1>{greeting}</h1>
+      ) : (
+        <p className="assistant-greeting" data-testid="assistant-greeting">
+          {greeting}
+        </p>
+      )}
       <div className="assistant-thread" ref={threadRef} role="log" aria-live="polite" tabIndex={0}>
         {messages.map((message) => (
           <p key={message.id} className={message.role === "user" ? "from-you" : "from-assistant"}>
             {message.text}
           </p>
         ))}
+        {typing ? (
+          <p className="from-assistant is-typing" data-testid="assistant-typing">
+            Typing…
+          </p>
+        ) : null}
       </div>
-      {variant !== "mini" ? (
+      {variant !== "mini" && servicesOpen ? (
+        <fieldset className="service-picker">
+          <legend>Demo products</legend>
+          {SERVICE_PRODUCTS.map((product) => (
+            <button key={product.id} type="button" onClick={() => submit(product.label)}>
+              {product.label}
+            </button>
+          ))}
+        </fieldset>
+      ) : null}
+      {variant !== "mini" && !servicesOpen ? (
         <div className="assistant-prompts">
           {prompts.map((prompt) => (
-            <button key={prompt.id} type="button" onClick={() => submit(prompt.label)}>
+            <button
+              key={prompt.id}
+              type="button"
+              className={prompt.tone === "quiet" ? "is-quiet" : "is-primary"}
+              onClick={() => submit(prompt.label)}
+            >
               {prompt.label}
             </button>
           ))}
@@ -50,7 +77,7 @@ export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" 
           id={`ask-${variant}`}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Which strategies do I qualify for?"
+          placeholder={variant === "home" ? "Which strategies do I qualify for?" : "Message"}
           autoComplete="off"
         />
         <button type="submit">Send</button>

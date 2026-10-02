@@ -1,9 +1,13 @@
 import { useState } from "react";
+import type { RowAcceptance } from "../../shared/acceptOffer.ts";
 import { formatUsd } from "../../shared/format.ts";
-import { describeWealth } from "../../shared/marketplace.ts";
+import { describeWealth, type WealthPoint } from "../../shared/marketplace.ts";
 import { documentsForSegment, segmentDocumentLine } from "../../shared/segmentDocuments.ts";
+import { ServiceWaitingNote } from "../components/ServiceWaitingNote";
+import { useAcceptedOffers } from "../context/AcceptedOffersContext";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
+import { enrollmentMatchesPoint, managerLine } from "../data/assistantFlow";
 
 const CONSENT_DOCS = [
   {
@@ -18,14 +22,35 @@ const CONSENT_DOCS = [
   },
 ] as const;
 
+function AccountEnrollment({ row }: { row: RowAcceptance }) {
+  return (
+    <p className="account-enrolled" data-testid="account-enrolled">
+      <span className="enrolled-flag">Enrolled</span> {row.strategy}
+      <span className="enrolled-meta">{managerLine(row)}</span>
+    </p>
+  );
+}
+
 export function Financials() {
   const { passport } = useClient();
   const { profile } = useDemo();
+  const { accepted } = useAcceptedOffers();
   const [openDoc, setOpenDoc] = useState<string | null>(null);
   const active = profile && profile.clientId === passport.id ? profile : null;
   const picture = describeWealth(passport, active);
   const verifiedFlex = picture.verified > 0 ? picture.verified : 0;
   const pendingFlex = picture.pending > 0 ? picture.pending : 0;
+  const entries = Object.entries(accepted);
+  const matchedKeys = new Set(
+    entries
+      .filter(([key, row]) => picture.points.some((point) => enrollmentMatchesPoint(point, key, row)))
+      .map(([key]) => key),
+  );
+  const unmatched = entries.filter(([key]) => !matchedKeys.has(key));
+
+  function enrollmentsFor(point: WealthPoint): RowAcceptance[] {
+    return entries.filter(([key, row]) => enrollmentMatchesPoint(point, key, row)).map(([, row]) => row);
+  }
 
   return (
     <div className="financials-page">
@@ -34,6 +59,7 @@ export function Financials() {
         {passport.household.clientFirstName}&rsquo;s wealth, {formatUsd(picture.total)} in all.
         Verified is solid. Still pending is gray.
       </p>
+      <ServiceWaitingNote />
       <div
         className="wealth-bar"
         role="img"
@@ -57,6 +83,9 @@ export function Financials() {
             <li key={point.id}>
               <div className="wealth-copy">
                 <strong>{point.label}</strong>
+                {enrollmentsFor(point).map((row) => (
+                  <AccountEnrollment key={row.choiceId} row={row} />
+                ))}
                 {point.note ? <span className="wealth-note">{point.note}</span> : null}
                 {documents.length > 0 ? (
                   <p className="segment-docs">
@@ -81,6 +110,14 @@ export function Financials() {
             </li>
           );
         })}
+        {unmatched.map(([key, row]) => (
+          <li key={key} data-testid="account-enrolled-row">
+            <div className="wealth-copy">
+              <strong>{row.accountName}</strong>
+              <AccountEnrollment row={row} />
+            </div>
+          </li>
+        ))}
       </ul>
       <section className="consent-file" aria-labelledby="consent-file-title">
         <h2 id="consent-file-title">On file</h2>

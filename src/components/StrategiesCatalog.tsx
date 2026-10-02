@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { formatUsd } from "../../shared/format.ts";
 import {
   ADR_OPTIONS,
@@ -46,12 +46,15 @@ export function StrategiesCatalog({
   added = [],
   yours,
   heading = true,
+  pinned = null,
 }: {
   investable: number | null;
   added?: readonly StrategyProfile[];
   yours?: ReadonlySet<string>;
   /** Page title. Institutional Search sits under its own Strategies heading. */
   heading?: boolean;
+  /** Client enrollments, pinned above the universe. */
+  pinned?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -133,6 +136,7 @@ export function StrategiesCatalog({
   return (
     <div className="strategies-page">
       {heading ? <h1>Strategies</h1> : null}
+      {pinned}
       <p className="lede-quiet">
         Search the universe of investment strategies. The assistant stays beside this list if you want to ask about one.
       </p>

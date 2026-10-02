@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ASSISTANT_CHECKLIST, assistantProgress, type AssistantGap } from "../../shared/enrollFlow.ts";
 import { formatUsd } from "../../shared/format.ts";
@@ -44,9 +44,11 @@ import type {
   MotiveChoice,
   RiskChoice,
 } from "../../shared/marketplace.ts";
+import type { AgenticSource } from "../../shared/agenticCrawl.ts";
 import { connectDemo } from "../api/connect";
 import { usePortalAccess } from "../auth/access";
 import { LegalFooter } from "../components/LegalFooter";
+import { AgenticDiscovery } from "./AgenticDiscovery";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 import { PRODUCT_NAME } from "../data/catalog";
@@ -84,14 +86,26 @@ function mergeTrusts(current: TrustRecord[], incoming: TrustRecord[]): TrustReco
   return [...current, ...incoming.filter((trust) => !names.has(trust.name.trim().toLowerCase()))];
 }
 
-export function EnrollAssistant({ onSteps }: { onSteps: () => void }) {
+export function EnrollAssistant({
+  onSteps,
+  startAt = "discover",
+}: {
+  onSteps: () => void;
+  /** `consent` opens the local-helper card. `discover` asks which path to use. */
+  startAt?: "discover" | "consent";
+}) {
   const { clients, passport, selectClient } = useClient();
   const { saveProfile } = useDemo();
   const { allowDemo } = usePortalAccess();
   const navigate = useNavigate();
   const [role, setRole] = useState<EnrolleeRole>("client");
   const [represented, setRepresented] = useState<RepresentedClient>(blankRepresentedClient());
-  const [phase, setPhase] = useState<"behalf" | "pulling" | "gaps" | "error">("pulling");
+  const [phase, setPhase] = useState<"behalf" | "discover" | "consent" | "pulling" | "gaps" | "error">(
+    startAt === "consent" ? "consent" : "discover",
+  );
+  const [pullNonce, setPullNonce] = useState(0);
+  const gapsRef = useRef<AgenticSource[]>([]);
+  const foundRef = useRef<string[]>([]);
   const [lines, setLines] = useState<string[]>([]);
   const [bank, setBank] = useState<BankConnectResult | null>(null);
   const [irs, setIrs] = useState<IrsConnectResult | null>(null);
@@ -130,11 +144,14 @@ export function EnrollAssistant({ onSteps }: { onSteps: () => void }) {
   useEffect(() => {
     if (acting && !representedReady(represented)) {
       setPhase("behalf");
-      setLines([]);
-      setBank(null);
-      setIrs(null);
       return;
     }
+    setPhase((current) => (current === "behalf" ? (startAt === "consent" ? "consent" : "discover") : current));
+  }, [acting, behalfKey, represented, startAt]);
+
+  useEffect(() => {
+    if (pullNonce === 0) return;
+    if (acting && !representedReady(represented)) return;
 
     let cancelled = false;
     setPhase("pulling");
@@ -163,7 +180,18 @@ export function EnrollAssistant({ onSteps }: { onSteps: () => void }) {
     setMotive(null);
     setFocus([]);
     setLpoaShare("unset");
-    setLines(["Connecting a custodian, then the IRS. This demo does not call either one."]);
+    const gaps = gapsRef.current;
+    const intro = [
+      ...(foundRef.current.length > 0
+        ? [
+            `Found ${foundRef.current.join(", ")} on this device. Simulated. Passwords were not read or uploaded.`,
+          ]
+        : []),
+      gaps.length > 0
+        ? `Plaid covers the rest: ${gaps.map((gap) => gap.label).join(", ")}. Simulated. Passwords were not read or uploaded.`
+        : "Connecting a custodian, then the IRS. Demo only.",
+    ];
+    setLines(intro);
 
     void (async () => {
       try {
@@ -218,6 +246,16 @@ export function EnrollAssistant({ onSteps }: { onSteps: () => void }) {
         }
 
         const notes = ["IRS connector returned a transcript request. No tax file was uploaded."];
+        for (const gap of gaps) {
+          if (gap.id !== "fundrise" && gap.id !== "coinbase" && gap.id !== "kalshi") continue;
+          const asset = await connectDemo(gap.id, passport.id);
+          if (cancelled) return;
+          if (asset.kind !== "asset") continue;
+          if (gap.id === "fundrise") setFundrise(asset);
+          if (gap.id === "coinbase") setCoinbase(asset);
+          if (gap.id === "kalshi") setKalshi(asset);
+          notes.push(`${gap.label} returned through the simulated connector.`);
+        }
         if (packet.restrictions) notes.push("Restrictions on file are here to confirm, not to retype.");
         else notes.push("No investment restrictions came back. Skip them, or add a few.");
         if (packet.fixedIncome) notes.push("A municipal state preference is on file.");
@@ -235,7 +273,7 @@ export function EnrollAssistant({ onSteps }: { onSteps: () => void }) {
     return () => {
       cancelled = true;
     };
-  }, [passport.id, acting, behalfKey, represented]);
+  }, [pullNonce, passport.id, acting, represented]);
 
   const otherValue = Number(otherAmount.replace(/[^0-9.]/g, ""));
   const otherReady = otherLabel.trim().length > 0 && Number.isFinite(otherValue) && otherValue > 0;
@@ -425,6 +463,55 @@ export function EnrollAssistant({ onSteps }: { onSteps: () => void }) {
               </span>
             </label>
           </section>
+        ) : null}
+
+        {phase === "discover" ? (
+          <section data-testid="enroll-discover">
+            <h2>How should we find your accounts?</h2>
+            <p>Demo only. Nothing is sent to a bank. The existing connectors stay available.</p>
+            <div className="enroll-choices">
+              <button type="button" className="enroll-choice enroll-path" onClick={() => setPhase("consent")}>
+                <span className="enroll-path-copy">
+                  <span className="enroll-path-title">Agentic discovery</span>
+                  <span className="enroll-path-note">
+                    A local browser helper, then Plaid for anything it does not find. Passwords are not uploaded.
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="enroll-choice enroll-path"
+                onClick={() => {
+                  foundRef.current = [];
+                  gapsRef.current = [];
+                  setPullNonce((current) => current + 1);
+                }}
+              >
+                <span className="enroll-path-copy">
+                  <span className="enroll-path-title">Connect with Plaid</span>
+                  <span className="enroll-path-note">The existing simulated bank pull.</span>
+                </span>
+              </button>
+              <button type="button" className="enroll-choice enroll-path" onClick={onSteps}>
+                <span className="enroll-path-copy">
+                  <span className="enroll-path-title">I&rsquo;ll connect each source</span>
+                  <span className="enroll-path-note">Step-by-step demo connectors.</span>
+                </span>
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {phase === "consent" ? (
+          <AgenticDiscovery
+            passport={passport}
+            onBack={() => setPhase("discover")}
+            onContinue={(sources) => {
+              foundRef.current = sources.filter((source) => source.found).map((source) => source.label);
+              gapsRef.current = sources.filter((source) => !source.found);
+              setPullNonce((current) => current + 1);
+            }}
+          />
         ) : null}
 
         {lines.length > 0 ? (

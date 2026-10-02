@@ -959,5 +959,5 @@ export function countNewOffers(board: OfferBoard): number {
 
 export function greetingLine(firstName: string, netWorth: number, offers: number): string {
   const noun = offers === 1 ? "pitch" : "pitches";
-  return `Hi ${firstName}, your net worth is ${formatUsd(netWorth, true)} today, we have ${offers} new ${noun} for you today.`;
+  return `Hi ${firstName}. Net worth ${formatUsd(netWorth, true)}. ${offers} new ${noun} today.`;
 }

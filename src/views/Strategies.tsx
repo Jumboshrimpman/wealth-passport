@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { EnrolledPin } from "../components/EnrolledPin";
 import { StrategiesCatalog } from "../components/StrategiesCatalog";
 import { useClient } from "../context/ClientContext";
 import { useInstitutional } from "../context/InstitutionalContext";
@@ -12,5 +13,11 @@ export function Strategies() {
     () => strategies.map(postedCatalogProfile).filter((row) => row != null),
     [strategies],
   );
-  return <StrategiesCatalog investable={passport.household.investable} added={posted} />;
+  return (
+    <StrategiesCatalog
+      investable={passport.household.investable}
+      added={posted}
+      pinned={<EnrolledPin />}
+    />
+  );
 }
