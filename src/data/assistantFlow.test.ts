@@ -9,6 +9,7 @@ import {
   enrollmentMatchesPoint,
   isAcceptIntent,
   isAppIntent,
+  isMoreInfoIntent,
   isPitchNavigation,
   isServiceMenu,
   matchServiceProduct,
@@ -28,8 +29,11 @@ test("the assistant recommends a manager pitch on a concrete account", () => {
   const copy = recommendationCopy(rec);
   assert.match(copy, new RegExp(rec.choice.strategy));
   assert.match(copy, new RegExp(rec.choice.accountName));
-  assert.match(copy, /Recommend /);
-  assert.match(copy, /Say accept/);
+  assert.match(copy, /The first account we are looking at is/);
+  assert.match(copy, /we recommend/);
+  assert.match(copy, /The cost is/);
+  assert.match(copy, /You should also know/);
+  assert.match(copy, /Interested in proceeding or getting more information\?/);
   assert.match(copy, /cannot be bought/);
   assert.equal(copy.toLowerCase().includes(["paid", "placement"].join(" ")), false);
   assert.equal(copy.includes("WealthPass holds"), false);
@@ -61,7 +65,10 @@ test("chat intents stay narrow", () => {
   assert.equal(isPitchNavigation("Take me to my pitches"), true);
   assert.equal(isPitchNavigation("What are my new pitches?"), false);
   assert.equal(isAcceptIntent("accept"), true);
+  assert.equal(isAcceptIntent("Proceed"), true);
   assert.equal(isAcceptIntent("I accept the premise"), false);
+  assert.equal(isMoreInfoIntent("More information"), true);
+  assert.equal(isMoreInfoIntent("What else should I know about fees?"), false);
   assert.equal(isServiceMenu("I need other financial services"), true);
   assert.equal(isAppIntent("Get the app"), true);
   assert.equal(isAppIntent("On your phone"), false);

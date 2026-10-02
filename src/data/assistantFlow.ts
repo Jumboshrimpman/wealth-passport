@@ -71,15 +71,29 @@ export function bestPitchRecommendation(board: OfferBoard): PitchRecommendation 
   return null;
 }
 
-function namedParty(party: string): string {
-  if (party === ALGORITHMIC_PARTY) return "the strategy ranked for this account";
-  return party;
+function fragment(text: string): string {
+  const trimmed = text.trim().replace(/[.]+$/, "");
+  if (!trimmed) return "";
+  return trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
 }
 
 export function recommendationCopy(rec: PitchRecommendation): string {
-  const price = rec.price ? ` ${rec.price}.` : "";
-  const because = rec.because.trim().replace(/[.]+$/, "");
-  return `Recommend ${rec.choice.strategy} with ${namedParty(rec.choice.party)} for ${rec.choice.accountName}. ${because}.${price} Not legal advice. Ranking cannot be bought. Say accept to open the agreement.`;
+  const because = fragment(rec.because);
+  const becauseClause = because ? ` because ${because}` : "";
+  const cost = rec.price ? ` The cost is ${rec.price}.` : "";
+  const also =
+    rec.choice.party === ALGORITHMIC_PARTY
+      ? "WealthPass ranked this and is not the manager. Not legal advice. Ranking cannot be bought."
+      : `${rec.choice.party} would manage it. Not legal advice. Ranking cannot be bought.`;
+  return `The first account we are looking at is ${rec.choice.accountName} and we recommend ${rec.choice.strategy}${becauseClause}.${cost} You should also know ${also} Interested in proceeding or getting more information?`;
+}
+
+export function recommendationDetailCopy(rec: PitchRecommendation): string {
+  const who =
+    rec.choice.party === ALGORITHMIC_PARTY
+      ? `WealthPass ranked ${rec.choice.strategy} for ${rec.choice.accountName}. It is not the manager.`
+      : `${rec.choice.party} would manage ${rec.choice.strategy} on ${rec.choice.accountName}.`;
+  return `${who} The selected manager sets up Schwab. WealthPass does not hold the LPOA. Not legal advice. Say proceed to open the agreement.`;
 }
 
 export function enrolledAssistantCopy(row: RowAcceptance): string {
@@ -110,7 +124,11 @@ export function isPitchNavigation(text: string): boolean {
 }
 
 export function isAcceptIntent(text: string): boolean {
-  return /^(accept|i accept|enroll|enroll me|i like it)\.?$/i.test(text.trim());
+  return /^(accept|i accept|proceed|enroll|enroll me|i like it)\.?$/i.test(text.trim());
+}
+
+export function isMoreInfoIntent(text: string): boolean {
+  return /^(more information|tell me more|more info)\.?$/i.test(text.trim());
 }
 
 export function isPhoneIntent(text: string): boolean {
@@ -138,7 +156,13 @@ export function serviceRequestCopy(label: string, already: boolean): string {
 }
 
 export function promptsFor(input: { pendingAccept: boolean; enrolled: boolean }): AssistantPrompt[] {
-  if (input.pendingAccept) return [{ id: "accept", label: "Accept", tone: "primary" }, ...QUIET_PROMPTS];
+  if (input.pendingAccept) {
+    return [
+      { id: "accept", label: "Proceed", tone: "primary" },
+      { id: "more", label: "More information", tone: "primary" },
+      ...QUIET_PROMPTS,
+    ];
+  }
   if (input.enrolled) return QUIET_PROMPTS;
   return [{ id: "pitches", label: "Take me to my pitches", tone: "primary" }, ...QUIET_PROMPTS];
 }

@@ -2,17 +2,14 @@ import { useState } from "react";
 import { managerLine } from "../data/assistantFlow";
 import { useAcceptedOffers } from "../context/AcceptedOffersContext";
 
-/** Collapsed by default. The catalog below still lists the same strategy. */
+/** One collapsed block for every enrollment. The catalog below is not filtered. */
 export function EnrolledPin() {
   const { accepted } = useAcceptedOffers();
   const rows = Object.values(accepted);
   const [open, setOpen] = useState(false);
   if (rows.length === 0) return null;
 
-  const summary =
-    rows.length === 1
-      ? `Enrolled in ${rows[0].strategy} for ${rows[0].accountName}`
-      : `Enrolled · ${rows.length}`;
+  const summary = rows.length === 1 ? "Enrolled strategies" : `Enrolled strategies · ${rows.length}`;
 
   return (
     <section className="enrolled-pin" aria-label="Enrolled strategies" data-testid="enrolled-pin">
@@ -20,17 +17,19 @@ export function EnrolledPin() {
         <span>{summary}</span>
         <span className="enrolled-toggle-hint">{open ? "Hide" : "Show"}</span>
       </button>
-      {open
-        ? rows.map((row) => (
-            <article key={`${row.accountName}-${row.choiceId}`}>
-              <p className="enrolled-flag">Enrolled</p>
-              <h2>
-                You&rsquo;re enrolled in {row.strategy} for {row.accountName}.
-              </h2>
+      {open ? (
+        <ul className="enrolled-list">
+          {rows.map((row) => (
+            <li key={`${row.accountName}-${row.choiceId}`}>
+              <p>
+                <strong>{row.strategy}</strong>
+                <span> for {row.accountName}</span>
+              </p>
               <p className="enrolled-meta">{managerLine(row)}</p>
-            </article>
-          ))
-        : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

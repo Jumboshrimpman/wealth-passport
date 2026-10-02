@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   buildOfferBoard,
   countNewOffers,
@@ -14,12 +14,14 @@ import {
   enrolledAssistantCopy,
   isAcceptIntent,
   isAppIntent,
+  isMoreInfoIntent,
   isPhoneIntent,
   isPitchNavigation,
   isServiceMenu,
   matchServiceProduct,
   promptsFor,
   recommendationCopy,
+  recommendationDetailCopy,
   serviceRequestCopy,
   type AssistantPrompt,
   type PitchRecommendation,
@@ -75,6 +77,7 @@ function acceptToken(clientId: string, key: string, row: RowAcceptance): string 
 
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { passport } = useClient();
   const { profile } = useDemo();
   const { eligible } = useOffers();
@@ -91,6 +94,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [typing, setTyping] = useState(false);
   const [threadClient, setThreadClient] = useState(passport.id);
   const announced = useRef<Set<string> | null>(null);
+  const pitchSpoken = useRef(false);
   const typingHolds = useRef(0);
 
   if (announced.current === null) {
@@ -105,6 +109,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     setRecommendation(null);
     setServicesOpen(false);
     setPhoneOpen(false);
+    pitchSpoken.current = false;
   }
 
   const activeProfile = profile && profile.clientId === passport.id ? profile : null;
@@ -186,6 +191,37 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     };
   }, [accepted, holdTyping, passport.id]);
 
+  const introducePitch = useCallback(() => {
+    if (pitchSpoken.current) return;
+    const rec = bestPitchRecommendation(board);
+    navigate("/offers");
+    setMinimized(false);
+    setExpandNonce((current) => current + 1);
+    setServicesOpen(false);
+    pitchSpoken.current = true;
+    if (!rec) {
+      setRecommendation(null);
+      setPhase("home");
+      reveal("No pitch on an account yet. You can still ask for another service.");
+      return;
+    }
+    const existing = accepted[rec.rowKey];
+    if (existing) {
+      setRecommendation(null);
+      setPhase("enrolled");
+      reveal(enrolledAssistantCopy(existing));
+      return;
+    }
+    setRecommendation(rec);
+    setPhase("recommend");
+    reveal(recommendationCopy(rec));
+  }, [accepted, board, navigate, reveal]);
+
+  useEffect(() => {
+    if (location.pathname !== "/offers") return;
+    introducePitch();
+  }, [introducePitch, location.pathname]);
+
   const ask = useCallback(
     (text: string) => {
       const trimmed = text.trim();
@@ -206,27 +242,16 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       }
 
       if (isPitchNavigation(trimmed)) {
-        const rec = bestPitchRecommendation(board);
-        navigate("/offers");
-        setMinimized(false);
-        setExpandNonce((current) => current + 1);
-        setServicesOpen(false);
-        if (!rec) {
-          setRecommendation(null);
-          setPhase("home");
-          reveal("No pitch on an account yet. You can still ask for another service.");
+        introducePitch();
+        return;
+      }
+
+      if (isMoreInfoIntent(trimmed)) {
+        if (!recommendation || accepted[recommendation.rowKey]) {
+          reveal("Open your pitches first, and I can say more about the recommendation.");
           return;
         }
-        const existing = accepted[rec.rowKey];
-        if (existing) {
-          setRecommendation(null);
-          setPhase("enrolled");
-          reveal(enrolledAssistantCopy(existing));
-          return;
-        }
-        setRecommendation(rec);
-        setPhase("recommend");
-        reveal(recommendationCopy(rec));
+        reveal(recommendationDetailCopy(recommendation));
         return;
       }
 
@@ -256,7 +281,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 
       reveal(answerQuestion(trimmed, { client: passport, board, wealth }));
     },
-    [accepted, beginSign, board, navigate, note, passport, recommendation, reveal, wealth],
+    [accepted, beginSign, board, introducePitch, note, passport, recommendation, reveal, wealth],
   );
 
   const closePhone = useCallback(() => setPhoneOpen(false), []);
