@@ -2,6 +2,8 @@ import { useState } from "react";
 import { formatUsd } from "../../shared/format.ts";
 import { describeWealth } from "../../shared/marketplace.ts";
 import { documentsForSegment, segmentDocumentLine } from "../../shared/segmentDocuments.ts";
+import { EnrolledPin } from "../components/EnrolledPin";
+import { ServiceWaitingNote } from "../components/ServiceWaitingNote";
 import { useClient } from "../context/ClientContext";
 import { useDemo } from "../context/DemoContext";
 
@@ -34,6 +36,8 @@ export function Financials() {
         {passport.household.clientFirstName}&rsquo;s wealth, {formatUsd(picture.total)} in all.
         Verified is solid. Still pending is gray.
       </p>
+      <EnrolledPin presentation="ledger" />
+      <ServiceWaitingNote />
       <div
         className="wealth-bar"
         role="img"

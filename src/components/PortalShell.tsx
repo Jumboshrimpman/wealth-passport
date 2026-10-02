@@ -9,9 +9,11 @@ import { useMode } from "../context/ModeContext";
 import { AssistantPanel } from "./AssistantPanel";
 import { CompanionMark } from "./CompanionMark";
 import { InstitutionAssistantPanel } from "./InstitutionAssistantPanel";
+import { PhoneDemoSheet } from "./PhoneDemoSheet";
 import { RoleSwitcher } from "./RoleSwitcher";
 
 const OPEN_DOCK = new Set([
+  "/assistant",
   "/offers",
   "/financials",
   "/strategies",
@@ -24,11 +26,12 @@ export function PortalShell() {
   const location = useLocation();
   const { mode } = useMode();
   const { clerkSignedIn } = usePortalAccess();
-  const { minimized, setMinimized } = useAssistant();
+  const { minimized, setMinimized, expandNonce } = useAssistant();
   const routeMode = modeFromPath(location.pathname) ?? mode;
   const institutional = routeMode === "institution";
-  const chatHome = location.pathname === "/assistant" || location.pathname === "/institution";
-  const showDock = !chatHome;
+  const institutionHome = location.pathname === "/institution";
+  const chatHome = institutionHome;
+  const showDock = !institutionHome;
   const wide =
     location.pathname === "/admin" ||
     location.pathname === "/institution/clients" ||
@@ -47,6 +50,12 @@ export function PortalShell() {
     }
     setMinimized(!OPEN_DOCK.has(location.pathname));
   }, [location.pathname, setMinimized, showDock]);
+
+  useEffect(() => {
+    if (!showDock || expandNonce === 0) return;
+    pinned.current = { path: location.pathname, minimized: false };
+    setMinimized(false);
+  }, [expandNonce, location.pathname, setMinimized, showDock]);
 
   function minimize() {
     pinned.current = { path: location.pathname, minimized: true };
@@ -116,6 +125,7 @@ export function PortalShell() {
           </aside>
         ) : null}
       </div>
+      {routeMode === "client" ? <PhoneDemoSheet /> : null}
     </div>
   );
 }
