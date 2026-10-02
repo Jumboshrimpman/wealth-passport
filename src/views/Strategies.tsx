@@ -17,7 +17,7 @@ export function Strategies() {
     <StrategiesCatalog
       investable={passport.household.investable}
       added={posted}
-      pinned={<EnrolledPin presentation="pin" />}
+      pinned={<EnrolledPin />}
     />
   );
 }

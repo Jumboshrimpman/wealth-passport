@@ -34,6 +34,7 @@ export interface AssistantPrompt {
 
 const QUIET_PROMPTS: AssistantPrompt[] = [
   { id: "services", label: "I need other financial services", tone: "quiet" },
+  { id: "app", label: "Get the app", tone: "quiet" },
   { id: "phone", label: "On your phone", tone: "quiet" },
 ];
 
@@ -76,33 +77,32 @@ function namedParty(party: string): string {
 }
 
 export function recommendationCopy(rec: PitchRecommendation): string {
-  const price = rec.price ? ` The price on the pitch is ${rec.price}.` : "";
+  const price = rec.price ? ` ${rec.price}.` : "";
   const because = rec.because.trim().replace(/[.]+$/, "");
-  return [
-    `This is what I recommend for ${rec.choice.accountName}: ${rec.choice.strategy} with ${namedParty(rec.choice.party)}. What do you think?`,
-    `Here's how it could benefit your financials given what I've seen. ${because}.${price} This is not legal advice.`,
-    `If you enroll in ${rec.choice.strategy} for ${rec.choice.accountName}, just tell me if you like it and I can get started enrolling you.`,
-    "The algorithmic ranking cannot be bought.",
-  ].join("\n\n");
+  return `Recommend ${rec.choice.strategy} with ${namedParty(rec.choice.party)} for ${rec.choice.accountName}. ${because}.${price} Not legal advice. Ranking cannot be bought. Say accept to open the agreement.`;
 }
 
 export function enrolledAssistantCopy(row: RowAcceptance): string {
-  const reach =
-    row.party === ALGORITHMIC_PARTY
-      ? "Your selected manager may reach out to finish setting this up."
-      : `${row.party} may reach out to finish setting this up.`;
-  return [
-    `You're enrolled in ${row.strategy} for ${row.accountName}.`,
-    reach,
-    "Your selected manager sets up the Schwab brokerage. WealthPass does not hold the LPOA. Permission to share an LPOA is not an LPOA. You're all set on this end.",
-  ].join(" ");
+  const who = row.party === ALGORITHMIC_PARTY ? "Your selected manager" : row.party;
+  return `Enrolled in ${row.strategy} for ${row.accountName}. ${who} may follow up. The selected manager sets up Schwab. WealthPass does not hold the LPOA. Sharing an LPOA is not an LPOA.`;
 }
 
 export function managerLine(row: Pick<RowAcceptance, "party">): string {
   if (row.party === ALGORITHMIC_PARTY) {
-    return "Ranked by WealthPass. Your selected manager sets up the Schwab brokerage. WealthPass does not hold the LPOA.";
+    return "Ranked by WealthPass. Manager sets up Schwab. WealthPass does not hold the LPOA.";
   }
-  return `${row.party}. Your selected manager sets up the Schwab brokerage. WealthPass does not hold the LPOA.`;
+  return `${row.party}. Manager sets up Schwab. WealthPass does not hold the LPOA.`;
+}
+
+/** True when this wealth row is the account that accepted the strategy. */
+export function enrollmentMatchesPoint(
+  point: { id: string; label: string },
+  key: string,
+  row: Pick<RowAcceptance, "accountName">,
+): boolean {
+  if (point.id === key) return true;
+  const name = row.accountName.trim().toLowerCase();
+  return name.length > 0 && point.label.toLowerCase().includes(name);
 }
 
 export function isPitchNavigation(text: string): boolean {
@@ -114,7 +114,11 @@ export function isAcceptIntent(text: string): boolean {
 }
 
 export function isPhoneIntent(text: string): boolean {
-  return /\bon your phone\b|\bon my phone\b|text wealthpass|\bsms\b|on the go/i.test(text.trim());
+  return /\bon your phone\b|\bon my phone\b|text wealthpass|\bsms\b/i.test(text.trim());
+}
+
+export function isAppIntent(text: string): boolean {
+  return /get the app|download the app|manage assets on the go/i.test(text.trim());
 }
 
 export function isServiceMenu(text: string): boolean {
@@ -129,10 +133,8 @@ export function matchServiceProduct(text: string): (typeof SERVICE_PRODUCTS)[num
 }
 
 export function serviceRequestCopy(label: string, already: boolean): string {
-  if (already) {
-    return `That's already noted. Still waiting on an offer for ${label}. Nothing is live yet. This is a demo request.`;
-  }
-  return `Noted. I have your request for ${label}. I'll reach back out once there's an offer. Nothing is live yet. This is a demo request.`;
+  if (already) return `Already noted: ${label}. Still waiting. Demo only.`;
+  return `Noted: ${label}. I'll reach out when there's an offer. Demo only.`;
 }
 
 export function promptsFor(input: { pendingAccept: boolean; enrolled: boolean }): AssistantPrompt[] {

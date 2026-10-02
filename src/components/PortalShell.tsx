@@ -6,6 +6,7 @@ import { clerkAppearance } from "../auth/clerk";
 import { MODE_HOMES, MODE_NAV, modeFromPath, PRODUCT_NAME } from "../data/catalog";
 import { useAssistant } from "../context/AssistantContext";
 import { useMode } from "../context/ModeContext";
+import { AppInvite } from "./AppInvite";
 import { AssistantPanel } from "./AssistantPanel";
 import { CompanionMark } from "./CompanionMark";
 import { InstitutionAssistantPanel } from "./InstitutionAssistantPanel";
@@ -13,7 +14,6 @@ import { PhoneDemoSheet } from "./PhoneDemoSheet";
 import { RoleSwitcher } from "./RoleSwitcher";
 
 const OPEN_DOCK = new Set([
-  "/assistant",
   "/offers",
   "/financials",
   "/strategies",
@@ -30,8 +30,9 @@ export function PortalShell() {
   const routeMode = modeFromPath(location.pathname) ?? mode;
   const institutional = routeMode === "institution";
   const institutionHome = location.pathname === "/institution";
-  const chatHome = institutionHome;
-  const showDock = !institutionHome;
+  const clientHome = location.pathname === "/assistant";
+  const chatHome = institutionHome || clientHome;
+  const showDock = !chatHome;
   const wide =
     location.pathname === "/admin" ||
     location.pathname === "/institution/clients" ||
@@ -126,6 +127,7 @@ export function PortalShell() {
         ) : null}
       </div>
       {routeMode === "client" ? <PhoneDemoSheet /> : null}
+      {routeMode === "client" ? <AppInvite /> : null}
     </div>
   );
 }

@@ -6,7 +6,9 @@ import { CLIENT_SEEDS } from "../../shared/seed/index.ts";
 import {
   bestPitchRecommendation,
   enrolledAssistantCopy,
+  enrollmentMatchesPoint,
   isAcceptIntent,
+  isAppIntent,
   isPitchNavigation,
   isServiceMenu,
   matchServiceProduct,
@@ -26,12 +28,12 @@ test("the assistant recommends a manager pitch on a concrete account", () => {
   const copy = recommendationCopy(rec);
   assert.match(copy, new RegExp(rec.choice.strategy));
   assert.match(copy, new RegExp(rec.choice.accountName));
-  assert.match(copy, /This is what I recommend/);
-  assert.match(copy, /If you enroll in/);
+  assert.match(copy, /Recommend /);
+  assert.match(copy, /Say accept/);
   assert.match(copy, /cannot be bought/);
   assert.equal(copy.toLowerCase().includes(["paid", "placement"].join(" ")), false);
   assert.equal(copy.includes("WealthPass holds"), false);
-  assert.match(copy, /not legal advice/);
+  assert.match(copy, /not legal advice/i);
 });
 
 test("enrolled copy keeps the Schwab manager and refuses an LPOA for WealthPass", () => {
@@ -46,11 +48,11 @@ test("enrolled copy keeps the Schwab manager and refuses an LPOA for WealthPass"
   };
   const accepted = acceptOnRow({}, "ml-pw", choice);
   const copy = enrolledAssistantCopy(accepted["ml-pw"]);
-  assert.match(copy, /You're enrolled in Tax-aware municipal SMA for Private Wealth brokerage/);
-  assert.match(copy, /Meridian Global Asset Management may reach out/);
-  assert.match(copy, /selected manager sets up the Schwab brokerage/);
+  assert.match(copy, /Enrolled in Tax-aware municipal SMA for Private Wealth brokerage/);
+  assert.match(copy, /Meridian Global Asset Management may follow up/);
+  assert.match(copy, /selected manager sets up Schwab/);
   assert.match(copy, /WealthPass does not hold the LPOA/);
-  assert.match(copy, /Permission to share an LPOA is not an LPOA/);
+  assert.match(copy, /Sharing an LPOA is not an LPOA/);
   assert.equal(copy.includes("WealthPass holds the LPOA"), false);
   assert.equal(copy.includes("WealthPass will set up"), false);
 });
@@ -61,8 +63,22 @@ test("chat intents stay narrow", () => {
   assert.equal(isAcceptIntent("accept"), true);
   assert.equal(isAcceptIntent("I accept the premise"), false);
   assert.equal(isServiceMenu("I need other financial services"), true);
+  assert.equal(isAppIntent("Get the app"), true);
+  assert.equal(isAppIntent("On your phone"), false);
+  assert.equal(
+    enrollmentMatchesPoint({ id: "ml-pw", label: "Merrill · Private Wealth brokerage" }, "ml-pw", {
+      accountName: "Private Wealth brokerage",
+    }),
+    true,
+  );
+  assert.equal(
+    enrollmentMatchesPoint({ id: "bank", label: "Merrill" }, "ml-pw", {
+      accountName: "Private Wealth brokerage",
+    }),
+    false,
+  );
   const named = matchServiceProduct("I need a business line of credit and I don't see any offers.");
   assert.equal(named?.id, "business-loc");
-  assert.match(serviceRequestCopy("Business line of credit", false), /I'll reach back out once there's an offer/);
+  assert.match(serviceRequestCopy("Business line of credit", false), /I'll reach out when there's an offer/);
   assert.equal(serviceRequestCopy("Business line of credit", false).toLowerCase().includes("approved"), false);
 });

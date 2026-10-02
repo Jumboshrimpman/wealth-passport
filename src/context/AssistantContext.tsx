@@ -13,6 +13,7 @@ import {
   bestPitchRecommendation,
   enrolledAssistantCopy,
   isAcceptIntent,
+  isAppIntent,
   isPhoneIntent,
   isPitchNavigation,
   isServiceMenu,
@@ -44,6 +45,11 @@ type AssistantContextValue = {
   servicesOpen: boolean;
   phoneOpen: boolean;
   closePhone: () => void;
+  openPhone: () => void;
+  appInviteOpen: boolean;
+  dismissAppInvite: () => void;
+  openAppInvite: () => void;
+  typing: boolean;
   ask: (text: string) => void;
   minimized: boolean;
   setMinimized: (value: boolean) => void;
@@ -52,6 +58,9 @@ type AssistantContextValue = {
 };
 
 const AssistantContext = createContext<AssistantContextValue | null>(null);
+
+const TYPING_MS = 720;
+const APP_INVITE_KEY = "wealthpass-app-invite-dismissed";
 
 let messageSeq = 0;
 
@@ -78,8 +87,11 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [recommendation, setRecommendation] = useState<PitchRecommendation | null>(null);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [phoneOpen, setPhoneOpen] = useState(false);
+  const [appInviteOpen, setAppInviteOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
   const [threadClient, setThreadClient] = useState(passport.id);
   const announced = useRef<Set<string> | null>(null);
+  const typingHolds = useRef(0);
 
   if (announced.current === null) {
     announced.current = new Set(Object.entries(accepted).map(([key, row]) => acceptToken(passport.id, key, row)));
@@ -110,38 +122,86 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const greeting = greetingLine(passport.household.clientFirstName, wealth.total, countNewOffers(board));
   const pendingAccept = phase === "recommend" && recommendation != null && !accepted[recommendation.rowKey];
 
+  const holdTyping = useCallback(() => {
+    typingHolds.current += 1;
+    setTyping(true);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      typingHolds.current = Math.max(0, typingHolds.current - 1);
+      setTyping(typingHolds.current > 0);
+    };
+  }, []);
+
+  const reveal = useCallback(
+    (assistantText: string) => {
+      const release = holdTyping();
+      window.setTimeout(() => {
+        setMessages((current) => [...current, { id: nextId(), role: "assistant", text: assistantText }]);
+        release();
+      }, TYPING_MS);
+    },
+    [holdTyping],
+  );
+
   useEffect(() => {
-    const fresh: AssistantMessage[] = [];
+    const timer = window.setTimeout(() => {
+      try {
+        if (sessionStorage.getItem(APP_INVITE_KEY) === "1") return;
+      } catch {
+        // Show the invite when storage is unavailable.
+      }
+      setAppInviteOpen(true);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const pending: { token: string; text: string }[] = [];
     for (const [key, row] of Object.entries(accepted)) {
       const token = acceptToken(passport.id, key, row);
       if (announced.current?.has(token)) continue;
-      announced.current?.add(token);
-      fresh.push({ id: nextId(), role: "assistant", text: enrolledAssistantCopy(row) });
+      pending.push({ token, text: enrolledAssistantCopy(row) });
     }
-    if (fresh.length === 0) return;
-    setMessages((current) => [...current, ...fresh]);
-    setPhase("enrolled");
-    setServicesOpen(false);
-    setRecommendation((current) => (current && accepted[current.rowKey] ? null : current));
-  }, [accepted, passport.id]);
+    if (pending.length === 0) return;
+    let live = true;
+    const release = holdTyping();
+    const timer = window.setTimeout(() => {
+      if (!live) return;
+      for (const item of pending) announced.current?.add(item.token);
+      setMessages((current) => [
+        ...current,
+        ...pending.map((item) => ({ id: nextId(), role: "assistant" as const, text: item.text })),
+      ]);
+      setPhase("enrolled");
+      setServicesOpen(false);
+      setRecommendation((current) => (current && accepted[current.rowKey] ? null : current));
+      release();
+    }, TYPING_MS);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+      release();
+    };
+  }, [accepted, holdTyping, passport.id]);
 
   const ask = useCallback(
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
       const user = { id: nextId(), role: "user" as const, text: trimmed };
+      setMessages((current) => [...current, user]);
+
+      if (isAppIntent(trimmed)) {
+        setAppInviteOpen(true);
+        reveal("Demo invite to manage assets on the go. No store listing yet.");
+        return;
+      }
 
       if (isPhoneIntent(trimmed)) {
         setPhoneOpen(true);
-        setMessages((current) => [
-          ...current,
-          user,
-          {
-            id: nextId(),
-            role: "assistant",
-            text: "This is a demo of on-the-go access. Same thread, phone-sized. It is not a text message, and nothing is sent.",
-          },
-        ]);
+        reveal("Demo of on-the-go access. Same thread, phone-sized. Nothing is sent.");
         return;
       }
 
@@ -154,53 +214,29 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         if (!rec) {
           setRecommendation(null);
           setPhase("home");
-          setMessages((current) => [
-            ...current,
-            user,
-            {
-              id: nextId(),
-              role: "assistant",
-              text: "I don't see a pitch on an account yet. You can still tell me if you need another financial service.",
-            },
-          ]);
+          reveal("No pitch on an account yet. You can still ask for another service.");
           return;
         }
         const existing = accepted[rec.rowKey];
         if (existing) {
           setRecommendation(null);
           setPhase("enrolled");
-          setMessages((current) => [...current, user, { id: nextId(), role: "assistant", text: enrolledAssistantCopy(existing) }]);
+          reveal(enrolledAssistantCopy(existing));
           return;
         }
         setRecommendation(rec);
         setPhase("recommend");
-        setMessages((current) => [...current, user, { id: nextId(), role: "assistant", text: recommendationCopy(rec) }]);
+        reveal(recommendationCopy(rec));
         return;
       }
 
       if (isAcceptIntent(trimmed)) {
         if (!recommendation || accepted[recommendation.rowKey]) {
-          setMessages((current) => [
-            ...current,
-            user,
-            {
-              id: nextId(),
-              role: "assistant",
-              text: "Take me to your pitches first, and I can open the agreement for the strategy I recommend.",
-            },
-          ]);
+          reveal("Open your pitches first. Then I can open the agreement.");
           return;
         }
         beginSign(recommendation.rowKey, recommendation.choice);
-        setMessages((current) => [
-          ...current,
-          user,
-          {
-            id: nextId(),
-            role: "assistant",
-            text: `Opening the client agreement for ${recommendation.choice.strategy} on ${recommendation.choice.accountName}.`,
-          },
-        ]);
+        reveal(`Opening the agreement for ${recommendation.choice.strategy} on ${recommendation.choice.accountName}.`);
         return;
       }
 
@@ -208,35 +244,32 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       if (product) {
         const saved = note(product.id);
         setServicesOpen(false);
-        setMessages((current) => [
-          ...current,
-          user,
-          { id: nextId(), role: "assistant", text: serviceRequestCopy(saved.label, saved.already) },
-        ]);
+        reveal(serviceRequestCopy(saved.label, saved.already));
         return;
       }
 
       if (isServiceMenu(trimmed)) {
         setServicesOpen(true);
-        setMessages((current) => [
-          ...current,
-          user,
-          {
-            id: nextId(),
-            role: "assistant",
-            text: "Which of these should I note? I'll reach back out once there's an offer. This is a demo request, not a live product.",
-          },
-        ]);
+        reveal("Which should I note? I'll reach out when there's an offer. Demo only.");
         return;
       }
 
-      const reply = answerQuestion(trimmed, { client: passport, board, wealth });
-      setMessages((current) => [...current, user, { id: nextId(), role: "assistant", text: reply }]);
+      reveal(answerQuestion(trimmed, { client: passport, board, wealth }));
     },
-    [accepted, beginSign, board, navigate, note, passport, recommendation, wealth],
+    [accepted, beginSign, board, navigate, note, passport, recommendation, reveal, wealth],
   );
 
   const closePhone = useCallback(() => setPhoneOpen(false), []);
+  const openPhone = useCallback(() => setPhoneOpen(true), []);
+  const openAppInvite = useCallback(() => setAppInviteOpen(true), []);
+  const dismissAppInvite = useCallback(() => {
+    try {
+      sessionStorage.setItem(APP_INVITE_KEY, "1");
+    } catch {
+      // Closing still hides it for this view.
+    }
+    setAppInviteOpen(false);
+  }, []);
   const prompts = promptsFor({ pendingAccept, enrolled: phase === "enrolled" });
   const spotlight = pendingAccept && recommendation ? { rowKey: recommendation.rowKey, choiceId: recommendation.choice.id } : null;
 
@@ -248,13 +281,34 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       servicesOpen,
       phoneOpen,
       closePhone,
+      openPhone,
+      appInviteOpen,
+      dismissAppInvite,
+      openAppInvite,
+      typing,
       ask,
       minimized,
       setMinimized,
       expandNonce,
       spotlight,
     }),
-    [ask, closePhone, expandNonce, greeting, messages, minimized, phoneOpen, prompts, servicesOpen, spotlight],
+    [
+      appInviteOpen,
+      ask,
+      closePhone,
+      dismissAppInvite,
+      expandNonce,
+      greeting,
+      messages,
+      minimized,
+      openAppInvite,
+      openPhone,
+      phoneOpen,
+      prompts,
+      servicesOpen,
+      spotlight,
+      typing,
+    ],
   );
 
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;

@@ -184,12 +184,12 @@ export function EnrollAssistant({
     const intro = [
       ...(foundRef.current.length > 0
         ? [
-            `Local helper found ${foundRef.current.join(", ")} on this device. Simulated. Passwords were not read and were not uploaded.`,
+            `Found ${foundRef.current.join(", ")} on this device. Simulated. Passwords were not read or uploaded.`,
           ]
         : []),
       gaps.length > 0
-        ? `Plaid is covering what the helper did not find: ${gaps.map((gap) => gap.label).join(", ")}. Simulated. Passwords were not read and were not uploaded.`
-        : "Connecting a custodian, then the IRS. This demo does not call either one.",
+        ? `Plaid covers the rest: ${gaps.map((gap) => gap.label).join(", ")}. Simulated. Passwords were not read or uploaded.`
+        : "Connecting a custodian, then the IRS. Demo only.",
     ];
     setLines(intro);
 
@@ -254,7 +254,7 @@ export function EnrollAssistant({
           if (gap.id === "fundrise") setFundrise(asset);
           if (gap.id === "coinbase") setCoinbase(asset);
           if (gap.id === "kalshi") setKalshi(asset);
-          notes.push(`${gap.label} came back through the simulated connector for that gap.`);
+          notes.push(`${gap.label} returned through the simulated connector.`);
         }
         if (packet.restrictions) notes.push("Restrictions on file are here to confirm, not to retype.");
         else notes.push("No investment restrictions came back. Skip them, or add a few.");

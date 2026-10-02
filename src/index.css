@@ -3815,6 +3815,100 @@ button.proposed-name {
   margin: 0 0 1.4rem;
 }
 
+.enrolled-toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  background: #f3faf5;
+  border: 1px solid #d7eadc;
+  padding: 0.75rem 1rem;
+  color: #143024;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.98rem;
+}
+
+.enrolled-toggle-hint {
+  flex: none;
+  color: #1d6b3a;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.account-enrolled {
+  margin: 0.35rem 0 0;
+  color: #1d6b3a;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.account-enrolled .enrolled-flag {
+  display: inline;
+  margin: 0 0.45rem 0 0;
+}
+
+.account-enrolled .enrolled-meta {
+  display: block;
+  color: #3d5344;
+}
+
+.app-invite {
+  position: fixed;
+  left: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 20;
+  width: min(22rem, calc(100vw - 2.5rem));
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  box-shadow: 0 16px 40px rgba(17, 17, 17, 0.06);
+  padding: 1rem 2rem 1.05rem 1.1rem;
+}
+
+.app-invite-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: #8a8a8a;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+}
+
+.app-invite-kicker {
+  margin: 0 0 0.25rem;
+  color: #8a8a8a;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-invite h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: #161616;
+}
+
+.app-invite p {
+  margin: 0 0 0.7rem;
+  color: #5e5e5e;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.assistant-thread .is-typing,
+.sms-bubble.is-typing {
+  color: #8a8a8a;
+  font-style: italic;
+}
+
 .enrolled-pin article,
 .enrolled-ledger {
   background: #f3faf5;

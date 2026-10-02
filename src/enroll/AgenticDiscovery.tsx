@@ -93,11 +93,11 @@ export function AgenticDiscovery({
     return (
       <section className="agentic-card" data-testid="agentic-consent">
         <h2>Local browser helper</h2>
-        <p>Demo only. This is a simulation. It is not a Chrome extension, and it does not read saved passwords or the keychain.</p>
+        <p>Demo only. Simulated. Not a Chrome extension. Passwords and the keychain are not read.</p>
         <ul className="agentic-points">
-          <li>You can opt in to a local WealthPass helper that may use allowlisted saved finance logins or sessions on this device.</li>
-          <li>Credentials are not uploaded to WealthPass servers. WealthPass cloud does not read passwords.</li>
-          <li>You can revoke this permission. A real helper would run locally. This screen only pretends to look.</li>
+          <li>Optional local helper may use allowlisted saved finance sessions on this device.</li>
+          <li>Credentials are not uploaded. WealthPass cloud does not read passwords.</li>
+          <li>You can revoke. A real helper would run locally. This screen only pretends to look.</li>
         </ul>
         {revoked ? <p className="agentic-revoke">You revoked the local helper. It stays off until you opt in again.</p> : null}
         <label className="accept-modal-check">
@@ -127,7 +127,7 @@ export function AgenticDiscovery({
     <section className="agentic-card" data-testid="agentic-crawl">
       <h2>Looking on this device</h2>
       <p>
-        Simulated crawl of allowlisted finance sessions. {seen} of {plan.length}. Passwords are not read. Nothing is uploaded.
+        Simulated. {seen} of {plan.length}. Passwords not read. Nothing uploaded.
       </p>
       <ol className="agentic-crawl">
         {rows.map((row) => (

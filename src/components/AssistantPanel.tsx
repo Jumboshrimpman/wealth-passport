@@ -3,7 +3,7 @@ import { SERVICE_PRODUCTS } from "../data/assistantFlow";
 import { useAssistant } from "../context/AssistantContext";
 
 export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" }) {
-  const { greeting, messages, prompts, servicesOpen, ask } = useAssistant();
+  const { greeting, messages, prompts, servicesOpen, typing, ask } = useAssistant();
   const [draft, setDraft] = useState("");
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -11,7 +11,7 @@ export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" 
     const node = threadRef.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
-  }, [messages, servicesOpen]);
+  }, [messages, servicesOpen, typing]);
 
   function submit(text: string) {
     ask(text);
@@ -33,6 +33,11 @@ export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" 
             {message.text}
           </p>
         ))}
+        {typing ? (
+          <p className="from-assistant is-typing" data-testid="assistant-typing">
+            Typing…
+          </p>
+        ) : null}
       </div>
       {variant !== "mini" && servicesOpen ? (
         <fieldset className="service-picker">
@@ -72,7 +77,7 @@ export function AssistantPanel({ variant }: { variant: "home" | "dock" | "mini" 
           id={`ask-${variant}`}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Message"
+          placeholder={variant === "home" ? "Which strategies do I qualify for?" : "Message"}
           autoComplete="off"
         />
         <button type="submit">Send</button>

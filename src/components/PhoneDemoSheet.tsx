@@ -4,7 +4,7 @@ import { useAssistant } from "../context/AssistantContext";
 
 /** Demo of the same assistant on a phone. Not a text message and not an app. */
 export function PhoneDemoSheet() {
-  const { phoneOpen, closePhone, greeting, messages, prompts, servicesOpen, ask } = useAssistant();
+  const { phoneOpen, closePhone, greeting, messages, prompts, servicesOpen, typing, ask } = useAssistant();
   const [draft, setDraft] = useState("");
   if (!phoneOpen) return null;
 
@@ -39,6 +39,11 @@ export function PhoneDemoSheet() {
               {message.text}
             </p>
           ))}
+          {typing ? (
+            <p className="sms-bubble them is-typing" data-testid="assistant-typing">
+              Typing…
+            </p>
+          ) : null}
         </div>
         {servicesOpen ? (
           <div className="sms-replies">
